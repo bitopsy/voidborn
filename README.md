@@ -1,0 +1,94 @@
+# VOIDBORN — a 3D space RTS for the Spring/Recoil engine
+
+Two factions of surreal alien monsters fight over floating asteroids in deep space.
+Inspired by Beyond All Reason: commander, metal extractors, solar + advanced energy, a factory, defences, radar, storage, armies of 6 unit types per side.
+
+* **Choir of the Eye** — pale, many-eyed cyclopes. Long-range lasers, fragile at close quarters.
+* **Maw Swarm** — chitinous, toothed, many-legged. Short reach, tougher, regenerating, cheaper.
+
+## Files
+
+| File | Where it goes |
+|---|---|
+| `voidborn.sdz` | the game → `games/` folder of your BAR / Spring data directory |
+| `voidborn_rift.sd7` (+ `.md5.gz`) | the map "Voidborn Rift" → `maps/` folder |
+| `Play_Choir_vs_Bot.txt`, `Play_Maw_vs_Bot.txt`, `Watch_Bot_vs_Bot.txt` | start scripts |
+
+## How to run it
+
+Voidborn is its own game (not a BAR mod), so you start it with an engine binary and a start script, not from the BAR lobby.
+Use the same engine BAR ships (Recoil 2026.07.04 was used for testing).
+
+```
+<BAR data dir>/games/voidborn.sdz
+<BAR data dir>/maps/voidborn_rift.sd7
+<BAR data dir>/engine/<version>/spring  /path/to/Play_Choir_vs_Bot.txt
+```
+
+For a Flatpak install of BAR the data directory is typically under `~/.var/app/info.beyondallreason.bar/` (look for the folder that already contains BAR's own `games/` and `maps/`). Copy the two archives there, then launch that install's `spring` binary with a start script (you may need to run it from a Flatpak shell).
+When the game screen loads, press **Enter / the Start button** (you can also place your start spot first).
+`Watch_Bot_vs_Bot.txt` starts two bots against each other so you can spectate.
+
+## How to play
+
+1. Your **commander** (Hierophant / Matriarch) starts with 1000 metal + 1000 energy. Select it and build:
+   * a **Leech Eye / Root Drill** on every glowing amber ring on the ground (metal spots, ~2 metal/s each),
+   * **Sun Irises / Sunblooms** for energy, a **factory** (Iris Womb / Brood Hive) and a **builder** from it.
+2. Build army from the factory. Expand to the other asteroids with the flying builders.
+3. Defend with Stare Stalks / Tooth Spires; add the radar and storage; later the **Singularity Heart / Heartfire Egg** (500 energy/s) and the heavy defences.
+4. **Lose your commander and you lose** (mod option `commander_ends`, on by default). Commanders also have a manual-fire super weapon (`D` key, "Cataract Stare" / "Devour").
+5. Bots: `bot_skill` mod option 1–3 (smaller = slower to attack).
+
+## What "3D" means here
+
+The Spring engine's terrain is a heightfield, so structures must sit on rock. Voidborn gets its third dimension from:
+* **Every mobile unit flies.** Layers are real: scouts and raiders hover at 60–95 elmos, assaults ~80–95, snipers/artillery ~150, titans ~210–230. Expansion across the void is done by flying builders.
+* **A tiered map** with 3 terrace heights on the home asteroids (285 / 195 / 115), a crater-ring "Eye" in the centre, and floating islands in a true void (no water; skybox with stars/nebula).
+* Tall tower structures (Watcher, Pillar of Judgement) give vertical presence.
+
+## Map: Voidborn Rift (5120 × 5120, 2–4 players)
+
+Two symmetric home asteroids (west/east, 10 metal spots each), a central Eye ring (5), north/south islands (3 each), four corner islands (2 each) and floating debris (1 each): 43 metal spots. Teams 0/1 start west/east; teams 2/3 are the second players for 2v2.
+
+## Units
+
+### Choir of the Eye
+
+| Unit | Role | Metal | HP | Altitude | Weapon (range) |
+|---|---|---|---|---|---|
+| Hierophant | Cyclopean Commander | 2500 | 4200 | 45 | Gaze (430), Cataract Stare (240) |
+| Seer | Builder | 90 | 520 | 50 | — |
+| Gazer | Scout | 38 | 230 | 95 | Pinprick (270) |
+| Lashling | Raider | 55 | 330 | 65 | Lash Pulse (215) |
+| Cyclops Hoplite | Assault | 195 | 1400 | 95 | Cyclops Gaze (380) |
+| Basilisk | Long range | 250 | 560 | 150 | Petrifying Beam (740) |
+| Weeper | Support | 150 | 700 | 105 | — |
+| Argus Colossus | Heavy | 1650 | 9500 | 230 | Annihilating Gaze (650), Lesser Eyes (380) |
+
+Structures: **Iris Womb** (factory), **Leech Eye** (metal extractor), **Sun Iris** (energy), **Singularity Heart** (advanced energy), **Tear Vault** (storage), **Watcher** (radar), **Stare Stalk** (light defence), **Pillar of Judgement** (heavy defence)
+
+### Maw Swarm
+
+| Unit | Role | Metal | HP | Altitude | Weapon (range) |
+|---|---|---|---|---|---|
+| Matriarch | Maw Commander | 2500 | 4400 | 45 | Acid Spit (420), Devour (240) |
+| Weaver | Builder | 90 | 560 | 50 | — |
+| Skitter | Scout | 32 | 240 | 90 | Acid Dart (235) |
+| Gnasher | Raider | 52 | 560 | 60 | Maw Breath (130) |
+| Ravager | Assault | 160 | 2100 | 80 | Corrosive Bolt (345) |
+| Spitter | Artillery | 205 | 600 | 140 | Spores (820) |
+| Nurse | Support | 150 | 760 | 100 | — |
+| Leviathan | Heavy | 1450 | 13000 | 210 | Acid Cannon (620), Spore Barrage (520) |
+
+Structures: **Brood Hive** (factory), **Root Drill** (metal extractor), **Sunbloom** (energy), **Heartfire Egg** (advanced energy), **Gut Cyst** (storage), **Listening Maw** (radar), **Tooth Spire** (light defence), **Maw Bastion** (heavy defence)
+
+## Tested vs. not tested
+
+I ran the game in the Recoil 2026.07.04 headless engine with two bots playing 20–30 minutes of game time: asteroids loaded, commanders spawned, builders built, mexes produced metal, factories produced units, armies fought, bases died, commander death ended the game. I also fixed the bugs that run exposed (builder/factory scripts, weapon loading, mex yield).
+
+**Not tested (no GPU here):** how the models, textures, skybox, explosions and UI actually *look and feel* on screen, sounds (there are none), and human-driven play. Models/textures are generated procedurally (previews in the PNGs), so expect a "first pass" look.
+Known simplifications: no sounds; unit icons use the engine default; the bot is simple; balance is a first pass (Choir is slightly stronger vs the bot).
+
+## Regenerating / modding
+
+`voidborn_source.zip` has the generators (Python: models, textures, unit/weapon defs, map) and the game folder. `python3 tools/gen_assets.py && python3 tools/gen_defs.py` rebuild the models and all unit/weapon/script files.

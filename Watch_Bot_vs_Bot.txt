@@ -1,0 +1,61 @@
+[GAME]
+{
+	GameType=Voidborn 1.0;
+	MapName=Voidborn Rift 1.0;
+	IsHost=1;
+	HostIP=127.0.0.1;
+	HostPort=8452;
+	MyPlayerName=Spectator;
+	StartPosType=0;
+	NumPlayers=1;
+	NumUsers=1;
+	NumTeams=2;
+	NumAllyTeams=2;
+	[MODOPTIONS]
+	{
+		commander_ends=1;
+		startmetal=1000;
+		startenergy=1000;
+		bot_skill=2;
+	}
+	[PLAYER0]
+	{
+		Name=Spectator;
+		Spectator=1;
+		Team=0;
+	}
+	[TEAM0]
+	{
+		TeamLeader=0;
+		AllyTeam=0;
+		Side=Choir;
+		RGBColor=0.35 0.7 1.0;
+		StartPosX=790;
+		StartPosZ=2230;
+	}
+	[TEAM1]
+	{
+		TeamLeader=0;
+		AllyTeam=1;
+		Side=Maw;
+		RGBColor=1.0 0.5 0.1;
+		StartPosX=4330;
+		StartPosZ=2230;
+	}
+	[AI0]
+	{
+		Name=VoidBot Choir;
+		ShortName=VoidBot;
+		Team=0;
+		Host=0;
+	}
+	[AI1]
+	{
+		Name=VoidBot Maw;
+		ShortName=VoidBot;
+		Team=1;
+		Host=0;
+	}
+	[ALLYTEAM0] { NumAllies=0; }
+	[ALLYTEAM1] { NumAllies=0; }
+}

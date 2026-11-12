@@ -19,7 +19,7 @@ return {
 		explodeAs = "vb_small",
 		selfDestructAs = "vb_small",
 		customParams = {
-		scriptName = "mw_weaver",
+		scriptName = "mw_weaver.lua",
 			faction = "maw",
 			kind = "con",
 			iscommander = "false",

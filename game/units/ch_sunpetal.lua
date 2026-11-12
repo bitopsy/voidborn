@@ -19,7 +19,7 @@ return {
 		explodeAs = "vb_small",
 		selfDestructAs = "vb_small",
 		customParams = {
-		scriptName = "ch_sunpetal",
+		scriptName = "ch_sunpetal.lua",
 			faction = "choir",
 			kind = "solar",
 			iscommander = "false",

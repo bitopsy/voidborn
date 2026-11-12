@@ -19,7 +19,7 @@ return {
 		explodeAs = "vb_small",
 		selfDestructAs = "vb_small",
 		customParams = {
-		scriptName = "mw_gnasher",
+		scriptName = "mw_gnasher.lua",
 			faction = "maw",
 			kind = "raider",
 			iscommander = "false",

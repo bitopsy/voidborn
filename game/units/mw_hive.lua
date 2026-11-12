@@ -19,7 +19,7 @@ return {
 		explodeAs = "vb_med",
 		selfDestructAs = "vb_med",
 		customParams = {
-		scriptName = "mw_hive",
+		scriptName = "mw_hive.lua",
 			faction = "maw",
 			kind = "fac",
 			iscommander = "false",

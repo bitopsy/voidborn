@@ -19,7 +19,7 @@ return {
 		explodeAs = "vb_small",
 		selfDestructAs = "vb_small",
 		customParams = {
-		scriptName = "mw_spine",
+		scriptName = "mw_spine.lua",
 			faction = "maw",
 			kind = "def1",
 			iscommander = "false",

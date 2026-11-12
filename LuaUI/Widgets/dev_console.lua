@@ -10,6 +10,11 @@ function widget:GetInfo()
     }
 end
 
+-- [[ Local state initialization ]]
+local visible = false
+local inputBuffer = ""
+local history = {}
+
 -- Simple command processing with new /widgetlist command
 local function ProcessCommand(cmd)
     local c = cmd:lower()
@@ -51,7 +56,7 @@ local function ProcessCommand(cmd)
     end
 end
 
--- List all widgets and their status, with option to toggle
+-- List all widgets and their status
 function ListWidgets()
     local wgh = Spring.GetWidgetHandler()
     if not wgh then
@@ -80,15 +85,11 @@ function ListWidgets()
                 local state = enabled and "ON" or "OFF"
                 
                 foundAny = true
-                -- Format: [ON/OFF] name (desc)
                 local line = string.format(" [%s] %s", state, name)
                 if desc and desc ~= "" then
                     line = line .. " - " .. desc
                 end
                 Spring.Echo(line)
-                
-                -- Offer to toggle - but we need to be careful about spamming
-                -- For now, just list; toggling would need separate commands
             end
         end
     end

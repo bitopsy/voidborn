@@ -549,29 +549,36 @@ function gadget:Initialize()
 
 	-- Go through all UnitDefs and load scripts.
 	-- Names are tested in following order:
-	--  * exact match with .lua extension
-	--  * basename match (filename without .lua)
+	--  * exact match with .lua extension from scriptName
+	--  * fallback: construct filename from unitDef scriptName + .lua
 	for i=1,#UnitDefs do
 		local unitDef = UnitDefs[i]
 		if (unitDef and not scripts[unitDef.scriptName]) then
-			local scriptName = unitDef.scriptName:lower()
-			-- Build the expected filename
+			local scriptName = (unitDef.scriptName or ""):lower()
+			-- Build filename: try scriptName as-is first, then with .lua
 			local fn
 			if scriptName:match("%.lua$") then
 				fn = UNITSCRIPT_DIR .. scriptName
 			else
 				fn = UNITSCRIPT_DIR .. scriptName .. ".lua"
 			end
-			local bn = Basename(fn)
-			-- Check exact match first (e.g., "scripts/ch_hierophant.lua")
+			-- Check if this filename was pre-loaded via VFS DirList
 			local filename = scriptFiles[fn]
-			-- Then try basename match (e.g., "ch_hierophant.lua")
+			-- Fallback: try basename without path
 			if not filename then
+				local bn = fn:match("[^/]*$")
 				filename = scriptFiles[bn]
+			end
+			-- Final fallback: try just the basename
+			if not filename then
+				filename = scriptFiles[fn:match("[^/]*$")]
 			end
 			if filename then
 				Spring.Log(section, LOG.INFO, "  Loading unit script: " .. filename)
 				LoadScript(unitDef.scriptName, filename)
+			else
+				-- Try loading by original scriptName regardless
+				Spring.Log(section, LOG.ERROR, "  Could not find unit script for " .. (unitDef.name or "unknown"))
 			end
 		end
 	end

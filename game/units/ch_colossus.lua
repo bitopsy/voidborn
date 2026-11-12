@@ -19,7 +19,7 @@ return {
 		explodeAs = "vb_big",
 		selfDestructAs = "vb_big",
 		customParams = {
-		scriptName = "ch_colossus.lua",
+		scriptName = "ch_colossus.lua",,
 			faction = "choir",
 			kind = "heavy",
 			iscommander = "false",

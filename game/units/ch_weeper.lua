@@ -19,7 +19,7 @@ return {
 		explodeAs = "vb_small",
 		selfDestructAs = "vb_small",
 		customParams = {
-		scriptName = "ch_weeper.lua",
+		scriptName = "ch_weeper.lua",,
 			faction = "choir",
 			kind = "support",
 			iscommander = "false",

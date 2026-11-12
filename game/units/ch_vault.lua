@@ -19,7 +19,7 @@ return {
 		explodeAs = "vb_small",
 		selfDestructAs = "vb_small",
 		customParams = {
-		scriptName = "ch_vault.lua",
+		scriptName = "ch_vault.lua",,
 			faction = "choir",
 			kind = "store",
 			iscommander = "false",

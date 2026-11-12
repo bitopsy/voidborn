@@ -19,7 +19,7 @@ return {
 		explodeAs = "vb_big",
 		selfDestructAs = "vb_big",
 		customParams = {
-		scriptName = "mw_matriarch.lua",
+		scriptName = "mw_matriarch.lua",,
 			faction = "maw",
 			kind = "com",
 			iscommander = "true",

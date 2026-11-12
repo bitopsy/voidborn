@@ -19,7 +19,7 @@ return {
 		explodeAs = "vb_small",
 		selfDestructAs = "vb_small",
 		customParams = {
-		scriptName = "mw_skitter.lua",
+		scriptName = "mw_skitter.lua",,
 			faction = "maw",
 			kind = "scout",
 			iscommander = "false",

@@ -549,19 +549,26 @@ function gadget:Initialize()
 
 	-- Go through all UnitDefs and load scripts.
 	-- Names are tested in following order:
-	--  * exact match
-	--  * basename match
-	--  * exact match where .cob->.lua
-	--  * basename match where .cob->.lua
+	--  * exact match with .lua extension
+	--  * basename match (filename without .lua)
 	for i=1,#UnitDefs do
 		local unitDef = UnitDefs[i]
 		if (unitDef and not scripts[unitDef.scriptName]) then
-			local fn  = UNITSCRIPT_DIR .. unitDef.scriptName:lower()
-			local bn  = Basename(fn)
-			local cfn = fn:gsub("%.cob$", "%.lua")
-			local cbn = bn:gsub("%.cob$", "%.lua")
-			local filename = scriptFiles[fn] or scriptFiles[bn] or
-			                 scriptFiles[cfn] or scriptFiles[cbn]
+			local scriptName = unitDef.scriptName:lower()
+			-- Build the expected filename
+			local fn
+			if scriptName:match("%.lua$") then
+				fn = UNITSCRIPT_DIR .. scriptName
+			else
+				fn = UNITSCRIPT_DIR .. scriptName .. ".lua"
+			end
+			local bn = Basename(fn)
+			-- Check exact match first (e.g., "scripts/ch_hierophant.lua")
+			local filename = scriptFiles[fn]
+			-- Then try basename match (e.g., "ch_hierophant.lua")
+			if not filename then
+				filename = scriptFiles[bn]
+			end
 			if filename then
 				Spring.Log(section, LOG.INFO, "  Loading unit script: " .. filename)
 				LoadScript(unitDef.scriptName, filename)

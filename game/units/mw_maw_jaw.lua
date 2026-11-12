@@ -19,6 +19,7 @@ return {
 		explodeAs = "vb_medium",
 		selfDestructAs = "vb_medium",
 		customParams = {
+		scriptName = "mw_maw_jaw",
 			faction = "maw",
 			kind = "combat",
 			iscommander = "false",

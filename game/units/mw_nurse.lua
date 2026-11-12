@@ -19,6 +19,7 @@ return {
 		explodeAs = "vb_small",
 		selfDestructAs = "vb_small",
 		customParams = {
+		scriptName = "mw_nurse",
 			faction = "maw",
 			kind = "support",
 			iscommander = "false",

@@ -63,7 +63,7 @@ return {
 		reclaimSpeed = 76.0,
 		terraformSpeed = 0,
 		canResurrect = false,
-		buildOptions = { "ch_womb", "ch_siphon", "ch_sunpetal", "ch_heart", "ch_vault", "ch_watcher", "ch_stare", "ch_pillar", "ch_gazer_eye" },
+		buildOptions = { "ch_womb", "ch_siphon", "ch_sunpetal", "ch_heart", "ch_vault", "ch_watcher", "ch_stare", "ch_pillar" },
 		metalMake = 2.0,
 		energyMake = 30.0,
 		metalStorage = 500,
@@ -84,5 +84,6 @@ return {
 				def = "ch_hierophant_w2",
 			},
 		},
+		scriptName = "ch_hierophant",
 	},
 }

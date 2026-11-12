@@ -19,6 +19,7 @@ return {
 		explodeAs = "vb_small",
 		selfDestructAs = "vb_small",
 		customParams = {
+		scriptName = "mw_sensor",
 			faction = "maw",
 			kind = "radar",
 			iscommander = "false",

@@ -19,6 +19,7 @@ return {
 		explodeAs = "vb_med",
 		selfDestructAs = "vb_med",
 		customParams = {
+		scriptName = "ch_basilisk",
 			faction = "choir",
 			kind = "art",
 			iscommander = "false",

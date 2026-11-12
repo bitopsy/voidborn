@@ -19,7 +19,7 @@ return {
 		explodeAs = "vb_small",
 		selfDestructAs = "vb_small",
 		customParams = {
-		scriptName = "ch_gazer_eye.lua",,
+		scriptName = "ch_gazer_eye",,
 			faction = "choir",
 			kind = "combat",
 			iscommander = "false",

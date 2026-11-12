@@ -19,7 +19,7 @@ return {
 		explodeAs = "vb_small",
 		selfDestructAs = "vb_small",
 		customParams = {
-		scriptName = "ch_siphon.lua",,
+		scriptName = "ch_siphon",,
 			faction = "choir",
 			kind = "mex",
 			iscommander = "false",

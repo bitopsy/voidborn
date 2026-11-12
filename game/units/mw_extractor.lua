@@ -19,7 +19,7 @@ return {
 		explodeAs = "vb_small",
 		selfDestructAs = "vb_small",
 		customParams = {
-		scriptName = "mw_extractor.lua",,
+		scriptName = "mw_extractor",,
 			faction = "maw",
 			kind = "mex",
 			iscommander = "false",

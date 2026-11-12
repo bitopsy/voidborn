@@ -63,7 +63,7 @@ return {
 		reclaimSpeed = 76.0,
 		terraformSpeed = 0,
 		canResurrect = false,
-		buildOptions = { "ch_womb", "ch_siphon", "ch_sunpetal", "ch_heart", "ch_vault", "ch_watcher", "ch_stare", "ch_pillar" },
+		buildOptions = { "ch_womb", "ch_siphon", "ch_sunpetal", "ch_heart", "ch_vault", "ch_watcher", "ch_stare", "ch_pillar", "ch_gazer_eye" },
 		metalMake = 2.0,
 		energyMake = 30.0,
 		metalStorage = 500,

@@ -63,7 +63,7 @@ return {
 		reclaimSpeed = 76.0,
 		terraformSpeed = 0,
 		canResurrect = false,
-		buildOptions = { "mw_hive", "mw_extractor", "mw_sunbloom", "mw_core", "mw_cyst", "mw_sensor", "mw_spine", "mw_bastion" },
+		buildOptions = { "mw_hive", "mw_extractor", "mw_sunbloom", "mw_core", "mw_cyst", "mw_sensor", "mw_spine", "mw_bastion", "mw_maw_jaw" },
 		metalMake = 2.0,
 		energyMake = 30.0,
 		metalStorage = 500,

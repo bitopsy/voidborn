@@ -1,7 +1,7 @@
 function widget:GetInfo()
     return {
         name      = "Developer Console",
-        desc      = "Lua console. Hold SHIFT and press TILDE (~) to open, use /commands in chat.",
+        desc      = "Lua console. Press TILDE (~) to open, use /commands in chat.",
         author    = "Voidborn Dev",
         date      = "2026",
         license   = "GPL",
@@ -10,11 +10,11 @@ function widget:GetInfo()
     }
 end
 
--- Simple command processing
+-- Simple command processing with new /widgetlist command
 local function ProcessCommand(cmd)
     local c = cmd:lower()
     if c == "/help" then
-        Spring.Echo("Commands: /help, /units, /listapi, /exec, /clear, /automex info")
+        Spring.Echo("Commands: /help, /units, /listapi, /exec, /clear, /automex info, /widgetlist")
     elseif c == "/units" then
         local sel = Spring.GetSelectedUnits()
         Spring.Echo("Selected: " .. (#sel or 0) .. " unit(s)")
@@ -44,12 +44,64 @@ local function ProcessCommand(cmd)
         else
             Spring.Echo("Usage: /automex info")
         end
+    elseif c == "/widgetlist" then
+        ListWidgets()
     else
         Spring.Echo("Unknown command. Type /help")
     end
 end
 
--- Toggle console with TILDE (~) key - this key is less likely to be captured by engine screenshot sys
+-- List all widgets and their status, with option to toggle
+function ListWidgets()
+    local wgh = Spring.GetWidgetHandler()
+    if not wgh then
+        Spring.Echo("Could not access widget handler")
+        return
+    end
+    
+    local count = wgh:GetWidgetCount()
+    if count == 0 then
+        Spring.Echo("No widgets found")
+        return
+    end
+    
+    Spring.Echo(string.format("Total widgets: %d", count))
+    Spring.Echo(string.rep("-", 60))
+    
+    local foundAny = false
+    for i = 0, count - 1 do
+        local widgetID = wgh:GetWidgetID(i)
+        if widgetID then
+            local info = wgh:GetWidgetInfo(widgetID)
+            if info then
+                local name = info.name or "Unnamed"
+                local desc = info.desc or ""
+                local enabled = wgh:IsWidgetEnabled(widgetID)
+                local state = enabled and "ON" or "OFF"
+                
+                foundAny = true
+                -- Format: [ON/OFF] name (desc)
+                local line = string.format(" [%s] %s", state, name)
+                if desc and desc ~= "" then
+                    line = line .. " - " .. desc
+                end
+                Spring.Echo(line)
+                
+                -- Offer to toggle - but we need to be careful about spamming
+                -- For now, just list; toggling would need separate commands
+            end
+        end
+    end
+    
+    if not foundAny then
+        Spring.Echo("No widget info available (widgets may use legacy API)")
+    end
+    
+    Spring.Echo(string.rep("-", 60))
+    Spring.Echo("Use /help for other commands")
+end
+
+-- Toggle console with TILDE (~) key
 function widget:KeyPress(key, isRepeat)
     -- Tilde key (~), typically key code 199
     if key == 199 then

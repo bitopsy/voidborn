@@ -198,7 +198,7 @@ local function BuilderThink(bot, u, f, res)
 end
 
 local function FactoryThink(bot, fac, f, res)
-	local q = Spring.GetFactoryCommands(fac, 0) or 0
+	local q = Spring.GetFactoryCommandCount(fac) or 0
 	if type(q) == "table" then q = #q end
 	if VB_DEBUG and Spring.GetGameFrame() % 900 < 30 then Spring.Echo("[VoidBot] factory q=" .. q .. " cons=" .. Count(bot, "con") .. " metal=" .. math.floor(res.m)) end
 	if q >= 2 then return end

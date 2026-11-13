@@ -26,12 +26,79 @@ if not okF or type(VBFont) ~= "table" then
 end
 
 local visible, input = false, ""
+local cursor = 1            -- caret position inside `input` (1 = start)
 local hist, histPos = {}, 0
+local templates = {}        -- id -> spec (declared early: the completion helpers need it)
 local pending, gotText = nil, false   -- de-duplicates KeyPress fallback vs TextInput
 local hasSDL = Spring.SDL and Spring.SDL.StartTextInput and Spring.SDL.StopTextInput
 local function SetOpen(v)
 	visible = v
 	if hasSDL then if v then Spring.SDL.StartTextInput() else Spring.SDL.StopTextInput() end end
+	if v then cursor = #input + 1 end
+end
+
+-- ---------------------------------------------------------------------------------------
+-- autocomplete / autofill / syntax highlighting (shared by every /vb* command)
+-- ---------------------------------------------------------------------------------------
+local okC, Complete = pcall(VFS.Include, "LuaUI/Headers/vb_complete.h.lua")
+if not okC or type(Complete) ~= "table" then
+	Complete = { commands = {}, COL = {}, Words = function() return {} end,
+	             WordAt = function() return nil end, Candidates = function() return {} end,
+	             Highlight = function() return {} end, CommandOf = function() end }
+end
+
+-- cached name lists (rebuilt when the game starts, they never change afterwards)
+local unitNameList, pngNameList
+local function UnitNames()
+	if not unitNameList then
+		local names = {}
+		for name in pairs(UnitDefNames) do names[#names + 1] = name end
+		table.sort(names)
+		unitNameList = names
+	end
+	return unitNameList
+end
+local function PngNames()
+	if not pngNameList then
+		local names = {}
+		local seen = {}
+		local function Add(dir)
+			local ok, list = pcall(VFS.DirList, dir, "*.png", VFS.ZIP_ONLY)
+			if ok and list then
+				for _, f in ipairs(list) do
+					local n = f:match("([^/]+)%.png$")
+					if n and not seen[n] then seen[n] = true; names[#names + 1] = n end
+				end
+			end
+			local ok2, list2 = pcall(VFS.DirList, dir, "*.png", VFS.RAW_ONLY)
+			if ok2 and list2 then
+				for _, f in ipairs(list2) do
+					local n = f:match("([^/]+)%.png$")
+					if n and not seen[n] then seen[n] = true; names[#names + 1] = n end
+				end
+			end
+		end
+		Add("unitpics/")
+		Add("icons/")
+		table.sort(names)
+		pngNameList = names
+	end
+	return pngNameList
+end
+local function TemplateNames()
+	local ids = {}
+	for id in pairs(templates) do ids[#ids + 1] = id end
+	table.sort(ids)
+	return ids
+end
+local function Providers()
+	return {
+		units      = UnitNames,
+		pngs       = PngNames,
+		templates  = TemplateNames,
+		isUnit     = function(n) return UnitDefNames[n] ~= nil end,
+		isTemplate = function(n) return templates[n] ~= nil end,
+	}
 end
 -- QWERTY shifted symbols, used only when the engine gives us no TextInput events
 local SHIFT = { ["1"]="!",["2"]="@",["3"]="#",["4"]="$",["5"]="%",["6"]="^",["7"]="&",["8"]="*",["9"]="(",["0"]=")",
@@ -58,7 +125,7 @@ end
 -- ---------------------------------------------------------------------------------------------
 -- unit creation: /vbcreate, /vbspawn, templates
 -- ---------------------------------------------------------------------------------------------
-local templates = {}      -- id -> spec (saved with the widget config, so recipes survive restarts)
+-- templates (id -> spec) is declared early (above the completion helpers)
 local NUMERIC = { hp = true, metal = true, energy = true, buildtime = true, sight = true, speed = true, range = true,
 	dmg = true, reload = true, alt = true, x = true, z = true, count = true, team = true, pngsize = true }
 local TEXT = { id = true, name = true, base = true, lua = true, png = true }
@@ -287,6 +354,77 @@ local function IsToggleKey(key, scanCode)
 	return scanCode == 53 or key == 96 or key == 178 or key == 167 or key == 126
 end
 
+-- ---------------------------------------------------------------------------------------
+-- editing helpers
+-- ---------------------------------------------------------------------------------------
+local function ClampCursor()
+	if cursor < 1 then cursor = 1 end
+	if cursor > #input + 1 then cursor = #input + 1 end
+end
+local function Insert(str)
+	input = input:sub(1, cursor - 1) .. str .. input:sub(cursor)
+	cursor = cursor + #str
+	ClampCursor()
+end
+local function Backspace()
+	if cursor > 1 then
+		input = input:sub(1, cursor - 2) .. input:sub(cursor)
+		cursor = cursor - 1
+	end
+end
+local function Delete()
+	if cursor <= #input then
+		input = input:sub(1, cursor - 1) .. input:sub(cursor + 1)
+	end
+end
+
+-- ---------------------------------------------------------------------------------------
+-- completion: TAB completes the word under the cursor, a second TAB cycles the candidates
+-- ---------------------------------------------------------------------------------------
+local cands, candIdx = {}, 0
+
+local function RefreshCandidates()
+	cands = Complete.Candidates(input, cursor, Providers()) or {}
+	if candIdx > #cands then candIdx = 0 end
+end
+
+local function ApplyCandidate(i)
+	local c = cands[i]
+	if not c then return end
+	local word = Complete.WordAt(input, cursor)
+	if not word then return end
+	-- replace the word under the cursor with the candidate
+	local head = input:sub(1, word.start - 1)
+	local tail = input:sub(word.stop + 1)
+	input = head .. c.text .. tail
+	cursor = word.start + #c.text
+	ClampCursor()
+end
+
+local function CompleteOnce()
+	RefreshCandidates()
+	if #cands == 0 then
+		Print("no completion for: " .. (input:sub(1, cursor)))
+		return
+	end
+	if #cands == 1 then
+		ApplyCandidate(1)
+		candIdx = 0
+		return
+	end
+	-- several matches: show them, and cycle through them on every further TAB
+	candIdx = (candIdx % #cands) + 1
+	ApplyCandidate(candIdx)
+end
+
+local function ShowCandidateList()
+	local list = {}
+	for i, c in ipairs(cands) do
+		list[#list + 1] = (i == candIdx and "> " or "  ") .. c.text .. "   (" .. c.kind .. ")"
+	end
+	return list
+end
+
 function widget:KeyPress(key, mods, isRepeat, label, unicode, scanCode)
 	if IsToggleKey(key, scanCode) then
 		if not isRepeat then SetOpen(not visible) end
@@ -298,18 +436,28 @@ function widget:KeyPress(key, mods, isRepeat, label, unicode, scanCode)
 			table.insert(hist, 1, input); histPos = 0
 			if not Run(input) then Print("Unknown: " .. input .. "   (try /vbhelp)") end
 		end
-		input = ""
-	elseif key == 8 then input = input:sub(1, -2)  -- Backspace
-	elseif key == 27 then SetOpen(false)           -- Esc
-	elseif key == 273 then                         -- Up: older command
-		if histPos < #hist then histPos = histPos + 1; input = hist[histPos] end
-	elseif key == 274 then                         -- Down: newer command
-		if histPos > 1 then histPos = histPos - 1; input = hist[histPos] else histPos = 0; input = "" end
+		input = ""; cursor = 1; cands, candIdx = {}, 0
+	elseif key == 9 then                         -- Tab: autocomplete
+		if not isRepeat then CompleteOnce() end
+	elseif key == 8 then Backspace()             -- Backspace
+	elseif key == 127 then Delete()              -- Delete
+	elseif key == 27 then SetOpen(false)         -- Esc
+	elseif key == 273 then                       -- Up: older command
+		if histPos < #hist then histPos = histPos + 1; input = hist[histPos]; cursor = #input + 1 end
+	elseif key == 274 then                       -- Down: newer command
+		if histPos > 1 then histPos = histPos - 1; input = hist[histPos]
+		else histPos = 0; input = "" end
+		cursor = #input + 1
+	elseif key == 276 then cursor = cursor + 1   -- Right
+	elseif key == 275 then cursor = cursor - 1   -- Left
+	elseif key == 277 then cursor = 1            -- Home
+	elseif key == 278 then cursor = #input + 1   -- End
 	elseif not gotText and key >= 32 and key <= 126 then   -- fallback typing (QWERTY), only until TextInput proves to work
 		local ch = string.char(key)
 		if mods and mods.shift then ch = (ch:match("%a") and ch:upper()) or SHIFT[ch] or ch end
-		input = input .. ch; pending = ch
+		Insert(ch); pending = ch
 	end
+	ClampCursor()
 	return true  -- swallow keys while open
 end
 
@@ -320,7 +468,7 @@ function widget:TextInput(char)
 	gotText = true
 	if pending == char then pending = nil return true end        -- already typed by the fallback just now
 	pending = nil
-	input = input .. char
+	Insert(char)
 	return true
 end
 function widget:GetConfigData() return { templates = templates } end
@@ -336,5 +484,75 @@ function widget:DrawScreen()
 	VBFont.Text("VOIDBORN // DEV CONSOLE", vsx - 20, vsy - 30, 15, "or", 0.45, 0.9, 1.0, 0.9)
 	gl.Color(1, 1, 1, 1)
 	for i, line in ipairs(out) do MonoText(line, 20, vsy - 30 - (i - 1) * 12, 11) end
-	MonoText("> " .. input .. "_", 20, vsy - h, 14)
+
+	-- the input line, syntax highlighted
+	local segs = Complete.Highlight(input, Providers()) or {}
+	local x, y, fs = 20, vsy - h, 14
+	local charW = gl.GetTextWidth("M") * (fs / 12)
+	-- "> " prompt
+	MonoText("> ", x, y, fs)
+	x = x + charW * 2
+	-- the text before the caret is drawn normally, the part after it dimmed
+	for _, seg in ipairs(segs) do
+		local before = (seg.start or 1) <= cursor
+		local txt = seg.text
+		-- split the segment at the caret
+		local cut = cursor - (seg.start or 1)
+		if seg.start == nil then
+			-- the highlight helper does not track offsets; fall back to a plain colour
+			gl.Color(seg.col[1], seg.col[2], seg.col[3], 1)
+			MonoText(txt, x, y, fs)
+			x = x + charW * #txt
+		else
+			local a = txt:sub(1, cut)
+			local b = txt:sub(cut + 1)
+			if a ~= "" then
+				gl.Color(seg.col[1], seg.col[2], seg.col[3], 1)
+				MonoText(a, x, y, fs)
+				x = x + charW * #a
+			end
+			if b ~= "" then
+				gl.Color(seg.col[1], seg.col[2], seg.col[3], 0.45)
+				MonoText(b, x, y, fs)
+				x = x + charW * #b
+			end
+		end
+	end
+	-- the caret
+	gl.Color(0.45, 0.95, 1.0, 0.95)
+	gl.Rect(x - 1, y - 2, x + 1, y + fs)
+
+	-- the inline hint: the rest of the best candidate, drawn dimmed after the caret
+	local hint
+	do
+		local list = Complete.Candidates(input, cursor, Providers()) or {}
+		if #list == 1 then
+			local word = Complete.WordAt(input, cursor)
+			if word and list[1].text:sub(1, #word.text) == word.text then
+				hint = list[1].text:sub(#word.text + 1)
+			end
+		end
+	end
+	if hint and hint ~= "" then
+		gl.Color(0.42, 0.48, 0.60, 1)
+		MonoText(hint, x, y, fs)
+	end
+
+	-- the candidate list (TAB dropdown)
+	if #cands > 1 then
+		local lines = ShowCandidateList()
+		local lw = 0
+		for _, l in ipairs(lines) do lw = math.max(lw, gl.GetTextWidth(l)) end
+		local bx = math.min(vsx - 20 - lw - 20, x)
+		local by = y - 16 - (#lines * 14) - 8
+		gl.Color(0.06, 0.06, 0.10, 0.95)
+		gl.Rect(bx - 10, by, bx + lw + 14, by + #lines * 14 + 10)
+		gl.Color(0.35, 0.85, 1.0, 0.5)
+		gl.Rect(bx - 10, by, bx + lw + 14, by + 1)
+		for i, l in ipairs(lines) do
+			local c = (i == candIdx) and { 0.45, 0.95, 1.0 } or { 0.7, 0.75, 0.85 }
+			gl.Color(c[1], c[2], c[3], 1)
+			MonoText(l, bx, by + 6 + (i - 1) * 14, 11)
+		end
+	end
 end

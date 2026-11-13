@@ -1,5 +1,5 @@
 function gadget:GetInfo()
-	return { name = "VoidBot", desc = "Lua skirmish bot for Voidborn", author = "Voidborn", date = "2026", license = "GPL", layer = 1, enabled = true }
+	return { name = "VoidBot", desc = "Lua skirmish bot for Voidborn", author = "goddot info@bitopsy.com", date = "2026", license = "GPL", layer = 1, enabled = true }
 end
 if not gadgetHandler:IsSyncedCode() then return false end
 

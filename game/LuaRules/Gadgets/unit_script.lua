@@ -27,7 +27,7 @@ function gadget:GetInfo()
 	return {
 		name      = "Lua unit script framework",
 		desc      = "Manages Lua unit scripts",
-		author    = "Tobi Vollebregt",
+		author    = "goddot info@bitopsy.com",
 		date      = "2 September 2009",
 		license   = "GPL v2",
 		layer     = 0,

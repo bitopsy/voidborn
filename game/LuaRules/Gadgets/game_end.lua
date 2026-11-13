@@ -3,7 +3,7 @@
 --
 --  file:    game_end.lua
 --  brief:   handles trigger conditions for game over
---  author:  Andrea Piras
+--  author:  goddot info@bitopsy.com
 --
 --  Copyright (C) 2010-2013.
 --  Licensed under the terms of the GNU GPL, v2 or later.
@@ -15,7 +15,7 @@ function gadget:GetInfo()
 	return {
 		name      = "Game End",
 		desc      = "Handles team/allyteam deaths and declares gameover",
-		author    = "Andrea Piras",
+		author    = "goddot info@bitopsy.com",
 		date      = "June, 2013",
 		license   = "GNU GPL, v2 or later",
 		layer     = 0,

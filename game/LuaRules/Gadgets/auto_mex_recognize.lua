@@ -2,7 +2,7 @@ function gadget:GetInfo()
     return {
         name      = "Auto MEX Recognition",
         desc      = "Builders automatically detect and build mexes/extractors when mousing over resource spots. Improves build UX.",
-        author    = "Voidborn Dev",
+        author    = "goddot info@bitopsy.com",
         date      = "2026",
         license   = "GPL",
         layer     = 0,

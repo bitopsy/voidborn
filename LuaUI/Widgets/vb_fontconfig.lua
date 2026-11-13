@@ -1,6 +1,6 @@
 function widget:GetInfo()
 	return { name = "Voidborn Font Config", desc = "Points the engine's global UI font at the Voidborn glyph font",
-		author = "Voidborn Dev", date = "2026", license = "GPL", layer = -1000, enabled = true }
+		author = "goddot info@bitopsy.com", date = "2026", license = "GPL", layer = -1000, enabled = true }
 end
 
 -- The engine reads FontFile/SmallFontFile when it (re)loads fonts. The game archive also ships

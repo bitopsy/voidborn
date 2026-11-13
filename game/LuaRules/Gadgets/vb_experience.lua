@@ -2,7 +2,7 @@ function gadget:GetInfo()
 	return {
 		name = "Voidborn experience growth + split",
 		desc = "Units grow as they gain experience; at SPLIT_XP they split into two normal-sized units",
-		author = "Voidborn Dev", date = "2026", license = "GPL", layer = 1, enabled = true,
+		author = "goddot info@bitopsy.com", date = "2026", license = "GPL", layer = 1, enabled = true,
 	}
 end
 

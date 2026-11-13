@@ -3,7 +3,7 @@
 --
 --  file:    selector.lua
 --  brief:   the widget selector, loads and unloads widgets
---  author:  Dave Rodgers
+--  author:  goddot info@bitopsy.com
 --
 --  Copyright (C) 2007.
 --  Licensed under the terms of the GNU GPL, v2 or later.
@@ -19,7 +19,7 @@ function widget:GetInfo()
   return {
     name      = "WidgetSelector",
     desc      = "Widget selection widget",
-    author    = "trepan",
+    author    = "goddot info@bitopsy.com",
     date      = "Jan 8, 2007",
     license   = "GNU GPL, v2 or later",
     layer     = -9,

@@ -4,7 +4,7 @@
 --  file:    setupdefs.lua
 --  brief:   setup some custom UnitDefs parameters,
 --           and UnitDefNames, FeatureDefNames, WeaponDefNames
---  author:  Dave Rodgers
+--  author:  goddot info@bitopsy.com
 --
 --  Copyright (C) 2007.
 --  Licensed under the terms of the GNU GPL, v2 or later.

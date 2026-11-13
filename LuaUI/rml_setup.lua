@@ -1,6 +1,6 @@
 --  file:    rml.lua
 --  brief:   RmlUi Setup
---  author:  lov + ChrisFloofyKitsune
+--  author:  goddot info@bitopsy.com
 --
 --  Copyright (C) 2024.
 --  Licensed under the terms of the GNU GPL, v2 or later.

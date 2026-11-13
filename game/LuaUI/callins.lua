@@ -3,7 +3,7 @@
 --
 --  file:    callins.lua
 --  brief:   array and map of call-ins
---  author:  Dave Rodgers
+--  author:  goddot info@bitopsy.com
 --
 --  Copyright (C) 2007.
 --  Licensed under the terms of the GNU GPL, v2 or later.

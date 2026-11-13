@@ -3,7 +3,7 @@
 --
 --  file:    main.lua
 --  brief:   the entry point from gui.lua, relays call-ins to the widget manager
---  author:  Dave Rodgers
+--  author:  goddot info@bitopsy.com
 --
 --  Copyright (C) 2007.
 --  Licensed under the terms of the GNU GPL, v2 or later.

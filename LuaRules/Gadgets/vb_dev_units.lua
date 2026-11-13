@@ -2,7 +2,7 @@ function gadget:GetInfo()
 	return {
 		name = "Voidborn dev units",
 		desc = "Open-ended runtime unit creation for the dev console (/vbcreate, /vbspawn)",
-		author = "Voidborn Dev", date = "2026", license = "GPL", layer = 0, enabled = true,
+		author = "goddot info@bitopsy.com", date = "2026", license = "GPL", layer = 0, enabled = true,
 	}
 end
 

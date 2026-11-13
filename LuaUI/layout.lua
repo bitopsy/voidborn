@@ -3,7 +3,7 @@
 --
 --  file:    layout.lua
 --  brief:   dummy and default LayoutButtons() routines
---  author:  Dave Rodgers
+--  author:  goddot info@bitopsy.com
 --
 --  Copyright (C) 2007.
 --  Licensed under the terms of the GNU GPL, v2 or later.

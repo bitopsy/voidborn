@@ -3,7 +3,7 @@
 --
 --  file:    savetable.lua
 --  brief:   a human friendly table writer
---  author:  Dave Rodgers
+--  author:  goddot info@bitopsy.com
 --
 --  Copyright (C) 2007.
 --  Licensed under the terms of the GNU GPL, v2 or later.

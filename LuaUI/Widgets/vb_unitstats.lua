@@ -1,6 +1,6 @@
 function widget:GetInfo()
 	return { name = "Voidborn Unit Census", desc = "Shows summary figures + distributions of specs for the SELECTED units only (/vbstats)",
-		author = "Voidborn Dev", date = "2026", license = "GPL", layer = 6, enabled = true }
+		author = "goddot info@bitopsy.com", date = "2026", license = "GPL", layer = 6, enabled = true }
 end
 
 -- What it shows (all values are the LIVE ones, so /vbcreate changes, growth and experience bonuses are included):

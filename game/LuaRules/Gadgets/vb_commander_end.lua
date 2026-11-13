@@ -1,5 +1,5 @@
 function gadget:GetInfo()
-	return { name = "Voidborn commander end", desc = "A team without a commander is eliminated", author = "Voidborn", date = "2026", license = "GPL", layer = 0, enabled = true }
+	return { name = "Voidborn commander end", desc = "A team without a commander is eliminated", author = "goddot info@bitopsy.com", date = "2026", license = "GPL", layer = 0, enabled = true }
 end
 if not gadgetHandler:IsSyncedCode() then return false end
 

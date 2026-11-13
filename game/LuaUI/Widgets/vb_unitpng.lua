@@ -1,6 +1,6 @@
 function widget:GetInfo()
 	return { name = "Voidborn Unit PNG", desc = "Draws the png= image of /vbcreate units as a billboard above them",
-		author = "Voidborn Dev", date = "2026", license = "GPL", layer = 0, enabled = true }
+		author = "goddot info@bitopsy.com", date = "2026", license = "GPL", layer = 0, enabled = true }
 end
 
 -- /vbcreate dread base=ch_hoplite png=dread          -> unitpics/dread.png

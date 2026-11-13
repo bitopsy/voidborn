@@ -1,6 +1,6 @@
 function widget:GetInfo()
 	return { name = "Voidborn Sounds", desc = "Game-event sounds: start jingle, construction, unit ready, commander alarm, ambience (/vbsound)",
-		author = "Voidborn Dev", date = "2026", license = "GPL", layer = 0, enabled = true }
+		author = "goddot info@bitopsy.com", date = "2026", license = "GPL", layer = 0, enabled = true }
 end
 
 -- /vbsound                 show settings

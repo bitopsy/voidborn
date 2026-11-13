@@ -1,6 +1,6 @@
 function widget:GetInfo()
 	return { name = "Voidborn Memory Graph", desc = "Dotted histogram of Lua memory consumption over time (widget / Spring engine / Lua heap)",
-		author = "Voidborn Dev", date = "2026", license = "GPL", layer = 12, enabled = false,
+		author = "goddot info@bitopsy.com", date = "2026", license = "GPL", layer = 12, enabled = false,
 		handler = true }  -- needs the real widgetHandler to list the active widgets
 end
 

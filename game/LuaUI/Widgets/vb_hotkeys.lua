@@ -1,6 +1,6 @@
 function widget:GetInfo()
 	return { name = "Voidborn Hotkeys", desc = "BAR-style hotkeys: orders (a s m f p g r e t d w), build keys (z x c v b n j u), Ctrl+B = detonate selected units",
-		author = "Voidborn Dev", date = "2026", license = "GPL", layer = 1, enabled = true }
+		author = "goddot info@bitopsy.com", date = "2026", license = "GPL", layer = 1, enabled = true }
 end
 
 -- EDIT HERE -------------------------------------------------------------------

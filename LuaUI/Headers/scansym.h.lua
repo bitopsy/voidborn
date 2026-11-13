@@ -3,7 +3,7 @@
 --
 --  file:    keysym.h.lua
 --  brief:   key symbol constants
---  author:  Fireball
+--  author:  goddot info@bitopsy.com
 --
 --  Copyright (C) 2022.
 --  Licensed under the terms of the GNU GPL, v2 or later.

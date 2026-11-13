@@ -3,7 +3,7 @@
 --
 --  file:    game_spawn.lua
 --  brief:   spawns start unit and sets storage levels
---  author:  Tobi Vollebregt
+--  author:  goddot info@bitopsy.com
 --
 --  Copyright (C) 2010.
 --  Licensed under the terms of the GNU GPL, v2 or later.
@@ -15,7 +15,7 @@ function gadget:GetInfo()
 	return {
 		name      = "Spawn",
 		desc      = "spawns start unit and sets storage levels",
-		author    = "Tobi Vollebregt",
+		author    = "goddot info@bitopsy.com",
 		date      = "January, 2010",
 		license   = "GNU GPL, v2 or later",
 		layer     = 0,

@@ -29,7 +29,7 @@ function gadget:GetInfo()
     return {
         name      = "Programmable Units Sandbox",
         desc      = "Securely compiles and executes per-unit user scripts",
-        author    = "Voidborn Dev",
+        author    = "goddot info@bitopsy.com",
         date      = "2026",
         license   = "GNU GPL, v2 or later",
         layer     = 0,
@@ -228,7 +228,7 @@ function widget:GetInfo()
     return {
         name      = "Programmable Unit Debug HUD",
         desc      = "Renders custom world-space overlays and telemetry for programmable units",
-        author    = "Voidborn Dev",
+        author    = "goddot info@bitopsy.com",
         date      = "2026",
         license   = "GNU GPL, v2 or later",
         layer     = 0,
@@ -270,7 +270,7 @@ function widget:GetInfo()
     return {
         name      = "Script Hot-Reloader",
         desc      = "Watches local lua file changes and sends updates to synced gadget",
-        author    = "Voidborn Dev",
+        author    = "goddot info@bitopsy.com",
         date      = "2026",
         license   = "GNU GPL, v2 or later",
         layer     = 0,

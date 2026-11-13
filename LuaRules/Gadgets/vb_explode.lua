@@ -2,7 +2,7 @@ function gadget:GetInfo()
 	return {
 		name = "Voidborn mass detonation",
 		desc = "Ctrl+B: the selected units blow themselves up; each blast radius is proportional to the unit's current health",
-		author = "Voidborn Dev", date = "2026", license = "GPL", layer = 2, enabled = true,
+		author = "goddot info@bitopsy.com", date = "2026", license = "GPL", layer = 2, enabled = true,
 	}
 end
 

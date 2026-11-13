@@ -1,6 +1,6 @@
 function widget:GetInfo()
 	return { name = "Voidborn Auto Show Metal", desc = "Switches to the metal map while a metal extractor is selected",
-		author = "Voidborn Dev", date = "2026", license = "GPL", layer = -50, enabled = true }
+		author = "goddot info@bitopsy.com", date = "2026", license = "GPL", layer = -50, enabled = true }
 end
 
 -- The engine deprecated mapinfo's autoShowMetal flag ("please enable manually from

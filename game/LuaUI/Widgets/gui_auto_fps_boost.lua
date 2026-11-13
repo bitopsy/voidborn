@@ -2,7 +2,7 @@ function widget:GetInfo()
 	return {
 		name    = "Auto FPS Boost",
 		desc    = "Automatically lowers graphics effects when FPS drops and restores them when it recovers. /fpsboost: toggle. /fpsboost status: status window.",
-		author  = "Matthieu (Arginou57)",
+		author  = "goddot info@bitopsy.com",
 		date    = "2026-08-27",
 		license = "GNU GPL v2 or later",
 		layer   = -99999,

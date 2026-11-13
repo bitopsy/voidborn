@@ -1,6 +1,6 @@
 function widget:GetInfo()
 	return { name = "Voidborn Mex Click", desc = "Right-click a metal spot with a builder selected to queue an extractor (shift = queue)",
-		author = "Voidborn Dev", date = "2026", license = "GPL", layer = 1, enabled = true }
+		author = "goddot info@bitopsy.com", date = "2026", license = "GPL", layer = 1, enabled = true }
 end
 
 local SEARCH = 6  -- metal-map cells (16 elmos each) around the cursor

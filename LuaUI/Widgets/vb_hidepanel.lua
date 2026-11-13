@@ -1,6 +1,6 @@
 function widget:GetInfo()
 	return { name = "Voidborn Hide Stock Panel", desc = "Forces the engine's default build/order panel to be invisible",
-		author = "Voidborn Dev", date = "2026", license = "GPL", layer = -1000, enabled = true }
+		author = "goddot info@bitopsy.com", date = "2026", license = "GPL", layer = -1000, enabled = true }
 end
 
 -- The engine only reads ctrlpanel.txt from the VFS, where a loose copy in the data directory (or an older

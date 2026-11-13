@@ -8,7 +8,7 @@ function widget:GetInfo()
     return {
         name    = "FFA Timeseries HUD",
         desc    = "Spectator smooth line chart — top 5 of all FFA players, 6 metrics, 10 min",
-        author  = "goddot",
+        author  = "goddot info@bitopsy.com",
         date    = "2026",
         license = "GNU GPL v2",
         layer   = 0,

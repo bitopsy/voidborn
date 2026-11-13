@@ -1,6 +1,6 @@
 function widget:GetInfo()
 	return { name = "Voidborn Build Panel", desc = "Compact draggable build/order/toggle panel with scale handle and close button",
-		author = "Voidborn Dev", date = "2026", license = "GPL", layer = 5, enabled = true }
+		author = "goddot info@bitopsy.com", date = "2026", license = "GPL", layer = 5, enabled = true }
 end
 
 -- alien UI font; falls back to the engine font automatically if it cannot load

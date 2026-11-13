@@ -171,10 +171,33 @@ function widget:DrawScreen()
 		VBFont.Text(string.sub(t.c.name, 1, 14), bx + 4 * s, by + tbH * 0.42, fs, "o", 1, 1, 1, 1)
 		local nstates, cur = #t.c.params - 1, tonumber(t.c.params[1]) or 0
 		local lw = 7 * s
+		-- state indicator dots: repeat=green, movestate=blue, other=gray
+		-- with red/green for repeat on/off, and green/blue for movestate landing/takeoff
+		local stateLabels = {}
 		for k = 0, nstates - 1 do
 			local lx = bx + 4 * s + k * (lw + 2 * s)
-			if k == cur then Box(lx, by + 2 * s, lx + lw, by + 5 * s, 0.1, 0.9, 0.2, 1)
-			else Box(lx, by + 2 * s, lx + lw, by + 5 * s, 0.3, 0.3, 0.35, 1) end
+			local stateName = t.c.params[k + 1] or ""
+			stateLabels[k] = stateName
+			if stateName == "repeat" then
+				-- repeat on=green, repeat off=red
+				if k == cur then Box(lx, by + 2 * s, lx + lw, by + 5 * s, 0.1, 0.9, 0.2, 1)
+				else Box(lx, by + 2 * s, lx + lw, by + 5 * s, 0.9, 0.1, 0.1, 1) end
+			elseif stateName == "movestate" then
+				-- movestate: landing=green, takeoff=blue
+				if k == cur then Box(lx, by + 2 * s, lx + lw, by + 5 * s, 0.1, 0.9, 0.2, 1)
+				else Box(lx, by + 2 * s, lx + lw, by + 5 * s, 0.2, 0.2, 0.9, 1) end
+			else
+				if k == cur then Box(lx, by + 2 * s, lx + lw, by + 5 * s, 0.1, 0.9, 0.2, 1)
+				else Box(lx, by + 2 * s, lx + lw, by + 5 * s, 0.3, 0.3, 0.35, 1) end
+			end
+		end
+		-- add small text labels next to the dots
+		for k = 0, nstates - 1 do
+			if stateLabels[k] and stateLabels[k] ~= "" then
+				local lblX = bx + 4 * s + k * (lw + 2 * s) + 2 * s
+				local lblY = by + tbH * 0.55
+				VBFont.Text(stateLabels[k], lblX, lblY, 7 * s, "o", 1, 1, 1, 1)
+			end
 		end
 	end
 	-- hover info above the panel

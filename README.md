@@ -1,7 +1,8 @@
 # VOIDBORN — a 3D space RTS for the Spring/Recoil engine
 
+Inspired by Beyond All Reason and zero-k startcraft: commander, metal extractors, solar + advanced energy, a factory, defences, radar, storage, armies of 6 unit types per side. **A key feature: players can create/code their own units via Lua scripts.**
+
 Two factions of surreal alien monsters fight over floating asteroids in deep space.
-Inspired by Beyond All Reason: commander, metal extractors, solar + advanced energy, a factory, defences, radar, storage, armies of 6 unit types per side.
 
 * **Choir of the Eye** — pale, many-eyed cyclopes. Long-range lasers, fragile at close quarters.
 * **Maw Swarm** — chitinous, toothed, many-legged. Short reach, tougher, regenerating, cheaper.
@@ -17,20 +18,8 @@ Inspired by Beyond All Reason: commander, metal extractors, solar + advanced ene
 ## How to run it
 
 Voidborn is its own game (not a BAR mod), so you start it with an engine binary and a start script, not from the BAR lobby.
-Use the same engine BAR ships (Recoil 2026.07.04 was used for testing).
 
-```
-<BAR data dir>/games/voidborn.sdz
-<BAR data dir>/maps/voidborn_rift.sd7
-<BAR data dir>/engine/<version>/spring  /path/to/Play_Choir_vs_Bot.txt
-```
-
-For a Flatpak install of BAR the data directory is typically under `~/.var/app/info.beyondallreason.bar/` (look for the folder that already contains BAR's own `games/` and `maps/`). Copy the two archives there, then launch that install's `spring` binary with a start script (you may need to run it from a Flatpak shell).
-
-When the game screen loads, press **Enter / the Start button** (you can also place your start spot first).
-`Watch_Bot_vs_Bot.txt` starts two bots against each other so you can spectate.
-
-### How to Play from Spring Directly (not BAR)
+### How to run it directly from Spring
 
 If you have the Spring engine installed (not BAR), you can launch Voidborn directly:
 
@@ -40,20 +29,10 @@ spring Voidborn 1.0.sdz Play_Choir_vs_Bot.txt
 
 Or from the command line with the Spring binary. The game requires the `voidborn 1.0.sdz` archive in your Spring data `games/` folder (derived from `modinfo.lua name="Voidborn"` + `version="1.0"`).
 
-### Website & Community
+For a Flatpak install of BAR the data directory is typically under `~/.var/app/info.beyondallreason.bar/` (look for the folder that already contains BAR's own `games/` and `maps/`). Copy the two archives there, then launch that install's `spring` binary with a start script (you may need to run it from a Flatpak shell).
 
-* **Website**: https://f33.fr/vb/
-* **Discord**: https://discord.com/channels/1481771055063502925/
-
-## How to play
-
-1. Your **commander** (Hierophant / Matriarch) starts with 1000 metal + 1000 energy. Select it and build:
-   * a **Leech Eye / Root Drill** on every glowing amber ring on the ground (metal spots, ~2 metal/s each),
-   * **Sun Irises / Sunblooms** for energy, a **factory** (Iris Womb / Brood Hive) and a **builder** from it.
-2. Build army from the factory. Expand to the other asteroids with the flying builders.
-3. Defend with Stare Stalks / Tooth Spires; add the radar and storage; later the **Singularity Heart / Heartfire Egg** (500 energy/s) and the heavy defences.
-4. **Lose your commander and you lose** (mod option `commander_ends`, on by default). Commanders also have a manual-fire super weapon (`D` key, "Cataract Stare" / "Devour").
-5. Bots: `bot_skill` mod option 1–3 (smaller = slower to attack).
+When the game screen loads, press **Enter / the Start button** (you can also place your start spot first).
+`Watch_Bot_vs_Bot.txt` starts two bots against each other so you can spectate.
 
 ## What "3D" means here
 
@@ -112,8 +91,6 @@ Spring cannot register new unit *types* while a game runs, so `/vbcreate` clones
 /vbtemplates   /vbforget dread   /vbbases (list base unit names)
 /vbexec vb.create{ id="x", base="mw_nurse", hp=99, lua="Spring.Echo(unitID)" }
 ```
-
-Options: `name hp metal energy buildtime sight alt count team x z png pngsize`, and multipliers `speed range dmg reload`. `lua=` (last option) runs on every spawned unit with `unitID` set. `png=` floats an image above each spawned unit (a bare name means `unitpics/<name>.png`; `png=icons/x.png` is used as given, `pngsize=` is in elmos). Put the file in `game/unitpics/` or loose in `<data dir>/unitpics/` (no rebuild needed). Units appear at the mouse cursor unless `x=`/`z=` are given. Results are echoed in the chat log.
 
 Options: `name hp metal energy buildtime sight alt count team x z png pngsize`, and multipliers `speed range dmg reload`. `lua=` (last option) runs on every spawned unit with `unitID` set. `png=` floats an image above each spawned unit (a bare name means `unitpics/<name>.png`; `png=icons/x.png` is used as given, `pngsize=` is in elmos). Put the file in `game/unitpics/` or loose in `<data dir>/unitpics/` (no rebuild needed). Units appear at the mouse cursor unless `x=`/`z=` are given. Results are echoed in the chat log.
 

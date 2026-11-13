@@ -82,6 +82,26 @@ Structures: **Iris Womb** (factory), **Leech Eye** (metal extractor), **Sun Iris
 
 Structures: **Brood Hive** (factory), **Root Drill** (metal extractor), **Sunbloom** (energy), **Heartfire Egg** (advanced energy), **Gut Cyst** (storage), **Listening Maw** (radar), **Tooth Spire** (light defence), **Maw Bastion** (heavy defence)
 
+## Dev console & custom units
+
+Open the console with the key left of `1` (`` ` `` on QWERTY, `²` on AZERTY) or `/vbconsole`. Works in single-player games (the shipped start scripts) or with `/cheat` on.
+
+Spring cannot register new unit *types* while a game runs, so `/vbcreate` clones any existing unit and overrides what you like on the spawned units. Recipes are remembered as templates (saved between games).
+
+```
+/vbcreate dread base=ch_hoplite name="Dread Lord" hp=6000 dmg=2.5 range=1.4 reload=0.6 count=3
+/vbcreate mw_leviathan speed=2 hp=50000          (bare unit name = base)
+/vbspawn dread 5            spawn more from a template, at the mouse cursor
+/vbtemplates   /vbforget dread   /vbbases (list base unit names)
+/vbexec vb.create{ id="x", base="mw_nurse", hp=99, lua="Spring.Echo(unitID)" }
+```
+
+Options: `name hp metal energy buildtime sight alt count team x z`, and multipliers `speed range dmg reload`. `lua=` (last option) runs on every spawned unit with `unitID` set. Units appear at the mouse cursor unless `x=`/`z=` are given. Results are echoed in the chat log.
+
+## UI
+
+The engine's stock build panel is hidden; the Lua widget `vb_buildpanel.lua` is the only build menu. Widget text uses the generated `fonts/VoidbornGlyph.ttf` (`python3 tools/gen_font.py` rebuilds it).
+
 ## Tested vs. not tested
 
 I ran the game in the Recoil 2026.07.04 headless engine with two bots playing 20–30 minutes of game time: asteroids loaded, commanders spawned, builders built, mexes produced metal, factories produced units, armies fought, bases died, commander death ended the game. I also fixed the bugs that run exposed (builder/factory scripts, weapon loading, mex yield).

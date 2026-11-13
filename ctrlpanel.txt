@@ -1,0 +1,24 @@
+// Voidborn: the engine's default build/order panel is HIDDEN. The Voidborn Build Panel widget
+// (LuaUI/Widgets/vb_buildpanel.lua) is the only build menu and reads commands straight from the engine,
+// so it does not need this panel at all. Belt and braces, so it stays hidden even if the engine clamps
+// the panel back on screen: fully transparent, tiny icons, no frame, no text, parked off-screen.
+// To get the stock panel back (e.g. with the widget disabled): textureAlpha 1.0, frameAlpha 0.5,
+// xIconSize/yIconSize 0.05, iconBorder 0.003, outlinefont 1, xPos 0.0.
+outlinefont    0
+textureAlpha   0.0
+frameAlpha     0.0
+selectGaps     0
+selectThrough  1
+xIcons         2
+yIcons         2
+xIconSize      0.001
+yIconSize      0.001
+iconBorder     0.000
+frameBorder    0.000
+prevPageSlot   none
+nextPageSlot   none
+deadIconSlot   none
+xPos           3.000
+yPos           0.215
+xSelectionPos  0.018
+ySelectionPos  0.127

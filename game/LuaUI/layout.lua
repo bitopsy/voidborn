@@ -63,9 +63,22 @@ local function DummyHandler(xIcons, yIcons, cmdCount, commands)
 
   widgetHandler.commands   = commands
   widgetHandler.commands.n = cmdCount
-  widgetHandler:CommandsChanged()
-  
-  return "", xIcons, yIcons, {}, {}, {}, {}, {}, {}, {}, {}
+  -- a widget error inside CommandsChanged must not abort the layout (the engine would then keep its stock panel)
+  local okCC, errCC = pcall(widgetHandler.CommandsChanged, widgetHandler)
+  if not okCC then Spring.Echo("[VB] layout: CommandsChanged error: " .. tostring(errCC)) end
+  if not VB_layoutEchoed then
+    VB_layoutEchoed = true
+    Spring.Echo("[VB] layout.lua DummyHandler active (vb-ui-patch-2), commands: " .. tostring(cmdCount))
+  end
+
+  -- Voidborn: the engine puts every command NOT listed in removeCmds into its command array (flagged hidden,
+  -- so no stock icon is drawn because iconList below is empty) and DROPS every command that IS listed.
+  -- The Voidborn Build Panel widget reads that array (Spring.GetActiveCmdDescs) and activates commands by
+  -- index (Spring.SetActiveCommand), so nothing may be removed. The widget ignores the hidden flag; it reads
+  -- the original flags from widgetHandler.commands.
+  local removeCmds = {}
+
+  return "", xIcons, yIcons, removeCmds, {}, {}, {}, {}, {}, {}, {}
 end
 
 
@@ -223,6 +236,8 @@ end
 
 
 -- Voidborn: show NO engine/stock button grid; the Voidborn Build Panel widget replaces it.
+-- (The dummy layout removes every command from the engine panel; the widget ignores the resulting
+-- hidden flags, see vb_buildpanel.lua Refresh().)
 LayoutButtons = DummyHandler
 
 

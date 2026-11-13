@@ -1,5 +1,5 @@
 function widget:GetInfo()
-	return { name = "Voidborn Hotkeys", desc = "BAR-style hotkeys: orders (a s m f p g r e t d w) and build keys (z x c v b n j u)",
+	return { name = "Voidborn Hotkeys", desc = "BAR-style hotkeys: orders (a s m f p g r e t d w), build keys (z x c v b n j u), Ctrl+B = detonate selected units",
 		author = "Voidborn Dev", date = "2026", license = "GPL", layer = 1, enabled = true }
 end
 
@@ -26,6 +26,7 @@ function widget:Initialize()
 	Spring.Echo("[VB] Build keys: " .. Describe(BUILD_KEYS) .. "   Factory keys: " .. Describe(FACTORY_KEYS))
 end
 function widget:TextCommand(cmd)
+	if cmd == "vbexplode" then Explode() return true end
 	if cmd == "vbkeys" then
 		Spring.Echo("Orders: " .. Describe(ORDER_KEYS)); Spring.Echo("Builders: " .. Describe(BUILD_KEYS))
 		Spring.Echo("Factories: " .. Describe(FACTORY_KEYS)) return true
@@ -55,7 +56,23 @@ local function FindBuild(builderDefID, kind)
 	end
 end
 
+-- Ctrl+B: detonate every selected unit (the LuaRules gadget vb_explode.lua applies the blasts;
+-- blast radius is proportional to each unit's health). Also available as the text command /vbexplode.
+local function Explode()
+	local sel = Spring.GetSelectedUnits()
+	if not sel or #sel == 0 or Spring.GetSpectatingState() then return false end
+	for i = 1, #sel, 100 do      -- chunks of 100 ids keep every message small
+		Spring.SendLuaRulesMsg("vbexplode:" .. table.concat(sel, ",", i, math.min(i + 99, #sel)))
+	end
+	Spring.Echo("[VB] Detonating " .. #sel .. " unit(s)")
+	return true
+end
+
 function widget:KeyPress(key, mods, isRepeat)
+	if mods and mods.ctrl and not mods.alt and not mods.meta and not mods.shift and key == 98 then   -- 98 = 'b'
+		if isRepeat then return true end
+		return Explode()
+	end
 	if isRepeat or not key or key < 97 or key > 122 then return false end
 	if mods and (mods.ctrl or mods.alt or mods.meta) then return false end
 	local ch = string.char(key)

@@ -11,8 +11,7 @@ if not okF or type(VBFont) ~= "table" then
 end
 
 local function Snd(name, vol) Spring.PlaySoundFile("sounds/" .. name .. ".wav", vol or 0.7, "ui") end
-local lastHover
-
+local lastHoverID, lastHoverSnd   -- id of the command last hovered (nil = none), timer of the last hover sound
 -- saved settings -------------------------------------------------------------
 local px, py = 12, 250          -- bottom-left corner in screen pixels
 local scale, closed = 1.0, false
@@ -361,16 +360,64 @@ function widget:DrawScreen()
 		rects[#rects + 1] = r
 		local over = Inside(mx, my, r); if over then hover = t end
 		Box(bx, by, bx + tbW, by + tbH, over and 0.25 or 0.15, over and 0.25 or 0.15, over and 0.35 or 0.22, 1)
-		VBFont.Text(string.sub(t.c.name, 1, 14), bx + 4 * s, by + tbH * 0.42, fs, "o", 1, 1, 1, 1)
+		-- what kind of toggle is this?  c.params holds the plain state VALUES, so the
+		-- kind has to be recognised from the command id / name, not from the params.
+		local nm = string.lower(t.c.name or "")
+		local kind = "generic"
+		if nm:find("repeat") then kind = "repeat"
+		elseif nm:find("move state") or nm:find("movestate") then kind = "move"
+		elseif nm:find("fire state") or nm:find("firestate") then kind = "fire"
+		elseif nm:find("land") then kind = "land" end
+		-- label + colour of one state: repeat ON=green / OFF=red, move AIR=green /
+		-- LAND=blue, fire ALWAYS=red / HOLD=yellow / RETURN=cyan, land TAKEOFF=green
+		local function StateStyle(k)
+			if kind == "repeat" then
+				if k == 0 then return "OFF", 0.95, 0.15, 0.15 end
+				return "ON", 0.15, 0.90, 0.20
+			elseif kind == "move" then
+				if k == 0 then return "LAND", 0.25, 0.50, 1.00 end
+				return "AIR", 0.15, 0.90, 0.20
+			elseif kind == "fire" then
+				if k == 0 then return "RETURN", 0.25, 0.75, 1.00 end
+				if k == 1 then return "HOLD", 1.00, 0.85, 0.20 end
+				return "ALWAYS", 1.00, 0.30, 0.15
+			elseif kind == "land" then
+				if k == 0 then return "LAND", 0.25, 0.50, 1.00 end
+				return "TAKEOFF", 0.15, 0.90, 0.20
+			end
+			return tostring(k), 0.65, 0.65, 0.75
+		end
 		local nstates, cur = #t.c.params - 1, tonumber(t.c.params[1]) or 0
+		if nstates < 1 then nstates = 1 end
+		if cur < 0 then cur = 0 end
+		if cur > nstates - 1 then cur = nstates - 1 end
+		-- caption: "<NAME>: <STATE>", coloured by the state that is active
+		local curLbl, cr, cg, cb = StateStyle(cur)
+		VBFont.Text(string.sub(t.c.name or "", 1, 12) .. ": " .. curLbl,
+			bx + 4 * s, by + tbH * 0.42, fs, "o", cr, cg, cb, 1)
+		-- one LED per state, coloured by what that state means; the active one is
+		-- bright, the others are dimmed
 		local lw = 7 * s
 		for k = 0, nstates - 1 do
 			local lx = bx + 4 * s + k * (lw + 2 * s)
-			if k == cur then Box(lx, by + 2 * s, lx + lw, by + 5 * s, 0.1, 0.9, 0.2, 1)
-			else Box(lx, by + 2 * s, lx + lw, by + 5 * s, 0.3, 0.3, 0.35, 1) end
+			local _, r, g, b = StateStyle(k)
+			if k == cur then Box(lx, by + 2 * s, lx + lw, by + 5 * s, r, g, b, 1)
+			else Box(lx, by + 2 * s, lx + lw, by + 5 * s, r * 0.3, g * 0.3, b * 0.3, 1) end
 		end
 	end
-	if hover ~= lastHover then lastHover = hover; if hover then Snd("ui_hover", 0.5) end end
+	-- Play the hover tick ONCE per button. Refresh() rebuilds the builds/orders/toggles
+	-- tables every 6 frames, so comparing the table identity fired again and again while
+	-- the mouse rested on a button. Compare the command id instead and rate-limit it.
+	local hoverID = hover and hover.c and hover.c.id or nil
+	if hoverID ~= lastHoverID then
+		lastHoverID = hoverID
+		if hoverID ~= nil then
+			local now = Spring.GetTimer()
+			if not lastHoverSnd or Spring.DiffTimers(now, lastHoverSnd) > 0.08 then
+				lastHoverSnd = now; Snd("ui_hover", 0.5)
+			end
+		end
+	end
 	-- hover info: hexagonal stats HUD for build icons, one-line tooltip above the panel for orders/toggles
 	if hover then
 		local c = hover.c

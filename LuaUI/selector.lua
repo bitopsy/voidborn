@@ -96,6 +96,173 @@ end
 
 -------------------------------------------------------------------------------
 
+-------------------------------------------------------------------------------
+-- Per-widget size and memory columns
+--   size   = bytes of the widget's source file (recorded by widgets.lua when it loads the file)
+--   memory = ESTIMATE of the live Lua data an ACTIVE widget keeps: its tables, strings and closures
+--            (walked from the widget table). Engine/shared tables (Spring, gl, UnitDefs, WG, ...) are
+--            not charged to any widget, and compiled bytecode is not included. Refreshed every 1.5 s
+--            while this selector is open; it costs nothing when the selector is closed.
+-------------------------------------------------------------------------------
+
+local COL_SIZE_W = 64         -- pixel widths of the right-hand columns
+local COL_MEM_W  = 80
+local COL_GAP    = 14
+local COLS_PX    = COL_SIZE_W + COL_MEM_W + COL_GAP
+local MEM_REFRESH   = 1.5     -- seconds between estimates
+local MEM_NODE_CAP  = 200000  -- safety cap on objects visited per widget
+
+local memBytes   = {}         -- widget name -> estimated bytes (active widgets only)
+local memTimer   = nil
+local totals     = { active = 0, src = 0, mem = 0, springMem = 0 }
+local skipSet    = nil
+
+local function FmtBytes(n)
+  if (n < 1024) then return string.format("%d B", n) end
+  if (n < 1048576) then return string.format("%.1f KB", n / 1024) end
+  return string.format("%.2f MB", n / 1048576)
+end
+
+-- Dotted histogram bar for one widget's memory usage.
+-- The bar is scaled against MEM_HIST_MAX so small values still show a dot or two.
+local MEM_HIST_MAX = 4 * 1024 * 1024   -- 4 MB = full bar
+
+local function DrawMemHistogram(bytes, x, y, width, height)
+  if (not bytes or bytes <= 0) then return end
+  local dotW, dotH = 2, math.max(2, height * 0.6)
+  local step = 3
+  local n = math.max(1, math.floor((width / step) * math.min(1, bytes / MEM_HIST_MAX)))
+  gl.Color(0.0, 0.85, 1.0, 0.9)
+  gl.BeginText()
+  gl.PointSize(2)
+  for i = 0, n - 1 do
+    gl.Point(x + i * step, y + height * 0.5)
+  end
+  gl.EndText()
+end
+
+-- Estimate the memory of the Spring engine's own (non-widget) Lua tables.
+-- These are shared globals such as Spring, UnitDefs and WeaponDefs.
+local function EstimateSpringEngineMemory()
+  local total = 0
+  local function Charge(t)
+    if (type(t) ~= "table") then return end
+    total = total + 40
+    for k, v in pairs(t) do
+      total = total + 32
+      if (type(k) == "string") then total = total + #k end
+      if (type(v) == "string") then total = total + #v end
+    end
+  end
+  local engineTables = { "Spring", "SpringLua", "WG", "UnitDefs", "WeaponDefs" }
+  for _, name in ipairs(engineTables) do
+    local t = _G[name]
+    if (type(t) == "table") then Charge(t) end
+  end
+  return total
+end
+
+local function BuildSkipSet()
+  local skip = {}
+  skip[_G] = true
+  local sys = _G.System
+  if (type(sys) == "table") then
+    skip[sys] = true
+    for _, v in pairs(sys) do
+      local t = type(v)
+      if (t == "table" or t == "function") then skip[v] = true end
+    end
+  end
+  if (type(widgetHandler.WG) == "table") then skip[widgetHandler.WG] = true end
+  skip[widgetHandler] = true
+  return skip
+end
+
+local function EstimateBytes(root, skip)
+  local getmt, nxt, tp = getmetatable, next, type
+  local getup = debug and debug.getupvalue
+  local getinfo = debug and debug.getinfo
+  local seen = { [root] = true }
+  local stack, sp = { root }, 1
+  local bytes, nodes = 0, 0
+
+  local function Push(v)
+    local t = tp(v)
+    if (t == "string") then
+      if (not seen[v]) then seen[v] = true; bytes = bytes + 24 + #v end
+    elseif (t == "table" or t == "function") then
+      if (not seen[v] and not skip[v]) then
+        seen[v] = true
+        sp = sp + 1; stack[sp] = v
+      end
+    end
+  end
+
+  while (sp > 0 and nodes < MEM_NODE_CAP) do
+    local o = stack[sp]; stack[sp] = nil; sp = sp - 1
+    nodes = nodes + 1
+    if (tp(o) == "table") then
+      local narr, nhash = #o, 0
+      if (getmt(o) == nil) then
+        for k, v in nxt, o do
+          nhash = nhash + 1
+          Push(k); Push(v)
+        end
+      else
+        -- tables with a metatable are engine-provided views (unit defs and the like): charge the shell only
+        for _ in nxt, o do nhash = nhash + 1 end
+      end
+      bytes = bytes + 40 + 16 * narr + 32 * math.max(0, nhash - narr)
+    else
+      -- Lua closure: object header + upvalues (C functions are engine API, not widget memory)
+      local isLua = true
+      if (getinfo) then
+        local info = getinfo(o, "S")
+        isLua = info and info.what ~= "C"
+      end
+      if (isLua) then
+        bytes = bytes + 32
+        if (getup) then
+          local i = 1
+          while (true) do
+            local name, val = getup(o, i)
+            if (name == nil) then break end
+            bytes = bytes + 8
+            Push(val)
+            i = i + 1
+          end
+        end
+      end
+    end
+  end
+  return bytes
+end
+
+local function RefreshMemory(force)
+  local now = Spring.GetTimer()
+  if (not force and memTimer and Spring.DiffTimers(now, memTimer) < MEM_REFRESH) then return end
+  memTimer = now
+  skipSet = skipSet or BuildSkipSet()
+  local active, src, mem = 0, 0, 0
+  for name, data in pairs(widgetHandler.knownWidgets) do
+    if (data.active) then
+      local w = widgetHandler:FindWidget(name)
+      if (w) then
+        local ok, b = pcall(EstimateBytes, w, skipSet)
+        memBytes[name] = ok and b or 0
+        mem = mem + memBytes[name]
+      end
+      active = active + 1
+      src = src + (data.size or 0)
+    else
+      memBytes[name] = nil
+    end
+  end
+  local springMem = EstimateSpringEngineMemory()
+  totals.active, totals.src, totals.mem = active, src, mem
+  totals.springMem = springMem
+end
+
 local function UpdateGeometry()
   midx  = vsx * 0.5
   midy  = vsy * 0.5
@@ -182,7 +349,8 @@ local function UpdateList()
     end
   end
   
-  maxWidth = maxWidth / fontSize
+  -- room for the SIZE and MEMORY columns on the right
+  maxWidth = (maxWidth + COLS_PX + fontSize) / fontSize
 
   local myCount = #fullWidgetsList
   if (widgetHandler.knownCount ~= (myCount + 1)) then
@@ -227,10 +395,17 @@ end
 
 function widget:DrawScreen()
   UpdateList()
+  RefreshMemory()
   gl.BeginText()
+
+  -- column x positions (right-aligned text)
+  local memX  = maxx - borderx
+  local sizeX = memX - COL_MEM_W - COL_GAP   -- right edge of the SIZE column
 
   -- draw the header
   gl.Text("Widget Selector", midx, maxy + 5, fontSize * 1.25, "oc")
+  gl.Text('\255\255\255\128' .. "SIZE",   sizeX, maxy + 5, fontSize, "or")
+  gl.Text('\255\255\255\128' .. "MEMORY", memX,  maxy + 5, fontSize, "or")
 
   -- draw the box
   gl.Color(0.3, 0.3, 0.3, 1.0)
@@ -296,7 +471,22 @@ function widget:DrawScreen()
       tmpName = color .. name
     end
 
-    gl.Text(color..tmpName, midx, posy + fontSize * 0.5, fontSize, "vc")
+    gl.Text(color..tmpName, minx + borderx, posy + fontSize * 0.5, fontSize, "v")
+    -- size of the widget's source file, and the live memory estimate while it is active
+    local sizeTxt = data.size and FmtBytes(data.size) or "?"
+    local mb = memBytes[name]
+    local memTxt, memCol
+    if (active and mb) then
+      memTxt, memCol = "~" .. FmtBytes(mb), '\255\128\224\255'
+    else
+      memTxt, memCol = "off", '\255\128\128\128'
+    end
+    gl.Text('\255\200\200\200' .. sizeTxt, sizeX, posy + fontSize * 0.5, fontSize, "vr")
+    gl.Text(memCol .. memTxt,                 memX,  posy + fontSize * 0.5, fontSize, "vr")
+    -- dotted histogram of the memory usage (one dot per slice, scaled to MEM_HIST_MAX)
+    if (active and mb and mb > 0) then
+      DrawMemHistogram(mb, sizeX - 34, posy + 2, 30, fontSize)
+    end
     posy = posy - yStep
   end
   
@@ -434,6 +624,15 @@ function widget:DrawScreen()
     })
     gl.Blending(GL.SRC_ALPHA, GL.ONE_MINUS_SRC_ALPHA)
   end
+
+  -- totals line under the box
+  gl.Text(string.format('\255\200\200\200' .. "%d active   source %s   widget memory ~%s   (Lua heap %s)   Spring: %s",
+                        totals.active, FmtBytes(totals.src), FmtBytes(totals.mem),
+                        FmtBytes(collectgarbage("count") * 1024),
+                        FmtBytes(totals.springMem)),
+          midx, miny - 36, fontSize, "oc")
+  gl.Text('\255\160\160\160' .. "memory = live tables/strings/closures held by the widget (estimate, excludes compiled code)",
+          midx, miny - 52, fontSize * 0.85, "oc")
 
   -- outline the box
   xn = minx - 0.5
@@ -628,6 +827,10 @@ function widget:GetTooltip(x, y)
   tt = d.desc   and tt..WhiteStr..d.desc..'\n' or tt
   tt = d.author and tt..BlueStr..'Author:  '..CyanStr..d.author..'\n' or tt
   tt = tt..MagentaStr..d.basename
+  tt = tt..'\n'..WhiteStr..'Size: '..(d.size and FmtBytes(d.size) or '?')
+  if (d.active and memBytes[n]) then
+    tt = tt..'   Memory: ~'..FmtBytes(memBytes[n])
+  end
   if (d.fromZip) then
     tt = tt..RedStr..' (mod widget)'
   end

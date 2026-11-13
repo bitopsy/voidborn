@@ -449,6 +449,7 @@ function widgetHandler:LoadWidget(filename, fromZip)
     self.knownChanged = true
   end
   knownInfo.active = true
+  knownInfo.size   = #text   -- source size in bytes, shown by the F11 selector
 
   if (widget.GetInfo == nil) then
     Spring.Log(section, LOG.ERROR, 'Failed to load: ' .. basename .. '  (no GetInfo() call)')

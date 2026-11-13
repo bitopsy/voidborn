@@ -1,5 +1,5 @@
 function widget:GetInfo()
-	return { name = "Voidborn Unit Census", desc = "Tracks every unit's stats and shows summary figures + distributions of specs (/vbstats)",
+	return { name = "Voidborn Unit Census", desc = "Shows summary figures + distributions of specs for the SELECTED units only (/vbstats)",
 		author = "Voidborn Dev", date = "2026", license = "GPL", layer = 6, enabled = true }
 end
 
@@ -8,7 +8,8 @@ end
 --   * distributions (histograms) of health, speed, range, damage/s, experience and size
 --   * the unit types present (count, average health %, average experience)
 --   * the units closest to splitting
--- /vbstats            show / hide          drag the title bar to move; click the scope tag to cycle MINE / ALLIES / ALL VISIBLE
+-- The panel only exists while units are selected: it covers exactly the current selection and disappears when nothing is selected.
+-- /vbstats            show / hide          drag the title bar to move
 local okF, VBFont = pcall(VFS.Include, "LuaUI/Headers/vb_font.h.lua")
 if not okF or type(VBFont) ~= "table" then
 	VBFont = { Width = function(str, size) return #str * size * 0.6 end,
@@ -24,8 +25,7 @@ local W, TITLE, PAD = 300, 20, 8
 local vsx, vsy = Spring.GetViewGeometry()
 local px, py = nil, nil               -- top-left corner of the panel (set on first draw)
 local closed, drag = false, nil
-local scope = 1                       -- 1 mine, 2 allies, 3 all visible
-local SCOPE_NAME = { "MINE", "ALLIES", "ALL VISIBLE" }
+local SCOPE_NAME = "SELECTED"
 
 local C_AMBER = { 0.85, 0.65, 0.2 }
 local METRICS = {   -- key, label, colour, fixed [lo,hi] (nil = from data), number format
@@ -76,12 +76,6 @@ local function Speed(unitID, ud)
 	return ud.speed or 0
 end
 
-local function InScope(unitID, myTeam, myAlly, full)
-	if scope == 1 then return Spring.GetUnitTeam(unitID) == myTeam end
-	if scope == 2 then return Spring.GetUnitAllyTeam(unitID) == myAlly end
-	return true
-end
-
 -- ------------------------------------------------------------------ census
 local function Histogram(vals, lo, hi)
 	local n = #vals
@@ -103,16 +97,15 @@ local function Histogram(vals, lo, hi)
 end
 
 local function Census()
-	local myTeam, myAlly = Spring.GetMyTeamID(), Spring.GetMyAllyTeamID()
-		local all = Spring.GetAllUnits()
-	local C = { n = 0, mobile = 0, static = 0, hp = 0, value = 0, xpSum = 0, xpMax = 0, splits = 0, vals = {}, types = {}, tops = {}, scopeName = SCOPE_NAME[scope] }
+	local all = Spring.GetSelectedUnits() or {}     -- only the units the player has selected
+	local C = { n = 0, mobile = 0, static = 0, hp = 0, value = 0, xpSum = 0, xpMax = 0, splits = 0, vals = {}, types = {}, tops = {}, scopeName = SCOPE_NAME }
 	for _, m in ipairs(METRICS) do C.vals[m[1]] = {} end
 	local count = 0
 	for i = 1, #all do
 		local u = all[i]
 		local defID = Spring.GetUnitDefID(u)
 		local ud = defID and UnitDefs[defID]
-		if ud and InScope(u, myTeam, myAlly) then
+		if ud then
 			count = count + 1
 			if count > MAX_UNITS then break end
 			local hp, maxhp = Spring.GetUnitHealth(u)
@@ -163,13 +156,16 @@ function widget:Initialize()
 	if widgetHandler and widgetHandler.AddAction then
 		widgetHandler:AddAction("vbstats", function() closed = not closed; return true end, nil, "t")
 	end
-	Spring.Echo("[VB] Unit census loaded: /vbstats toggles it, drag the title bar, click the scope tag to switch MINE / ALLIES / ALL")
+	Spring.Echo("[VB] Unit stats loaded: shows the selected units only. /vbstats toggles it, drag the title bar to move it")
 end
 function widget:Shutdown() if widgetHandler and widgetHandler.RemoveAction then widgetHandler:RemoveAction("vbstats") end end
 function widget:TextCommand(cmd) if cmd == "vbstats" then closed = not closed; return true end end
 
+function widget:SelectionChanged() census = nil end     -- rebuild at once when the selection changes
+
 function widget:Update()
 	if closed then return end
+	if (Spring.GetSelectedUnitsCount() or 0) == 0 then census = nil return end   -- nothing selected: no panel
 	local f = Spring.GetGameFrame()
 	if not census or f % REFRESH == 0 and f ~= (widget.lastF or -1) then
 		widget.lastF = f
@@ -188,9 +184,9 @@ function widget:DrawScreen()
 	Box(x1, y1, x2, y2, 0.05, 0.05, 0.09, 0.88)
 	Frame(x1, y1, x2, y2, C_AMBER[1], C_AMBER[2], C_AMBER[3], 0.95)
 	Box(x1, y2 - TITLE, x2, y2, 0.14, 0.12, 0.22, 0.95)
-	VBFont.Text("UNIT CENSUS", x1 + PAD, y2 - TITLE + 6, 11, "o", 1, 0.92, 0.65, 1)
+	VBFont.Text("SELECTED UNITS", x1 + PAD, y2 - TITLE + 6, 11, "o", 1, 0.92, 0.65, 1)
 	-- scope tag + close button
-	local tag = "[" .. census.scopeName .. "]"
+	local tag = "[" .. census.n .. (census.n == 1 and " unit]" or " units]")
 	local tw = VBFont.Width(tag, 10)
 	rects.scope = { x2 - TITLE - tw - 14, y2 - TITLE, x2 - TITLE - 4, y2 }
 	VBFont.Text(tag, rects.scope[1] + 5, y2 - TITLE + 6, 10, "o", 0.65, 0.9, 1, 1)
@@ -278,13 +274,8 @@ end
 function widget:IsAbove(x, y) return not closed and census ~= nil and Inside(x, y, rects.panel) end
 
 function widget:MousePress(x, y, button)
-	if closed or not Inside(x, y, rects.panel) then return false end
+	if closed or not census or not Inside(x, y, rects.panel) then return false end
 	if Inside(x, y, rects.close) then closed = true; return true end
-	if Inside(x, y, rects.scope) then
-		scope = scope % 3 + 1; census = nil
-		Spring.PlaySoundFile("sounds/ui_select.wav", 0.6, "ui")
-		return true
-	end
 	if Inside(x, y, rects.title) then drag = { x - px, y - py } end
 	return true
 end

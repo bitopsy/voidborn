@@ -132,3 +132,11 @@ Known simplifications: no sounds; unit icons use the engine default; the bot is 
 ## Regenerating / modding
 
 `voidborn_source.zip` has the generators (Python: models, textures, unit/weapon defs, map) and the game folder. `python3 tools/gen_assets.py && python3 tools/gen_defs.py` rebuild the models and all unit/weapon/script files.
+
+## Multiplayer & Community
+
+* **SpringLobby**: http://springlobby.org — The official lobby browser for Spring engine games. Use it to find and join multiplayer games of Voidborn. Host your own server to keep a persistent 24/7 Voidborn world running.
+* **Discord**: https://discord.com/channels/1481771055063502925 — Join the Voidborn community to find games, discuss strategies, and coordinate with other players.
+* **Website**: https://f33.fr/vb/ — Official Voidborn website with downloads, changelog, and community posts.
+
+We are looking for volunteer 24/7 hosts to keep a persistent Voidborn server running. If you have a server that can run the Spring engine 24/7, please join the Discord and let us know! Help grow the multiplayer community.

@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>VOIDBORN – a 3D space RTS</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}.wrap{max-width:960px;margin:0 auto;padding:16px}.void{background:#0d0d20;color:#e8e6e3;font:16px/1.5 system-ui,sans-serif}.void h1{font-size:2.2rem;margin:0 0 .5rem}.void h2{font-size:1.4rem;margin:1.5rem 0 .8rem}.void a{color:#7dd3fc}.void .lead{margin:0 0 1.5rem}.void .grid{display:grid;grid-template-columns:1fr;gap:16px;margin:1.5rem 0}.void .card{background:#1a1a2e;padding:16px;border-radius:8px}.void .card.big{grid-column:1/-1}.void .chip{background:#2a2a4e;padding:4px 8px;border-radius:4;margin:2px}.void footer{margin:24px 0 0;font-size: .9rem;color:#6b6b9a}.void .btn{display:inline-block;padding:10px 20px;border:none;border-radius:4;text-decoration:none;margin:4px;cursor:pointer}.void .btn-alt{background:#2a2a4e;color:#e8e6e3}.void .btn:not(.alt){background:#4a4a6e;color:#e8e6e3}.void table{width:100%;border-collapse:collapse;margin:1.5rem 0}.void th,.void td{padding:8px 12px;border-bottom:1px solid #2a2a4e}.void th{text-align:left;font-weight:600}.void .chip{background:#2a2a4e;padding:4px 8px;border-radius:4;margin:2px;display:inline-block}
+</style>
+</head>
+<body class="void">
+<div class="wrap">
+  <header>
+    <h1>VOIDBORN</h1>
+    <p class="lead">a 3D space RTS for the Spring/Recoil engine and openended unit creation</p>
+    <div class="btns">
+      <a class="btn" href="https://github.com/bitopsy/voidborn">GitHub</a>
+      <a class="btn alt" href="#units">Units</a>
+      <a class="btn alt" href="#multiplayer">Multiplayer</a>
+    </div>
+  </header>
+
+  <section id="about" class="void">
+    <h2>A war in deep space, played in three dimensions</h2>
+    <p class="lead">Run a classic RTS economy: a commander, metal extractors, energy, factories, defences, radar and storage. Now lift the whole war off the ground. Armies of six unit types per side fight across floating asteroids, and lose your commander and you lose the match.</p>
+    <div class="grid">
+      <div class="card"><h3>Everything mobile flies</h3><p>Scouts and raiders hover at 60–95 elmos, assaults near 80–95, snipers and artillery around 150, titans at 210–230. Layers are real, and builders carry your expansion across the void.</p></div>
+      <div class="card"><h3>Create units in-game</h3><p>Voidborn is its own game, not a locked mod. Units, weapons and scripts are plain, generated definitions, so you can design a new creature, drop it into the game and field it against the bots.</p></div>
+      <div class="card"><h3>Free and open source</h3><p>No price, no ads, no accounts. Read the code, fork it, rebalance it, ship your own version. The generators for models, textures, defs and the map are all in the repo.</p></div>
+      <div class="card"><h3>Commander super weapons</h3><p>Press D for the Cataract Stare or the Devour: a manual-fire strike that can turn a fight. Commander death ends the game by default.</p></div>
+      <div class="card"><h3>Bots to fight and watch</h3><p>Play Choir or Maw against a bot at three skill levels, or run Bot vs Bot and spectate. Start scripts are included.</p></div>
+      <div class="card"><h3>Runs on Spring</h3><p>Runs directly on the Spring/Recoil engine with its own start scripts. Tested headless on Recoil 2026.07.04, with Lua widgets and the full Spring toolchain at your disposal.</p></div>
+    </div>
+  </section>
+
+  <section id="units" class="void">
+    <h2>Inspect the armies</h2>
+    <p class="lead">Pick a unit to inspect it.</p>
+    <div class="tabs">
+      <button class="tab active" data-faction="choir">Choir of the Eye</button>
+      <button class="tab" data-faction="maw">Maw Swarm</button>
+    </div>
+    <div id="choir-list"></div>
+    <div id="maw-list" style="display:none"></div>
+  </section>
+
+  <section id="multiplayer" class="void">
+    <h2>Multiplayer & Community</h2>
+    <p class="lead">Jump into games via <a href="http://springlobby.org" target="_blank">SpringLobby</a>, the official lobby browser for Spring engine games.</p>
+    <p>Host your own 24/7 server to keep a persistent Voidborn world running. <a href="https://discord.com/channels/1481771055063502925" target="_blank">Join the Discord</a> and let the community know if you can host.</p>
+    <div class="chips">
+      <span class="chip">Free forever</span>
+      <span class="chip">Open source on GitHub</span>
+      <span class="chip">16 units, 2 factions</span>
+      <span class="chip">43 metal spots on the Rift</span>
+    </div>
+  </section>
+
+  <footer>
+    <div class="wrap">Voidborn is a free, open-source game by <a href="https://github.com/bitopsy">bitopsy</a>.</footer>
+  </footer>
+
+<script>
+(()=>{
+  const factions={choir:{acc:'#6fb3ff',u:[
+    ['Hierophant','Cyclopean Commander',2500,4200,45,430,'Gaze (430), Cataract Stare (240)'],
+    ['Seer','Builder',90,520,50,0,'None'],
+    ['Gazer','Scout',38,230,95,270,'Pinprick (270)'],
+    ['Lashling','Raider',55,330,65,215,'Lash Pulse (215)'],
+    ['Cyclops Hoplite','Assault',195,1400,95,380,'Cyclops Gaze (380)'],
+    ['Basilisk','Long range',250,560,150,740,'Petrifying Beam (740)'],
+    ['Weeper','Support',150,700,105,0,'None'],
+    ['Argus Colossus','Heavy',1650,9500,230,650,'Annihilating Gaze (650), Lesser Eyes (380)']
+  ],st:[['Iris Womb','Factory'],['Leech Eye','Metal extractor'],['Sun Iris','Energy'],['Singularity Heart','Advanced energy'],['Tear Vault','Storage'],['Watcher','Radar'],['Stare Stalk','Light defence'],['Pillar of Judgement','Heavy defence']]},
+  maw:{acc:'#ff9a3c',u:[
+    ['Matriarch','Maw Commander',2500,4400,45,420,'Acid Spit (420), Devour (240)'],
+    ['Weaver','Builder',90,560,50,0,'None'],
+    ['Skitter','Scout',32,240,90,235,'Acid Dart (235)'],
+    ['Gnasher','Raider',52,560,60,130,'Maw Breath (130)'],
+    ['Ravager','Assault',160,2100,80,345,'Corrosive Bolt (345)'],
+    ['Spitter','Artillery',205,600,140,820,'Spores (820)'],
+    ['Nurse','Support',150,760,100,0,'None'],
+    ['Leviathan','Heavy',1450,13000,210,620,'Acid Cannon (620), Spore Barrage (520)']
+  ],st:[['Brood Hive','Factory'],['Root Drill','Metal extractor'],['Sunbloom','Energy'],['Heartfire Egg','Advanced energy'],['Gut Cyst','Storage'],['Listening Maw','Radar'],['Tooth Spire','Light defence'],['Maw Bastion','Heavy defence']]}}
+  let cur='choir';
+  const uls={choir:document.getElementById('choir-list'),maw:document.getElementById('maw-list')};
+  const tabs=document.querySelectorAll('.tab');
+  function render(faction){
+    const u=factions[faction].u;
+    uls[faction].innerHTML=u.map((u,i)=>`
+      <div class="unit">
+        <h3>${u[0]}</h3>
+        <p>${u[1]}</p>
+        <dl><dt>Metal</dt><dd>${u[2]}</dd><dt>Altitude</dt><dd>${u[4]}</dd><dt>Weapons</dt><dd>${u[6]}</dd></dl>
+      </div>`
+    ).join('');
+    document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',b.dataset.faction===faction));
+  }
+  document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>render(faction.dataset.faction)));
+  render('choir');
+})();
+</style>
+</body></html>

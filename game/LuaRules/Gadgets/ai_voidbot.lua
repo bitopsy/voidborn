@@ -67,8 +67,17 @@ function gadget:GameStart()
 		if ai and ai ~= "" and ai:find("VoidBot") then
 			local _, _, _, _, _, allyTeam = Spring.GetTeamInfo(teamID, false)
 			local sx, _, sz = Spring.GetTeamStartPosition(teamID)
+			local need = { "fac", "mex", "solar", "heart", "radar", "store", "def1", "def2", "con", "raider", "assault", "art", "support", "scout", "heavy" }
+			local fac0 = nil
+			for _, u in ipairs(Spring.GetTeamUnits(teamID)) do fac0 = facOf[Spring.GetUnitDefID(u)] or fac0 end
+			local missing = {}
+			for _, k in ipairs(need) do if not (fac0 and defsByFaction[fac0] and defsByFaction[fac0][k]) then missing[#missing + 1] = k end end
+			if #missing > 0 then
+				Spring.Echo("[VoidBot] team " .. teamID .. " (" .. tostring(fac0) .. ") is missing unit kinds: " .. table.concat(missing, ",") .. " - check units/*.lua for parse errors in infolog; bot disabled for this team")
+			else
 			bots[teamID] = { team = teamID, ally = allyTeam, bx = sx, bz = sz, fac = nil, wave = 0, lastAttack = 0, builds = {}, skill = tonumber(Spring.GetModOptions().bot_skill) or 2 }
 			Spring.Echo("[VoidBot] controlling team " .. teamID)
+			end
 		end
 	end
 end

@@ -84,6 +84,5 @@ return {
 				def = "ch_hierophant_w2",
 			},
 		},
-		scriptName = "ch_hierophant",
 	},
 }

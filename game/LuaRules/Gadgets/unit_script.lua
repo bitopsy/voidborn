@@ -549,36 +549,22 @@ function gadget:Initialize()
 
 	-- Go through all UnitDefs and load scripts.
 	-- Names are tested in following order:
-	--  * exact match with .lua extension from scriptName
-	--  * fallback: construct filename from unitDef scriptName + .lua
+	--  * exact match
+	--  * basename match
+	--  * exact match where .cob->.lua
+	--  * basename match where .cob->.lua
 	for i=1,#UnitDefs do
 		local unitDef = UnitDefs[i]
 		if (unitDef and not scripts[unitDef.scriptName]) then
-			local scriptName = (unitDef.scriptName or ""):lower()
-			-- Build filename: try scriptName as-is first, then with .lua
-			local fn
-			if scriptName:match("%.lua$") then
-				fn = UNITSCRIPT_DIR .. scriptName
-			else
-				fn = UNITSCRIPT_DIR .. scriptName .. ".lua"
-			end
-			-- Check if this filename was pre-loaded via VFS DirList
-			local filename = scriptFiles[fn]
-			-- Fallback: try basename without path
-			if not filename then
-				local bn = fn:match("[^/]*$")
-				filename = scriptFiles[bn]
-			end
-			-- Final fallback: try just the basename
-			if not filename then
-				filename = scriptFiles[fn:match("[^/]*$")]
-			end
+			local fn  = UNITSCRIPT_DIR .. unitDef.scriptName:lower()
+			local bn  = Basename(fn)
+			local cfn = fn:gsub("%.cob$", "%.lua")
+			local cbn = bn:gsub("%.cob$", "%.lua")
+			local filename = scriptFiles[fn] or scriptFiles[bn] or
+			                 scriptFiles[cfn] or scriptFiles[cbn]
 			if filename then
 				Spring.Log(section, LOG.INFO, "  Loading unit script: " .. filename)
 				LoadScript(unitDef.scriptName, filename)
-			else
-				-- Try loading by original scriptName regardless
-				Spring.Log(section, LOG.ERROR, "  Could not find unit script for " .. (unitDef.name or "unknown"))
 			end
 		end
 	end

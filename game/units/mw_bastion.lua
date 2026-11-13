@@ -19,7 +19,6 @@ return {
 		explodeAs = "vb_med",
 		selfDestructAs = "vb_med",
 		customParams = {
-		scriptName = "mw_bastion",,
 			faction = "maw",
 			kind = "def2",
 			iscommander = "false",

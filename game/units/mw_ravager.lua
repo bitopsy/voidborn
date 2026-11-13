@@ -19,7 +19,6 @@ return {
 		explodeAs = "vb_small",
 		selfDestructAs = "vb_small",
 		customParams = {
-		scriptName = "mw_ravager",,
 			faction = "maw",
 			kind = "assault",
 			iscommander = "false",

@@ -19,7 +19,6 @@ return {
 		explodeAs = "vb_small",
 		selfDestructAs = "vb_small",
 		customParams = {
-		scriptName = "ch_hoplite",,
 			faction = "choir",
 			kind = "assault",
 			iscommander = "false",

@@ -16,10 +16,9 @@ return {
 		autoHeal = 2,
 		idleAutoHeal = 5,
 		idleTime = 150,
-		explodeAs = "vb_medium",
-		selfDestructAs = "vb_medium",
+		explodeAs = "vb_med",
+		selfDestructAs = "vb_med",
 		customParams = {
-		scriptName = "mw_maw_jaw",,
 			faction = "maw",
 			kind = "combat",
 			iscommander = "false",

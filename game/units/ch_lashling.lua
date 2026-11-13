@@ -19,7 +19,6 @@ return {
 		explodeAs = "vb_small",
 		selfDestructAs = "vb_small",
 		customParams = {
-		scriptName = "ch_lashling",,
 			faction = "choir",
 			kind = "raider",
 			iscommander = "false",

@@ -19,7 +19,6 @@ return {
 		explodeAs = "vb_big",
 		selfDestructAs = "vb_big",
 		customParams = {
-		scriptName = "mw_leviathan",,
 			faction = "maw",
 			kind = "heavy",
 			iscommander = "false",

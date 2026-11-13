@@ -19,7 +19,6 @@ return {
 		explodeAs = "vb_med",
 		selfDestructAs = "vb_med",
 		customParams = {
-		scriptName = "mw_spitter",,
 			faction = "maw",
 			kind = "art",
 			iscommander = "false",

@@ -127,17 +127,116 @@ end
 -- The bar is scaled against MEM_HIST_MAX so small values still show a dot or two.
 local MEM_HIST_MAX = 4 * 1024 * 1024   -- 4 MB = full bar
 
+local MEM_HIST_MAX = 4 * 1024 * 1024   -- 4 MB = full bar for the per-widget bar
+
+-- Spring's LuaGL has no gl.Point(): points are drawn with
+--   gl.BeginEnd(GL.POINTS, gl.Vertex, x, y)
+-- Calling a missing function inside DrawScreen aborts the whole widget, which is
+-- why the histogram never showed up.
+local function DrawDots(pts, r, g, b, a, size)
+  if (#pts == 0) then return end
+  gl.Color(r, g, b, a)
+  gl.PointSize(size or 2)
+  for i = 1, #pts do
+    gl.BeginEnd(GL.POINTS, gl.Vertex, pts[i][1], pts[i][2])
+  end
+  gl.PointSize(1)
+end
+
+-- Dotted histogram bar for one widget's memory usage (scaled to MEM_HIST_MAX).
 local function DrawMemHistogram(bytes, x, y, width, height)
   if (not bytes or bytes <= 0) then return end
-  local dotW, dotH = 2, math.max(2, height * 0.6)
   local step = 3
   local n = math.max(1, math.floor((width / step) * math.min(1, bytes / MEM_HIST_MAX)))
-  gl.Color(0.0, 0.85, 1.0, 0.9)
-  gl.BeginText()
-  gl.PointSize(2)
+  local pts = {}
   for i = 0, n - 1 do
-    gl.Point(x + i * step, y + height * 0.5)
+    pts[#pts + 1] = { x + i * step, y + height * 0.5 }
   end
+  DrawDots(pts, 0.0, 0.85, 1.0, 0.95, 2)
+end
+
+-- ---------------------------------------------------------------------------
+-- memory history (over time): a ring buffer of samples taken every MEM_REFRESH
+-- ---------------------------------------------------------------------------
+local MEM_HIST_LEN = 120                 -- samples kept (120 * 1.5 s = 3 minutes)
+local memHistory  = {}                   -- ring buffer
+local memHistPos  = 0
+local memHistFill = 0
+
+local function PushHistory(widgetMem, springMem, heap)
+  memHistPos = (memHistPos % MEM_HIST_LEN) + 1
+  memHistory[memHistPos] = { widgetMem or 0, springMem or 0, heap or 0 }
+  if memHistFill < MEM_HIST_LEN then memHistFill = memHistFill + 1 end
+end
+
+-- Sample i (0 = oldest kept, memHistFill-1 = newest) -> { w, s, h }
+local function HistorySample(i)
+  if (memHistFill == 0) then return nil end
+  local idx = memHistPos - memHistFill + 1 + i
+  while (idx < 1) do idx = idx + MEM_HIST_LEN end
+  while (idx > MEM_HIST_LEN) do idx = idx - MEM_HIST_LEN end
+  return memHistory[idx]
+end
+
+-- Draw the memory-over-time graph (dotted lines) in the bottom-right corner.
+local function DrawMemGraph()
+  if (memHistFill < 2) then return end
+  local w, h = 240, 96
+  local x1 = vsx - w - 16
+  local y1 = 26
+  local x2, y2 = x1 + w, y1 + h
+
+  -- panel
+  gl.Color(0.04, 0.04, 0.07, 0.88)
+  gl.Rect(x1, y1, x2, y2)
+  gl.Color(0.85, 0.65, 0.2, 0.8)
+  gl.LineWidth(1)
+  gl.Shape(GL.LINE_LOOP, { { v = { x1, y1 } }, { v = { x2, y1 } },
+                            { v = { x2, y2 } }, { v = { x1, y2 } } })
+
+  gl.BeginText()
+  gl.Text("MEMORY OVER TIME", x1 + 6, y2 - 12, 10, "o")
+  gl.EndText()
+
+  -- find the peak of the plotted series so the graph auto-scales
+  local peak = 1
+  for i = 0, memHistFill - 1 do
+    local s = HistorySample(i)
+    if s then
+      local tot = s[1] + s[2]
+      if tot > peak then peak = tot end
+      if s[3] > peak then peak = s[3] end
+    end
+  end
+  peak = math.max(peak * 1.15, 64 * 1024)
+
+  local plotTop, plotBot = y2 - 22, y1 + 12
+  local plotH = plotBot - plotTop
+  local n = memHistFill
+
+  local function Series(getter, r, g, b)
+    local pts = {}
+    for i = 0, n - 1 do
+      local s = HistorySample(i)
+      if s then
+        local v = getter(s)
+        local px = x1 + 6 + (w - 12) * (i / math.max(1, n - 1))
+        local py = plotBot - plotH * math.min(1, v / peak)
+        pts[#pts + 1] = { px, py }
+      end
+    end
+    DrawDots(pts, r, g, b, 0.95, 2)
+  end
+
+  -- total Lua heap (white), Spring engine tables (orange), widget memory (cyan)
+  Series(function(s) return s[3] end, 1.0, 1.0, 1.0, 0.9)
+  Series(function(s) return s[2] end, 1.0, 0.65, 0.15, 0.9)
+  Series(function(s) return s[1] end, 0.0, 0.85, 1.0, 0.95)
+
+  -- scale label
+  gl.BeginText()
+  gl.Text("peak " .. FmtBytes(peak), x2 - 6, y1 + 4, 9, "or")
+  gl.Text("white=lua heap  orange=spring  cyan=widgets", x1 + 6, y1 + 4, 8, "o")
   gl.EndText()
 end
 
@@ -261,6 +360,7 @@ local function RefreshMemory(force)
   local springMem = EstimateSpringEngineMemory()
   totals.active, totals.src, totals.mem = active, src, mem
   totals.springMem = springMem
+  PushHistory(mem, springMem, collectgarbage("count") * 1024)
 end
 
 local function UpdateGeometry()
@@ -655,6 +755,9 @@ function widget:DrawScreen()
   })
 
   gl.EndText()
+
+  -- memory-over-time graph (dotted lines) in the bottom-right corner
+  DrawMemGraph()
 end
 
 

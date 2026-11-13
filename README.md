@@ -1,6 +1,7 @@
-# VOIDBORN — a 3D space RTS for the Spring/Recoil engine
+![VOIDBORN](vb.webp)
 
-Inspired by Beyond All Reason and zero-k startcraft: commander, metal extractors, solar + advanced energy, a factory, defences, radar, storage, armies of 6 unit types per side. **A key feature: players can create/code their own units via Lua scripts.**
+# VOIDBORN
+a 3D space RTS for the Spring/Recoil engine and openended unit creation
 
 Two factions of surreal alien monsters fight over floating asteroids in deep space.
 

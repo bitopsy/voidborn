@@ -24,6 +24,11 @@ return {
 			iscommander = "false",
 		},
 		corpse = "",
+		sounds = {
+			select = { "vb_select_maw" },
+			ok = { "vb_ok_maw" },
+			cant = { "vb_ui_error" },
+		},
 		mass = 152,
 		canMove = true,
 		canFly = true,

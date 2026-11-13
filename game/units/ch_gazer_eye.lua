@@ -25,6 +25,10 @@ return {
 			programmable = "true", -- Features advanced Lua unit scripting and telemetry
 		},
 		corpse = "",
+		sounds = {
+			select = { "vb_select_struct_choir" },
+			cant = { "vb_ui_error" },
+		},
 		mass = 150,
 		canMove = true,
 		canFly = true,

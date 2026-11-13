@@ -106,7 +106,10 @@ local function ApplyWeapons(unitID, defID, spec, applied, skipped)
 	if spec.dmg then applied.dmg = true end
 end
 
+GG.VB_unitSpec = GG.VB_unitSpec or {}      -- unitID -> spec table (read by vb_experience.lua so split units inherit /vbcreate changes)
+
 local function Customize(unitID, defID, teamID, spec, applied, skipped, luaFn)
+	GG.VB_unitSpec[unitID] = spec
 	if spec.hp then
 		local hp = Clamp(spec.hp, 1, 1e7)
 		if Try({ Spring.SetUnitMaxHealth }, unitID, hp) then Try({ Spring.SetUnitHealth }, unitID, hp); applied.hp = true
@@ -155,6 +158,14 @@ local function Customize(unitID, defID, teamID, spec, applied, skipped, luaFn)
 		if ok then applied.lua = true else skipped[#skipped + 1] = "lua error: " .. tostring(err) end
 	end
 end
+
+-- re-apply a stored spec to a freshly created unit (used when a unit splits). The lua= snippet is NOT re-run.
+function GG.VB_ApplySpec(unitID, spec)
+	local defID, teamID = Spring.GetUnitDefID(unitID), Spring.GetUnitTeam(unitID)
+	if defID and spec then Customize(unitID, defID, teamID, spec, {}, {}, nil) end
+end
+
+function gadget:UnitDestroyed(unitID) GG.VB_unitSpec[unitID] = nil end
 
 local function HandleSpawn(spec, playerID)
 	local ud = spec.base and UnitDefNames[spec.base]

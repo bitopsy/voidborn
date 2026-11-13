@@ -24,6 +24,11 @@ return {
 			iscommander = "false",
 		},
 		corpse = "",
+		sounds = {
+			select = { "vb_select_struct_maw" },
+			cant = { "vb_ui_error" },
+			build = { "vb_nano_zap" },
+		},
 		mass = 100000,
 		canMove = true,
 		canAttack = false,

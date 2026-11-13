@@ -24,6 +24,10 @@ return {
 			iscommander = "false",
 		},
 		corpse = "",
+		sounds = {
+			select = { "vb_select_struct_choir" },
+			cant = { "vb_ui_error" },
+		},
 		mass = 100000,
 		canMove = false,
 		canAttack = false,

@@ -2,7 +2,7 @@
 """One-step installer + builder.
 Run from the repo root (the folder that contains game/ and README.md):
     python3 install_and_build.py /path/to/voidborn_full_source.zip
-It copies every file from the zip's game/ folder into ./game (overwriting), removes the stale
+It copies every file from the zip's game/ and tools/ folders and README.md into the repo (overwriting), removes the stale
 vb_fontconfig.lua, verifies the six patched files, and builds dist/voidborn.sdz."""
 import hashlib, os, sys, zipfile
 
@@ -25,14 +25,14 @@ names = z.namelist()
 # 1. install every file under game/ from the zip
 count = 0
 for n in names:
-    if not n.startswith("game/") or n.endswith("/"):
+    if n.endswith("/") or not (n.startswith("game/") or n.startswith("tools/") or n == "README.md"):
         continue
     dest = os.path.join(repo, *n.split("/"))
     os.makedirs(os.path.dirname(dest), exist_ok=True)
     with open(dest, "wb") as f:
         f.write(z.read(n))
     count += 1
-print(f"installed : {count} files into {game}")
+print(f"installed : {count} files (game/, tools/, README.md) into {repo}")
 
 # 2. remove stale file from the earlier patch
 stale = os.path.join(game, "LuaUI", "Widgets", "vb_fontconfig.lua")

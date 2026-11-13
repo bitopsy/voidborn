@@ -24,6 +24,12 @@ return {
 			iscommander = "false",
 		},
 		corpse = "",
+		sounds = {
+			select = { "vb_select_choir" },
+			ok = { "vb_ok_choir" },
+			cant = { "vb_ui_error" },
+			build = { "vb_nano_zap" },
+		},
 		mass = 190,
 		canMove = true,
 		canFly = true,

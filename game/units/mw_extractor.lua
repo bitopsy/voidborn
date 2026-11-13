@@ -24,6 +24,12 @@ return {
 			iscommander = "false",
 		},
 		corpse = "",
+		sounds = {
+			select = { "vb_select_struct_maw" },
+			cant = { "vb_ui_error" },
+			activate = { "vb_mex_on" },
+			deactivate = { "vb_power_off" },
+		},
 		mass = 100000,
 		canMove = false,
 		canAttack = false,

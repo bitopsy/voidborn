@@ -1,6 +1,7 @@
 function widget:GetInfo()
 	return { name = "Voidborn Memory Graph", desc = "Dotted histogram of Lua memory consumption over time (widget / Spring engine / Lua heap)",
-		author = "Voidborn Dev", date = "2026", license = "GPL", layer = 12, enabled = true }
+		author = "Voidborn Dev", date = "2026", license = "GPL", layer = 12, enabled = false,
+		handler = true }  -- needs the real widgetHandler to list the active widgets
 end
 
 --------------------------------------------------------------------------------
@@ -16,7 +17,7 @@ local HIST_LEN  = 120                     -- samples kept (3 minutes)
 local HIST_MAX  = 4 * 1024 * 1024         -- full-scale for the per-widget bars
 local NODE_CAP  = 200000                  -- safety cap on objects visited per widget
 
-local show      = true
+local show      = true    -- the widget itself is disabled by default (see GetInfo)
 local big       = false
 local history   = {}
 local histPos   = 0
@@ -138,11 +139,15 @@ local function EstimateSpringEngineMemory()
 end
 
 local function Sample()
+  -- widgetHandler.knownWidgets does not exist yet while the widgets are being
+  -- initialised, so bail out until it is there.
+  local wh = widgetHandler
+  if (type(wh) ~= "table" or type(wh.knownWidgets) ~= "table") then return end
   skipSet = skipSet or BuildSkipSet()
   local mem = 0
-  for name, data in pairs(widgetHandler.knownWidgets) do
-    if (data.active) then
-      local w = widgetHandler:FindWidget(name)
+  for name, data in pairs(wh.knownWidgets) do
+    if (data and data.active) then
+      local w = wh:FindWidget(name)
       if (w) then
         local ok, b = pcall(EstimateBytes, w, skipSet)
         widgetMem[name] = ok and b or 0
@@ -194,10 +199,16 @@ function widget:TextCommand(cmd)
 end
 
 function widget:Update()
+  -- do not sample until the game is actually running and the widget list exists
+  if (Spring.GetGameFrame() < 60) then return end
   local now = Spring.GetTimer()
   if (timer and Spring.DiffTimers(now, timer) < REFRESH) then return end
   timer = now
-  Sample()
+  local ok, err = pcall(Sample)
+  if (not ok) then
+    timer = nil
+    Spring.Echo("[VB] memgraph sample error: " .. tostring(err))
+  end
 end
 
 function widget:DrawScreen()

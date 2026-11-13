@@ -2,7 +2,12 @@
 -- globals the old luaui.lua set must be defined here. Errors are echoed to the infolog.
 LUAUI_DIRNAME = LUAUI_DIRNAME or 'LuaUI/'
 LUAUI_VERSION = LUAUI_VERSION or 'LuaUI v0.3 (Voidborn)'
-VFS.DEF_MODE = VFS.RAW_FIRST
+-- ZIP_FIRST, not RAW_FIRST: the engine's data directory ships its own loose LuaUI/ files
+-- (selector.lua, widgets.lua, layout.lua, ...) which would otherwise shadow the ones in
+-- this game archive - the F11 widget selector would then be the stock engine one without
+-- the memory columns and histograms. Files that only exist loose (fonts, icons, images)
+-- still fall back to the raw filesystem.
+VFS.DEF_MODE = VFS.ZIP_FIRST
 Spring.Echo('[VB] LuaUI/main.lua entered, dir=' .. LUAUI_DIRNAME)
 
 local text = VFS.LoadFile(LUAUI_DIRNAME .. 'main_stock.lua')

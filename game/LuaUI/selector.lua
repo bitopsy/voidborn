@@ -91,6 +91,7 @@ local scrollbargrabpos = 0.0
 
 function widget:Initialize()
   widgetHandler.knownChanged = true
+  Spring.Echo("[VB] WidgetSelector loaded (Voidborn memory columns + dotted histograms active)")
 end
 
 

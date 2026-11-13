@@ -14,7 +14,6 @@ local mapinfo = {
 	maxMetal    = 0.02,
 	extractorRadius = 60,
 	voidWater   = true,
-	autoShowMetal = true,
 
 	smf = {
 		minheight = -300,

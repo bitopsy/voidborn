@@ -25,8 +25,8 @@ if not gadgetHandler:IsSyncedCode() then return false end
 
 local PREFIX = "vbdev:"
 local MAX_COUNT = 50
-local NUM_KEYS = { "hp", "metal", "energy", "buildtime", "sight", "speed", "range", "dmg", "reload", "alt", "x", "z", "count", "team", "pngsize" }
-local STR_KEYS = { "id", "name", "base", "lua", "png" }
+local NUM_KEYS = { "hp", "metal", "energy", "buildtime", "sight", "speed", "range", "dmg", "reload", "alt", "x", "z", "count", "team", "pngsize", "fire", "move", "repeat" }
+local STR_KEYS = { "id", "name", "base", "lua", "png", "shape" }
 
 local function Say(s) Spring.Echo("[VB dev] " .. s) end
 
@@ -149,6 +149,26 @@ local function Customize(unitID, defID, teamID, spec, applied, skipped, luaFn)
 			Spring.SetUnitRulesParam(unitID, "vb_png", png, { public = true })
 			if spec.pngsize then Spring.SetUnitRulesParam(unitID, "vb_pngsize", Clamp(spec.pngsize, 8, 2000), { public = true }) end
 			applied.png = true
+		end
+	end
+	if spec.shape and spec.shape ~= "" then
+		-- custom 3D shape, drawn in the world by LuaUI/Widgets/vb_shape3d.lua
+		if spec.shape:find("[^%w%-%.,;:%@]") or #spec.shape > 2000 then
+			skipped[#skipped + 1] = "shape (malformed)"
+		else
+			Spring.SetUnitRulesParam(unitID, "vb_shape", spec.shape, { public = true })
+			applied.shape = true
+		end
+	end
+	-- initial stances: fire state, move state and the repeat flag
+	local rep = spec["repeat"]
+	if spec.fire or spec.move or rep then
+		local stances = {}
+		if spec.fire then stances[#stances + 1] = { CMD.FIRE_STATE, { Clamp(math.floor(spec.fire), 0, 2) } } end
+		if spec.move then stances[#stances + 1] = { CMD.MOVE_STATE, { Clamp(math.floor(spec.move), 0, 1) } } end
+		if rep then stances[#stances + 1] = { CMD.REPEAT, { (rep ~= 0) and 1 or 0 } } end
+		for _, st in ipairs(stances) do
+			if Try({ Spring.GiveOrderToUnit }, unitID, st[1], st[2], 0) then applied.stance = true end
 		end
 	end
 	if luaFn then

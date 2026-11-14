@@ -28,7 +28,6 @@ end
 local visible, input = false, ""
 local cursor = 1            -- caret position inside `input` (1 = start)
 local hist, histPos = {}, 0
-local templates = {}        -- id -> spec (declared early: the completion helpers need it)
 local pending, gotText = nil, false   -- de-duplicates KeyPress fallback vs TextInput
 local hasSDL = Spring.SDL and Spring.SDL.StartTextInput and Spring.SDL.StopTextInput
 local function SetOpen(v)
@@ -46,6 +45,16 @@ if not okC or type(Complete) ~= "table" then
 	             WordAt = function() return nil end, Candidates = function() return {} end,
 	             Highlight = function() return {} end, CommandOf = function() end }
 end
+
+-- ---------------------------------------------------------------------------------------
+-- the shared template store (the forge panel and this console use the same recipes)
+-- ---------------------------------------------------------------------------------------
+local okF2, Forge = pcall(VFS.Include, "LuaUI/Headers/vb_forge.h.lua")
+if not okF2 or type(Forge) ~= "table" then
+	Forge = { templates = {}, rev = 0, Bump = function() end, TemplateIds = function() return {} end,
+	          SetTemplate = function() end, DelTemplate = function() end }
+end
+local templates = Forge.templates
 
 -- cached name lists (rebuilt when the game starts, they never change afterwards)
 local unitNameList, pngNameList
@@ -127,8 +136,9 @@ end
 -- ---------------------------------------------------------------------------------------------
 -- templates (id -> spec) is declared early (above the completion helpers)
 local NUMERIC = { hp = true, metal = true, energy = true, buildtime = true, sight = true, speed = true, range = true,
-	dmg = true, reload = true, alt = true, x = true, z = true, count = true, team = true, pngsize = true }
-local TEXT = { id = true, name = true, base = true, lua = true, png = true }
+	dmg = true, reload = true, alt = true, x = true, z = true, count = true, team = true, pngsize = true,
+	fire = true, move = true, ["repeat"] = true }
+local TEXT = { id = true, name = true, base = true, lua = true, png = true, shape = true }
 local ALIAS = { health = "hp", cost = "metal", bt = "buildtime", los = "sight", n = "count", num = "count", unit = "base", pic = "png", img = "png", image = "png", picsize = "pngsize" }
 
 local function Tokenize(str)   -- splits on spaces; "double quoted" parts stay together (key="two words")
@@ -153,8 +163,9 @@ end
 local function Ser(t)   -- spec table -> lua table literal (numbers / strings only)
 	local parts = {}
 	for k, v in pairs(t) do
-		if type(v) == "number" then parts[#parts + 1] = k .. "=" .. string.format("%.6g", v)
-		elseif type(v) == "string" then parts[#parts + 1] = k .. "=" .. string.format("%q", v) end
+		-- the key is quoted so that Lua keywords ("repeat") survive the round trip
+		if type(v) == "number" then parts[#parts + 1] = string.format("[%q]=%s", k, string.format("%.6g", v))
+		elseif type(v) == "string" then parts[#parts + 1] = string.format("[%q]=%q", k, v) end
 	end
 	return "{" .. table.concat(parts, ",") .. "}"
 end
@@ -180,7 +191,7 @@ local function Remember(spec)
 	if not spec.id or spec.id == "" then return end
 	local keep = {}
 	for k, v in pairs(spec) do if k ~= "x" and k ~= "z" then keep[k] = v end end
-	templates[spec.id] = keep
+	Forge.SetTemplate(spec.id, keep)
 end
 
 local autoN = 0
@@ -231,7 +242,7 @@ local function CmdCreate(rest)
 				if not n then Print("'" .. k .. "' needs a number, got '" .. v .. "'") return end
 				spec[k] = n
 			elseif TEXT[k] then spec[k] = v
-			else Print("unknown option '" .. k .. "' (known: id name base hp metal energy buildtime sight speed range dmg reload alt count team x z png pngsize lua)") return end
+			else Print("unknown option '" .. k .. "' (known: id name base hp metal energy buildtime sight speed range dmg reload alt count team x z png pngsize lua shape fire move repeat)") return end
 		else bare[#bare + 1] = tok end
 	end
 	-- bare words: "/vbcreate ch_hoplite hp=9" (unit name only), "/vbcreate dread ch_hoplite", or "/vbcreate dread base=ch_hoplite"
@@ -287,6 +298,7 @@ local commands = {
 	help = function()
 		Print("/vbhelp /vbunits /vbwidgets /vbclear /vbautomex /vbexec <lua>")
 		Print("/vbcreate <id> base=<unit> [opts]   /vbspawn <id> [n]   /vbtemplates   /vbforget <id>   /vbbases   (/vbcreate alone: usage)")
+		Print("/vbforge opens the unit forge (design a unit with a 3D shape), /vbsettings opens the split and growth settings")
 	end,
 	units = function()
 		local sel = Spring.GetSelectedUnits() or {}
@@ -319,7 +331,7 @@ local function Run(line)
 	if name == "spawn" then CmdSpawn(rest) return true end
 	if name == "forget" then
 		local id = args[2]
-		if id and templates[id] then templates[id] = nil; Print("forgot template " .. id) else Print("no such template") end
+		if id and Forge.DelTemplate(id) then Print("forgot template " .. id) else Print("no such template") end
 		return true
 	end
 	if commands[name] then commands[name]() return true end
@@ -343,8 +355,11 @@ function widget:Initialize()
 end
 
 -- engine chat commands: "/vbhelp" arrives here as "vbhelp"
+-- the forge and the settings panel own their own commands, so leave them alone
+local OTHER = { vbforge = true, vbsettings = true }
 function widget:TextCommand(cmd)
 	if cmd == "vbconsole" then SetOpen(not visible) return true end
+	if OTHER[cmd] then return true end
 	if cmd:sub(1, 2) == "vb" then return Run(cmd) end
 	if cmd == "help" or cmd == "units" then return Run(cmd) end  -- plain /help and /units also work
 end
@@ -471,8 +486,16 @@ function widget:TextInput(char)
 	Insert(char)
 	return true
 end
-function widget:GetConfigData() return { templates = templates } end
-function widget:SetConfigData(d) if d and type(d.templates) == "table" then templates = d.templates; API.templates = templates end end
+function widget:GetConfigData() return { templates = templates, rev = Forge.rev } end
+function widget:SetConfigData(d)
+	-- the forge panel keeps its own copy of the template store; only the newer one wins
+	if d and type(d.templates) == "table" and (d.rev or 0) > (Forge.rev or 0) then
+		for k in pairs(templates) do templates[k] = nil end
+		for k, v in pairs(d.templates) do templates[k] = v end
+		Forge.rev = d.rev
+	end
+	API.templates = templates
+end
 function widget:Shutdown() if visible and hasSDL then Spring.SDL.StopTextInput() end end
 function widget:ViewResize(w, h) vsx, vsy = w, h end
 

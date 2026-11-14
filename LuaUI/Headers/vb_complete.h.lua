@@ -45,13 +45,15 @@ M.commands = {
   vbcreate   = { desc = "create a new unit from a base unit",
                  opts = { "id", "base", "name", "hp", "metal", "energy", "buildtime", "sight",
                           "speed", "range", "dmg", "reload", "alt", "count", "team", "x", "z",
-                          "png", "pngsize", "lua" } },
+                          "png", "pngsize", "lua", "shape", "fire", "move", "repeat" } },
   vbspawn    = { desc = "spawn more units from a saved template",
                  opts = { "id", "count", "team" } },
   vbtemplates = { desc = "list the saved templates" },
   vbforget   = { desc = "delete a saved template", opts = { "id" } },
   vbbases    = { desc = "list every base unit name" },
   vbconsole  = { desc = "open / close this console" },
+  vbforge    = { desc = "open / close the unit forge (design and create units)" },
+  vbsettings = { desc = "open / close the game settings (split threshold, growth)" },
 }
 
 -- options whose value is a unit name
@@ -60,6 +62,8 @@ M.unitOpts = { base = true }
 M.pngOpts  = { png = true }
 -- options whose value is a saved template id
 M.tmplOpts = { id = true }
+-- options that take a yes/no value (shown as a toggle in the forge)
+M.boolOpts = { ["repeat"] = true }
 
 --------------------------------------------------------------------------------
 -- small string helpers

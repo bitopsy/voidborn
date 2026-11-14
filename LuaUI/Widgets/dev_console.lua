@@ -26,12 +26,88 @@ if not okF or type(VBFont) ~= "table" then
 end
 
 local visible, input = false, ""
+local cursor = 1            -- caret position inside `input` (1 = start)
 local hist, histPos = {}, 0
 local pending, gotText = nil, false   -- de-duplicates KeyPress fallback vs TextInput
 local hasSDL = Spring.SDL and Spring.SDL.StartTextInput and Spring.SDL.StopTextInput
 local function SetOpen(v)
 	visible = v
 	if hasSDL then if v then Spring.SDL.StartTextInput() else Spring.SDL.StopTextInput() end end
+	if v then cursor = #input + 1 end
+end
+
+-- ---------------------------------------------------------------------------------------
+-- autocomplete / autofill / syntax highlighting (shared by every /vb* command)
+-- ---------------------------------------------------------------------------------------
+local okC, Complete = pcall(VFS.Include, "LuaUI/Headers/vb_complete.h.lua")
+if not okC or type(Complete) ~= "table" then
+	Complete = { commands = {}, COL = {}, Words = function() return {} end,
+	             WordAt = function() return nil end, Candidates = function() return {} end,
+	             Highlight = function() return {} end, CommandOf = function() end }
+end
+
+-- ---------------------------------------------------------------------------------------
+-- the shared template store (the forge panel and this console use the same recipes)
+-- ---------------------------------------------------------------------------------------
+local okF2, Forge = pcall(VFS.Include, "LuaUI/Headers/vb_forge.h.lua")
+if not okF2 or type(Forge) ~= "table" then
+	Forge = { templates = {}, rev = 0, Bump = function() end, TemplateIds = function() return {} end,
+	          SetTemplate = function() end, DelTemplate = function() end }
+end
+local templates = Forge.templates
+
+-- cached name lists (rebuilt when the game starts, they never change afterwards)
+local unitNameList, pngNameList
+local function UnitNames()
+	if not unitNameList then
+		local names = {}
+		for name in pairs(UnitDefNames) do names[#names + 1] = name end
+		table.sort(names)
+		unitNameList = names
+	end
+	return unitNameList
+end
+local function PngNames()
+	if not pngNameList then
+		local names = {}
+		local seen = {}
+		local function Add(dir)
+			local ok, list = pcall(VFS.DirList, dir, "*.png", VFS.ZIP_ONLY)
+			if ok and list then
+				for _, f in ipairs(list) do
+					local n = f:match("([^/]+)%.png$")
+					if n and not seen[n] then seen[n] = true; names[#names + 1] = n end
+				end
+			end
+			local ok2, list2 = pcall(VFS.DirList, dir, "*.png", VFS.RAW_ONLY)
+			if ok2 and list2 then
+				for _, f in ipairs(list2) do
+					local n = f:match("([^/]+)%.png$")
+					if n and not seen[n] then seen[n] = true; names[#names + 1] = n end
+				end
+			end
+		end
+		Add("unitpics/")
+		Add("icons/")
+		table.sort(names)
+		pngNameList = names
+	end
+	return pngNameList
+end
+local function TemplateNames()
+	local ids = {}
+	for id in pairs(templates) do ids[#ids + 1] = id end
+	table.sort(ids)
+	return ids
+end
+local function Providers()
+	return {
+		units      = UnitNames,
+		pngs       = PngNames,
+		templates  = TemplateNames,
+		isUnit     = function(n) return UnitDefNames[n] ~= nil end,
+		isTemplate = function(n) return templates[n] ~= nil end,
+	}
 end
 -- QWERTY shifted symbols, used only when the engine gives us no TextInput events
 local SHIFT = { ["1"]="!",["2"]="@",["3"]="#",["4"]="$",["5"]="%",["6"]="^",["7"]="&",["8"]="*",["9"]="(",["0"]=")",
@@ -58,11 +134,12 @@ end
 -- ---------------------------------------------------------------------------------------------
 -- unit creation: /vbcreate, /vbspawn, templates
 -- ---------------------------------------------------------------------------------------------
-local templates = {}      -- id -> spec (saved with the widget config, so recipes survive restarts)
+-- templates (id -> spec) is declared early (above the completion helpers)
 local NUMERIC = { hp = true, metal = true, energy = true, buildtime = true, sight = true, speed = true, range = true,
-	dmg = true, reload = true, alt = true, x = true, z = true, count = true, team = true }
-local TEXT = { id = true, name = true, base = true, lua = true }
-local ALIAS = { health = "hp", cost = "metal", bt = "buildtime", los = "sight", n = "count", num = "count", unit = "base" }
+	dmg = true, reload = true, alt = true, x = true, z = true, count = true, team = true, pngsize = true,
+	fire = true, move = true, ["repeat"] = true }
+local TEXT = { id = true, name = true, base = true, lua = true, png = true, shape = true }
+local ALIAS = { health = "hp", cost = "metal", bt = "buildtime", los = "sight", n = "count", num = "count", unit = "base", pic = "png", img = "png", image = "png", picsize = "pngsize" }
 
 local function Tokenize(str)   -- splits on spaces; "double quoted" parts stay together (key="two words")
 	local t, i, n = {}, 1, #str
@@ -86,8 +163,9 @@ end
 local function Ser(t)   -- spec table -> lua table literal (numbers / strings only)
 	local parts = {}
 	for k, v in pairs(t) do
-		if type(v) == "number" then parts[#parts + 1] = k .. "=" .. string.format("%.6g", v)
-		elseif type(v) == "string" then parts[#parts + 1] = k .. "=" .. string.format("%q", v) end
+		-- the key is quoted so that Lua keywords ("repeat") survive the round trip
+		if type(v) == "number" then parts[#parts + 1] = string.format("[%q]=%s", k, string.format("%.6g", v))
+		elseif type(v) == "string" then parts[#parts + 1] = string.format("[%q]=%q", k, v) end
 	end
 	return "{" .. table.concat(parts, ",") .. "}"
 end
@@ -113,7 +191,7 @@ local function Remember(spec)
 	if not spec.id or spec.id == "" then return end
 	local keep = {}
 	for k, v in pairs(spec) do if k ~= "x" and k ~= "z" then keep[k] = v end end
-	templates[spec.id] = keep
+	Forge.SetTemplate(spec.id, keep)
 end
 
 local autoN = 0
@@ -143,7 +221,8 @@ local function CmdCreate(rest)
 	if rest == "" then
 		Print("/vbcreate <id> base=<unit> [name=\"My Unit\" hp=5000 speed=1.5 range=1.3 dmg=2 reload=0.5 metal= energy= sight= count=5 team=1]")
 		Print("   speed/range/dmg/reload are multipliers of the base unit. lua=<code> (last option) runs on every spawned unit (unitID is set).")
-		Print("   example: /vbcreate dread base=ch_hoplite name=Dread hp=6000 dmg=2.5 range=1.4 count=3")
+		Print("   png=<file> shows that image above the unit (bare name = unitpics/<name>.png); pngsize=<elmos> sets its size.")
+		Print("   example: /vbcreate dread base=ch_hoplite name=Dread hp=6000 dmg=2.5 range=1.4 count=3 png=dread")
 		return
 	end
 	local code
@@ -163,7 +242,7 @@ local function CmdCreate(rest)
 				if not n then Print("'" .. k .. "' needs a number, got '" .. v .. "'") return end
 				spec[k] = n
 			elseif TEXT[k] then spec[k] = v
-			else Print("unknown option '" .. k .. "' (known: id name base hp metal energy buildtime sight speed range dmg reload alt count team x z lua)") return end
+			else Print("unknown option '" .. k .. "' (known: id name base hp metal energy buildtime sight speed range dmg reload alt count team x z png pngsize lua shape fire move repeat)") return end
 		else bare[#bare + 1] = tok end
 	end
 	-- bare words: "/vbcreate ch_hoplite hp=9" (unit name only), "/vbcreate dread ch_hoplite", or "/vbcreate dread base=ch_hoplite"
@@ -194,7 +273,7 @@ local function CmdTemplates()
 	if #ids == 0 then Print("no templates yet - make one with /vbcreate") return end
 	for _, id in ipairs(ids) do
 		local t, bits = templates[id], {}
-		for _, k in ipairs({ "name", "hp", "speed", "range", "dmg", "reload", "metal", "energy", "sight", "count", "team" }) do
+		for _, k in ipairs({ "name", "hp", "speed", "range", "dmg", "reload", "metal", "energy", "sight", "count", "team", "png", "pngsize" }) do
 			if t[k] ~= nil then bits[#bits + 1] = k .. "=" .. tostring(t[k]) end
 		end
 		Print(string.format(" %-14s <- %-14s %s%s", id, tostring(t.base), table.concat(bits, " "), t.lua and " lua" or ""))
@@ -219,6 +298,7 @@ local commands = {
 	help = function()
 		Print("/vbhelp /vbunits /vbwidgets /vbclear /vbautomex /vbexec <lua>")
 		Print("/vbcreate <id> base=<unit> [opts]   /vbspawn <id> [n]   /vbtemplates   /vbforget <id>   /vbbases   (/vbcreate alone: usage)")
+		Print("/vbforge opens the unit forge (design a unit with a 3D shape), /vbsettings opens the split and growth settings")
 	end,
 	units = function()
 		local sel = Spring.GetSelectedUnits() or {}
@@ -251,7 +331,7 @@ local function Run(line)
 	if name == "spawn" then CmdSpawn(rest) return true end
 	if name == "forget" then
 		local id = args[2]
-		if id and templates[id] then templates[id] = nil; Print("forgot template " .. id) else Print("no such template") end
+		if id and Forge.DelTemplate(id) then Print("forgot template " .. id) else Print("no such template") end
 		return true
 	end
 	if commands[name] then commands[name]() return true end
@@ -275,8 +355,11 @@ function widget:Initialize()
 end
 
 -- engine chat commands: "/vbhelp" arrives here as "vbhelp"
+-- the forge and the settings panel own their own commands, so leave them alone
+local OTHER = { vbforge = true, vbsettings = true }
 function widget:TextCommand(cmd)
 	if cmd == "vbconsole" then SetOpen(not visible) return true end
+	if OTHER[cmd] then return true end
 	if cmd:sub(1, 2) == "vb" then return Run(cmd) end
 	if cmd == "help" or cmd == "units" then return Run(cmd) end  -- plain /help and /units also work
 end
@@ -284,6 +367,77 @@ end
 -- grave key on any layout: SDL scancode 53, or keysyms ` (96), ² (178), § (167), ~ (126)
 local function IsToggleKey(key, scanCode)
 	return scanCode == 53 or key == 96 or key == 178 or key == 167 or key == 126
+end
+
+-- ---------------------------------------------------------------------------------------
+-- editing helpers
+-- ---------------------------------------------------------------------------------------
+local function ClampCursor()
+	if cursor < 1 then cursor = 1 end
+	if cursor > #input + 1 then cursor = #input + 1 end
+end
+local function Insert(str)
+	input = input:sub(1, cursor - 1) .. str .. input:sub(cursor)
+	cursor = cursor + #str
+	ClampCursor()
+end
+local function Backspace()
+	if cursor > 1 then
+		input = input:sub(1, cursor - 2) .. input:sub(cursor)
+		cursor = cursor - 1
+	end
+end
+local function Delete()
+	if cursor <= #input then
+		input = input:sub(1, cursor - 1) .. input:sub(cursor + 1)
+	end
+end
+
+-- ---------------------------------------------------------------------------------------
+-- completion: TAB completes the word under the cursor, a second TAB cycles the candidates
+-- ---------------------------------------------------------------------------------------
+local cands, candIdx = {}, 0
+
+local function RefreshCandidates()
+	cands = Complete.Candidates(input, cursor, Providers()) or {}
+	if candIdx > #cands then candIdx = 0 end
+end
+
+local function ApplyCandidate(i)
+	local c = cands[i]
+	if not c then return end
+	local word = Complete.WordAt(input, cursor)
+	if not word then return end
+	-- replace the word under the cursor with the candidate
+	local head = input:sub(1, word.start - 1)
+	local tail = input:sub(word.stop + 1)
+	input = head .. c.text .. tail
+	cursor = word.start + #c.text
+	ClampCursor()
+end
+
+local function CompleteOnce()
+	RefreshCandidates()
+	if #cands == 0 then
+		Print("no completion for: " .. (input:sub(1, cursor)))
+		return
+	end
+	if #cands == 1 then
+		ApplyCandidate(1)
+		candIdx = 0
+		return
+	end
+	-- several matches: show them, and cycle through them on every further TAB
+	candIdx = (candIdx % #cands) + 1
+	ApplyCandidate(candIdx)
+end
+
+local function ShowCandidateList()
+	local list = {}
+	for i, c in ipairs(cands) do
+		list[#list + 1] = (i == candIdx and "> " or "  ") .. c.text .. "   (" .. c.kind .. ")"
+	end
+	return list
 end
 
 function widget:KeyPress(key, mods, isRepeat, label, unicode, scanCode)
@@ -297,18 +451,28 @@ function widget:KeyPress(key, mods, isRepeat, label, unicode, scanCode)
 			table.insert(hist, 1, input); histPos = 0
 			if not Run(input) then Print("Unknown: " .. input .. "   (try /vbhelp)") end
 		end
-		input = ""
-	elseif key == 8 then input = input:sub(1, -2)  -- Backspace
-	elseif key == 27 then SetOpen(false)           -- Esc
-	elseif key == 273 then                         -- Up: older command
-		if histPos < #hist then histPos = histPos + 1; input = hist[histPos] end
-	elseif key == 274 then                         -- Down: newer command
-		if histPos > 1 then histPos = histPos - 1; input = hist[histPos] else histPos = 0; input = "" end
+		input = ""; cursor = 1; cands, candIdx = {}, 0
+	elseif key == 9 then                         -- Tab: autocomplete
+		if not isRepeat then CompleteOnce() end
+	elseif key == 8 then Backspace()             -- Backspace
+	elseif key == 127 then Delete()              -- Delete
+	elseif key == 27 then SetOpen(false)         -- Esc
+	elseif key == 273 then                       -- Up: older command
+		if histPos < #hist then histPos = histPos + 1; input = hist[histPos]; cursor = #input + 1 end
+	elseif key == 274 then                       -- Down: newer command
+		if histPos > 1 then histPos = histPos - 1; input = hist[histPos]
+		else histPos = 0; input = "" end
+		cursor = #input + 1
+	elseif key == 276 then cursor = cursor + 1   -- Right
+	elseif key == 275 then cursor = cursor - 1   -- Left
+	elseif key == 277 then cursor = 1            -- Home
+	elseif key == 278 then cursor = #input + 1   -- End
 	elseif not gotText and key >= 32 and key <= 126 then   -- fallback typing (QWERTY), only until TextInput proves to work
 		local ch = string.char(key)
 		if mods and mods.shift then ch = (ch:match("%a") and ch:upper()) or SHIFT[ch] or ch end
-		input = input .. ch; pending = ch
+		Insert(ch); pending = ch
 	end
+	ClampCursor()
 	return true  -- swallow keys while open
 end
 
@@ -319,11 +483,19 @@ function widget:TextInput(char)
 	gotText = true
 	if pending == char then pending = nil return true end        -- already typed by the fallback just now
 	pending = nil
-	input = input .. char
+	Insert(char)
 	return true
 end
-function widget:GetConfigData() return { templates = templates } end
-function widget:SetConfigData(d) if d and type(d.templates) == "table" then templates = d.templates; API.templates = templates end end
+function widget:GetConfigData() return { templates = templates, rev = Forge.rev } end
+function widget:SetConfigData(d)
+	-- the forge panel keeps its own copy of the template store; only the newer one wins
+	if d and type(d.templates) == "table" and (d.rev or 0) > (Forge.rev or 0) then
+		for k in pairs(templates) do templates[k] = nil end
+		for k, v in pairs(d.templates) do templates[k] = v end
+		Forge.rev = d.rev
+	end
+	API.templates = templates
+end
 function widget:Shutdown() if visible and hasSDL then Spring.SDL.StopTextInput() end end
 function widget:ViewResize(w, h) vsx, vsy = w, h end
 
@@ -335,5 +507,75 @@ function widget:DrawScreen()
 	VBFont.Text("VOIDBORN // DEV CONSOLE", vsx - 20, vsy - 30, 15, "or", 0.45, 0.9, 1.0, 0.9)
 	gl.Color(1, 1, 1, 1)
 	for i, line in ipairs(out) do MonoText(line, 20, vsy - 30 - (i - 1) * 12, 11) end
-	MonoText("> " .. input .. "_", 20, vsy - h, 14)
+
+	-- the input line, syntax highlighted
+	local segs = Complete.Highlight(input, Providers()) or {}
+	local x, y, fs = 20, vsy - h, 14
+	local charW = gl.GetTextWidth("M") * (fs / 12)
+	-- "> " prompt
+	MonoText("> ", x, y, fs)
+	x = x + charW * 2
+	-- the text before the caret is drawn normally, the part after it dimmed
+	for _, seg in ipairs(segs) do
+		local before = (seg.start or 1) <= cursor
+		local txt = seg.text
+		-- split the segment at the caret
+		local cut = cursor - (seg.start or 1)
+		if seg.start == nil then
+			-- the highlight helper does not track offsets; fall back to a plain colour
+			gl.Color(seg.col[1], seg.col[2], seg.col[3], 1)
+			MonoText(txt, x, y, fs)
+			x = x + charW * #txt
+		else
+			local a = txt:sub(1, cut)
+			local b = txt:sub(cut + 1)
+			if a ~= "" then
+				gl.Color(seg.col[1], seg.col[2], seg.col[3], 1)
+				MonoText(a, x, y, fs)
+				x = x + charW * #a
+			end
+			if b ~= "" then
+				gl.Color(seg.col[1], seg.col[2], seg.col[3], 0.45)
+				MonoText(b, x, y, fs)
+				x = x + charW * #b
+			end
+		end
+	end
+	-- the caret
+	gl.Color(0.45, 0.95, 1.0, 0.95)
+	gl.Rect(x - 1, y - 2, x + 1, y + fs)
+
+	-- the inline hint: the rest of the best candidate, drawn dimmed after the caret
+	local hint
+	do
+		local list = Complete.Candidates(input, cursor, Providers()) or {}
+		if #list == 1 then
+			local word = Complete.WordAt(input, cursor)
+			if word and list[1].text:sub(1, #word.text) == word.text then
+				hint = list[1].text:sub(#word.text + 1)
+			end
+		end
+	end
+	if hint and hint ~= "" then
+		gl.Color(0.42, 0.48, 0.60, 1)
+		MonoText(hint, x, y, fs)
+	end
+
+	-- the candidate list (TAB dropdown)
+	if #cands > 1 then
+		local lines = ShowCandidateList()
+		local lw = 0
+		for _, l in ipairs(lines) do lw = math.max(lw, gl.GetTextWidth(l)) end
+		local bx = math.min(vsx - 20 - lw - 20, x)
+		local by = y - 16 - (#lines * 14) - 8
+		gl.Color(0.06, 0.06, 0.10, 0.95)
+		gl.Rect(bx - 10, by, bx + lw + 14, by + #lines * 14 + 10)
+		gl.Color(0.35, 0.85, 1.0, 0.5)
+		gl.Rect(bx - 10, by, bx + lw + 14, by + 1)
+		for i, l in ipairs(lines) do
+			local c = (i == candIdx) and { 0.45, 0.95, 1.0 } or { 0.7, 0.75, 0.85 }
+			gl.Color(c[1], c[2], c[3], 1)
+			MonoText(l, bx, by + 6 + (i - 1) * 14, 11)
+		end
+	end
 end

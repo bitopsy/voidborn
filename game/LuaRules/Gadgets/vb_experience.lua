@@ -1,7 +1,7 @@
 function gadget:GetInfo()
 	return {
 		name = "Voidborn experience growth + split",
-		desc = "Units grow as they gain experience; at SPLIT_XP they split into two normal-sized units",
+		desc = "Units grow as they gain experience; at the split threshold they split into two normal-sized units (see /vbsettings)",
 		author = "goddot info@bitopsy.com", date = "2026", license = "GPL", layer = 1, enabled = true,
 	}
 end
@@ -9,8 +9,17 @@ end
 --------------------------------------------------------------------------------
 -- Tunables
 --------------------------------------------------------------------------------
-local SPLIT_XP     = 0.07    -- experience at which a unit splits in two
-local MAX_GROWTH   = 0.45    -- at xp == SPLIT_XP the unit is (1 + MAX_GROWTH) times its normal size
+-- The host (or any player in a single player game) can change these at runtime
+-- with the /vbsettings panel; the values are also exposed as mod options so a
+-- lobby can set them before the game starts.
+local DEFAULTS = {
+	split_xp   = 0.14,    -- experience at which a unit splits in two
+	max_growth = 1.00,    -- at xp == split_xp the unit is (1 + max_growth) times its normal size (1.0 = double size)
+}
+local LIMITS = {
+	split_xp   = { 0.01, 2.00, 0.01 },   -- min, max, step
+	max_growth = { 0.00, 4.00, 0.05 },
+}
 local POLL_FRAMES  = 10      -- how often experience is checked (30 frames = 1 second)
 local STEP         = 0.02    -- only re-scale when the size changed by at least this much (saves network/draw updates)
 local MIN_UNIT_GAP = 5       -- never split if the team has fewer than this many unit slots left
@@ -23,12 +32,85 @@ local function Eligible(unitDef)
 	return true
 end
 
+local function Clamp(v, lo, hi) if v < lo then return lo elseif v > hi then return hi end return v end
+
 --------------------------------------------------------------------------------
 if gadgetHandler:IsSyncedCode() then
 --------------------------------------------------------------------------------
 	local spGetUnitExperience, spSetUnitExperience = Spring.GetUnitExperience, Spring.SetUnitExperience
 	local tracked = {}          -- unitID -> { scale, radius, height }
 	local frameOffset = 0
+
+	-- the live values of the two tunables (changed by the /vbsettings panel)
+	local splitXP   = DEFAULTS.split_xp
+	local maxGrowth = DEFAULTS.max_growth
+
+	-- publish them so the settings panel can show the current numbers
+	local function Publish()
+		Spring.SetGameRulesParam("vb_split_xp", splitXP)
+		Spring.SetGameRulesParam("vb_max_growth", maxGrowth)
+	end
+
+	-- a lobby can set them before the game starts
+	local function ReadModOptions()
+		local mo = Spring.GetModOptions and Spring.GetModOptions() or {}
+		local v = tonumber(mo.split_xp)
+		if v then splitXP = Clamp(v, LIMITS.split_xp[1], LIMITS.split_xp[2]) end
+		v = tonumber(mo.max_growth)
+		if v then maxGrowth = Clamp(v, LIMITS.max_growth[1], LIMITS.max_growth[2]) end
+	end
+
+	-- the host may change them while the game runs:  "vbexp:split_xp=0.2,max_growth=1.5"
+	local function Allowed(playerID)
+		if Spring.IsCheatingEnabled() then return true end
+		local humans = 0
+		for _, pid in ipairs(Spring.GetPlayerList()) do
+			local _, active, spectator = Spring.GetPlayerInfo(pid, false)
+			if active and not spectator then humans = humans + 1 end
+		end
+		if humans <= 1 then return true end
+		-- the host leads the team with the lowest number
+		local bestTeam
+		for _, teamID in ipairs(Spring.GetTeamList()) do
+			local leader = Spring.GetTeamLeader(teamID)
+			if leader and leader >= 0 then
+				if not bestTeam or teamID < bestTeam then bestTeam = teamID end
+			end
+		end
+		if bestTeam then return Spring.GetTeamLeader(bestTeam) == playerID end
+		return false
+	end
+
+	function gadget:RecvLuaMsg(msg, playerID)
+		local PREFIX = "vbexp:"
+		if type(msg) ~= "string" or msg:sub(1, #PREFIX) ~= PREFIX then return end
+		local body = msg:sub(#PREFIX + 1)
+		if body == "get" then Publish(); return true end
+		if not Allowed(playerID) then
+			Spring.Echo("[VB] changing the split settings needs the host (or /cheat)")
+			return true
+		end
+		local changed = false
+		for k, v in body:gmatch("([%w_]+)=([%-%d%.]+)") do
+			local n = tonumber(v)
+			if n then
+				if k == "split_xp" then splitXP = Clamp(n, LIMITS.split_xp[1], LIMITS.split_xp[2]); changed = true
+				elseif k == "max_growth" then maxGrowth = Clamp(n, LIMITS.max_growth[1], LIMITS.max_growth[2]); changed = true end
+			end
+		end
+		if changed then
+			Publish()
+			-- re-apply the new growth to the units that already grew
+			for unitID, t in pairs(tracked) do
+				local xp = spGetUnitExperience(unitID) or 0
+				if xp < splitXP then
+					ApplyScale(unitID, t, 1 + maxGrowth * (xp / splitXP))
+				end
+			end
+			Spring.Echo(string.format("[VB] split threshold %.3f, growth %.2fx", splitXP, maxGrowth))
+		end
+		return true
+	end
 
 	local function ApplyScale(unitID, t, scale)
 		t.scale = scale
@@ -46,6 +128,8 @@ if gadgetHandler:IsSyncedCode() then
 	function gadget:UnitDestroyed(unitID) tracked[unitID] = nil end
 
 	function gadget:Initialize()
+		ReadModOptions()
+		Publish()
 		for _, unitID in ipairs(Spring.GetAllUnits()) do gadget:UnitCreated(unitID, Spring.GetUnitDefID(unitID)) end
 	end
 
@@ -126,10 +210,10 @@ if gadgetHandler:IsSyncedCode() then
 		if n % POLL_FRAMES ~= 0 then return end
 		for unitID, t in pairs(tracked) do
 			local xp = spGetUnitExperience(unitID) or 0
-			if xp >= SPLIT_XP then
+			if xp >= splitXP then
 				Split(unitID, t)
 			else
-				local want = 1 + MAX_GROWTH * (xp / SPLIT_XP)
+				local want = 1 + maxGrowth * (xp / splitXP)
 				if math.abs(want - t.scale) >= STEP then ApplyScale(unitID, t, want) end
 			end
 		end

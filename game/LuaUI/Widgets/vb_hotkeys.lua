@@ -21,6 +21,20 @@ local FACTORY_KEYS = {
 
 local function Describe(tbl) local t = {} for k, v in pairs(tbl) do t[#t + 1] = k:upper() .. "=" .. v end table.sort(t) return table.concat(t, "  ") end
 
+-- Ctrl+B: detonate every selected unit (the LuaRules gadget vb_explode.lua applies the blasts;
+-- blast radius is proportional to each unit's health). Also available as the text command /vbexplode.
+-- It has to be defined before the functions that call it: a local that is not yet in scope
+-- would be looked up as a global at call time and come out nil.
+local function Explode()
+	local sel = Spring.GetSelectedUnits()
+	if not sel or #sel == 0 or Spring.GetSpectatingState() then return false end
+	for i = 1, #sel, 100 do      -- chunks of 100 ids keep every message small
+		Spring.SendLuaRulesMsg("vbexplode:" .. table.concat(sel, ",", i, math.min(i + 99, #sel)))
+	end
+	Spring.Echo("[VB] Detonating " .. #sel .. " unit(s)")
+	return true
+end
+
 function widget:Initialize()
 	Spring.Echo("[VB] Hotkeys loaded. Orders: " .. Describe(ORDER_KEYS))
 	Spring.Echo("[VB] Build keys: " .. Describe(BUILD_KEYS) .. "   Factory keys: " .. Describe(FACTORY_KEYS))
@@ -56,17 +70,6 @@ local function FindBuild(builderDefID, kind)
 	end
 end
 
--- Ctrl+B: detonate every selected unit (the LuaRules gadget vb_explode.lua applies the blasts;
--- blast radius is proportional to each unit's health). Also available as the text command /vbexplode.
-local function Explode()
-	local sel = Spring.GetSelectedUnits()
-	if not sel or #sel == 0 or Spring.GetSpectatingState() then return false end
-	for i = 1, #sel, 100 do      -- chunks of 100 ids keep every message small
-		Spring.SendLuaRulesMsg("vbexplode:" .. table.concat(sel, ",", i, math.min(i + 99, #sel)))
-	end
-	Spring.Echo("[VB] Detonating " .. #sel .. " unit(s)")
-	return true
-end
 
 function widget:KeyPress(key, mods, isRepeat)
 	if mods and mods.ctrl and not mods.alt and not mods.meta and not mods.shift and key == 98 then   -- 98 = 'b'

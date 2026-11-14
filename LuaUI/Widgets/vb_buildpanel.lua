@@ -10,6 +10,12 @@ if not okF or type(VBFont) ~= "table" then
 		Text = function(str, x, y, size, opts, r, g, b, a) gl.Color(r or 1, g or 1, b or 1, a or 1); gl.Text(str, x, y, size, opts or "o") end }
 end
 
+-- the unit forge, so that the [+] tile at the end of the build row can open it
+local okG, Forge = pcall(VFS.Include, "LuaUI/Headers/vb_forge.h.lua")
+if not okG or type(Forge) ~= "table" then
+	Forge = { RequestOpen = function() end, IsForgeReady = function() return false end }
+end
+
 local function Snd(name, vol) Spring.PlaySoundFile("sounds/" .. name .. ".wav", vol or 0.7, "ui") end
 local lastHoverID, lastHoverSnd   -- id of the command last hovered (nil = none), timer of the last hover sound
 -- saved settings -------------------------------------------------------------
@@ -289,7 +295,7 @@ function widget:DrawScreen()
 	local icon, gap, pad, title = ICON * s, GAP * s, PAD * s, math.max(16, TITLE * s)
 	local fs = math.max(9, 10 * s)
 	local gridW = COLS * (icon + gap) - gap
-	local brows = math.ceil(#builds / COLS)
+	local brows = math.ceil((#builds + 1) / COLS)   -- one extra cell for the [+] tile
 	local tcols, ocols = 2, 3
 	local trows, orows = math.ceil(#toggles / tcols), math.ceil(#orders / ocols)
 	local tbW, tbH = (gridW - (tcols - 1) * gap) / tcols, 20 * s
@@ -337,6 +343,21 @@ function widget:DrawScreen()
 		else Frame(ix, iy, ix + icon, iy + icon, 0.85, 0.65, 0.2, 0.8) end
 		local cnt = b.c.params and b.c.params[1]
 		if cnt and tonumber(cnt) and tonumber(cnt) > 0 then VBFont.Text(cnt, ix + icon - 4 * s, iy + 3 * s, 12 * s, "or", 1, 1, 1, 1) end
+	end
+	-- the [+] tile at the end of the build row: it opens the unit forge
+	do
+		local n = #builds + 1
+		local col, row = (n - 1) % COLS, math.floor((n - 1) / COLS)
+		local ix, iy = x1 + pad + col * (icon + gap), top - (row + 1) * (icon + gap) + gap
+		local r = { ix, iy, ix + icon, iy + icon, plus = true }
+		rects[#rects + 1] = r
+		local over = Inside(mx, my, r)
+		Box(ix, iy, ix + icon, iy + icon, over and 0.12 or 0.08, over and 0.22 or 0.16, over and 0.16 or 0.12, 1)
+		Frame(ix, iy, ix + icon, iy + icon, over and 0.35 or 0.2, over and 0.95 or 0.55, over and 0.65 or 0.35, over and 0.95 or 0.55)
+		local half = icon / 2
+		gl.Color(over and 0.55 or 0.35, over and 1 or 0.75, over and 0.7 or 0.5, 1)
+		gl.Rect(ix + icon * 0.28, iy + half - 1.5 * s, ix + icon * 0.72, iy + half + 1.5 * s)
+		gl.Rect(ix + half - 1.5 * s, iy + icon * 0.28, ix + half + 1.5 * s, iy + icon * 0.72)
 	end
 	-- order buttons
 	local oy = top - brows * (icon + gap) - 4 * s
@@ -465,6 +486,17 @@ function widget:MousePress(x, y, button)
 			if r.close then closed = true; Snd("ui_close") return true end
 			if r.scale then scaling = { x0 = x, y0 = y, s0 = scale, top = py + (panelBox and panelBox.h or 0) } return true end
 			if r.drag then drag = { x - px, y - py } return true end
+			if r.plus then
+				-- open the unit forge
+				if Forge.IsForgeReady and Forge.IsForgeReady() then
+					Forge.RequestOpen()
+					Snd("ui_open")
+				else
+					Spring.Echo("[VB] the unit forge widget is disabled - enable 'Voidborn Unit Forge' in the widget selector (F11)")
+					Snd("ui_close", 0.5)
+				end
+				return true
+			end
 			if r.cmd then Snd((r.cmd.c.id < 0) and "ui_select" or "ui_click"); Activate(r, button) return true end
 		end
 	end

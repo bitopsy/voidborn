@@ -81,6 +81,14 @@ if gadgetHandler:IsSyncedCode() then
 		return false
 	end
 
+	-- set the size of a unit (and tell the unsynced side about it)
+	local function ApplyScale(unitID, t, scale)
+		t.scale = scale
+		Spring.SetUnitRulesParam(unitID, "vb_scale", scale, { public = true })
+		if t.radius then pcall(Spring.SetUnitRadiusAndHeight, unitID, t.radius * scale, t.height * scale) end
+		SendToUnsynced("vbscale", unitID, scale)
+	end
+
 	function gadget:RecvLuaMsg(msg, playerID)
 		local PREFIX = "vbexp:"
 		if type(msg) ~= "string" or msg:sub(1, #PREFIX) ~= PREFIX then return end
@@ -110,13 +118,6 @@ if gadgetHandler:IsSyncedCode() then
 			Spring.Echo(string.format("[VB] split threshold %.3f, growth %.2fx", splitXP, maxGrowth))
 		end
 		return true
-	end
-
-	local function ApplyScale(unitID, t, scale)
-		t.scale = scale
-		Spring.SetUnitRulesParam(unitID, "vb_scale", scale, { public = true })
-		if t.radius then pcall(Spring.SetUnitRadiusAndHeight, unitID, t.radius * scale, t.height * scale) end
-		SendToUnsynced("vbscale", unitID, scale)
 	end
 
 	function gadget:UnitCreated(unitID, unitDefID)

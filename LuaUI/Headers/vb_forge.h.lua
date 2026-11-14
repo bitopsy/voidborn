@@ -75,6 +75,21 @@ function F.Ser(t)
 end
 
 -- --------------------------------------------------------------------------------
+-- opening the forge from another widget
+--------------------------------------------------------------------------------
+-- The build panel has a [+] tile at the end of the build row that opens the
+-- forge.  The forge panel registers itself here, so the two widgets find each
+-- other without knowing anything about each other.
+F.openRequest = F.openRequest or false
+F.open = F.open or nil          -- set by the forge widget when it starts
+F.IsForgeReady = F.IsForgeReady or function() return F.open ~= nil end
+
+-- ask the forge to open itself
+function F.RequestOpen()
+	if F.open then F.open() else F.openRequest = true end
+end
+
+--------------------------------------------------------------------------------
 -- the primitive kinds
 --------------------------------------------------------------------------------
 F.KINDS = { "box", "sphere", "cylinder", "cone" }

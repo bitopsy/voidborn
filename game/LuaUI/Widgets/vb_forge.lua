@@ -25,9 +25,15 @@ if not okG or type(Forge) ~= "table" then
 	Forge = { Ser = function() return "{}" end, PngList = function() return {} end,
 		PngPath = function() end, EncodeShape = function() return "" end, DecodeShape = function() end,
 		CopyShape = function() end, Mesh = function() return { verts = {}, tris = {} } end,
-		DrawPreview = function() end, DrawShape = function() end,
+		DrawPreview = function() end, DrawShape = function() end, RequestOpen = function() end,
+		IsForgeReady = function() return false end,
 		templates = {}, rev = 0, Bump = function() end, TemplateIds = function() return {} end,
 		SetTemplate = function() end, DelTemplate = function() end }
+end
+-- the price rules (the same file the LuaRules gadget uses)
+local okC, Cost = pcall(VFS.Include, "LuaRules/Headers/vb_cost.h.lua")
+if not okC or type(Cost) ~= "table" or type(Cost.Cost) ~= "function" then
+	Cost = { Cost = function() return nil end }
 end
 
 --------------------------------------------------------------------------------
@@ -193,16 +199,6 @@ end
 --------------------------------------------------------------------------------
 -- applying a slider value
 --------------------------------------------------------------------------------
--- turns a mouse position into a slider value and applies it
-local function SliderTo(d, x)
-	local s = d.s
-	local t = Clamp((x - d.x1) / math.max(1, d.w), 0, 1)
-	local v = s.min + t * (s.max - s.min)
-	if s.step and s.step > 0 then v = math.floor(v / s.step + 0.5) * s.step end
-	v = Clamp(v, s.min, s.max)
-	ApplySlider(d.key, v)
-end
-
 -- a slider can drive a number of the spec or a property of the selected primitive
 local function ApplySlider(key, value)
 	if NUM_KEYS[key] then spec[key] = value return true end
@@ -233,6 +229,16 @@ local function ApplySlider(key, value)
 		p.uv[3] = p.uv[1] + w
 	else return false end
 	return true
+end
+
+-- turns a mouse position into a slider value and applies it
+local function SliderTo(d, x)
+	local s = d.s
+	local t = Clamp((x - d.x1) / math.max(1, d.w), 0, 1)
+	local v = s.min + t * (s.max - s.min)
+	if s.step and s.step > 0 then v = math.floor(v / s.step + 0.5) * s.step end
+	v = Clamp(v, s.min, s.max)
+	ApplySlider(d.key, v)
 end
 
 --------------------------------------------------------------------------------
@@ -308,9 +314,25 @@ local function LoadTemplate(id)
 end
 
 --------------------------------------------------------------------------------
+-- the price of the unit that is being designed
+--------------------------------------------------------------------------------
+-- The gadget LuaRules/Gadgets/vb_dev_units.lua puts the same price on the unit
+-- when it is created, so what is shown here is what the unit really costs.
+local function Price()
+	local id = spec.base and UnitDefNames[spec.base]
+	if not id then return nil end
+	local ud = UnitDefs[id]
+	if not ud then return nil end
+	local s = {}
+	for k, v in pairs(spec) do s[k] = v end
+	if #shape > 0 then s.shape = Forge.EncodeShape(shape) end
+	return Cost.Cost(s, ud)
+end
+
+--------------------------------------------------------------------------------
 -- the panel
 --------------------------------------------------------------------------------
-local TITLE, TABH, FOOT = 24, 22, 34
+local TITLE, TABH, FOOT = 24, 22, 54
 
 local function DrawBase(x, y, w, h)
 	local units = Units()
@@ -494,6 +516,18 @@ function widget:Initialize()
 	if widgetHandler and widgetHandler.AddAction then
 		widgetHandler:AddAction("vbforge", function() closed = not closed return true end, nil, "t")
 	end
+	-- let the other widgets (the build panel) open this one
+	Forge.open = function()
+		closed = false
+		-- put the panel where it can be seen
+		px = math.max(10, math.min(vsx - pw - 20, px))
+		py = math.max(10, math.min(vsy - ph - 20, py))
+		if tab == "base" then
+			-- start on the base unit, the forge is about making a unit
+			tab = "base"
+		end
+		return true
+	end
 	-- start from a sensible base
 	local units = Units()
 	if units[1] then spec.base = UnitDefs[units[1].id].name end
@@ -546,6 +580,14 @@ function widget:SetConfigData(d)
 end
 
 function widget:ViewResize(w, h) vsx, vsy = w, h end
+
+function widget:Update()
+	-- another widget (the build panel) asked for the forge to open
+	if Forge.openRequest then
+		Forge.openRequest = false
+		if Forge.open then Forge.open() end
+	end
+end
 
 function widget:DrawScreen()
 	rects = {}
@@ -607,28 +649,43 @@ function widget:DrawScreen()
 	elseif tab == "img" then DrawImage(cx, cy, cw, ch)
 	elseif tab == "shape" then DrawShape(cx, cy, cw, ch) end
 
-	-- the footer: the template id and the actions
+	-- the footer: the price, the template id and the actions
 	local fy = y2 - FOOT * s
-	gl.Color(0.85, 0.65, 0.2, 0.5); gl.Rect(x1 + 6, fy - 3, x2 - 6, fy - 2)
+	gl.Color(0.85, 0.65, 0.2, 0.5); gl.Rect(x1 + 6, fy, x2 - 6, fy + 1)
+	-- what the unit costs (the gadget charges exactly the same)
+	local price = Price()
+	local px2 = x1 + 10
+	if price then
+		local line = string.format("metal %d   energy %d   build %ds", price.metal, price.energy, price.build)
+		VBFont.Text(line, px2, fy + 5 * s, 10 * s, "o", 0.95, 0.8, 0.45, 1)
+		px2 = px2 + VBFont.Width(line, 10 * s) + 10 * s
+		if price.premium > 0 then
+			local extra = string.format("(+%d for the extra power)", price.premium)
+			VBFont.Text(extra, px2, fy + 5 * s, 9 * s, "o", 0.55, 0.78, 0.55, 1)
+		end
+	end
+	-- the status line, on the right of the footer
+	if status ~= "" then
+		VBFont.Text(status, x2 - 10 - VBFont.Width(status, 9 * s), fy + 5 * s, 9 * s, "or", 0.55, 0.9, 0.65, 1)
+	end
+	-- the template id and the actions
+	local by = fy + 20 * s
 	local idw = 120 * s
-	Box(x1 + 8, fy + 4, x1 + 8 + idw, fy + 22 * s, 0.1, 0.1, 0.16, 1)
-	Frame(x1 + 8, fy + 4, x1 + 8 + idw, fy + 22 * s, 0.5, 0.5, 0.6, 0.6)
-	VBFont.Text(spec.id, x1 + 14, fy + 8, 10 * s, "o", 0.95, 0.9, 0.7, 1)
+	Box(x1 + 8, by, x1 + 8 + idw, by + 20 * s, 0.1, 0.1, 0.16, 1)
+	Frame(x1 + 8, by, x1 + 8 + idw, by + 20 * s, 0.5, 0.5, 0.6, 0.6)
+	VBFont.Text(spec.id, x1 + 14, by + 4 * s, 10 * s, "o", 0.95, 0.9, 0.7, 1)
 	-- the template dropdown
 	local ids = Forge.TemplateIds()
 	local tbtnW = 90 * s
 	local tx2 = x1 + 14 + idw
-	Button(tx2, fy + 4, tbtnW, 18 * s, "LOAD", "load", { 0.4, 0.7, 1 })
-	-- the list of templates to load
+	Button(tx2, by, tbtnW, 20 * s, "LOAD", "load", { 0.4, 0.7, 1 })
 	if ids[1] then
-		VBFont.Text(ids[#ids], tx2 + tbtnW + 6, fy + 8, 9 * s, "o", 0.6, 0.63, 0.7, 1)
+		VBFont.Text(ids[#ids], tx2 + tbtnW + 6, by + 5 * s, 9 * s, "o", 0.6, 0.63, 0.7, 1)
 	end
 	local bx = tx2 + tbtnW + 46 * s
-	Button(bx, fy + 4, 74 * s, 18 * s, "CREATE", "create", { 0.3, 0.9, 0.45 })
-	Button(bx + 78 * s, fy + 4, 74 * s, 18 * s, "SPAWN", "spawn", { 0.4, 0.8, 1 })
-	Button(bx + 156 * s, fy + 4, 66 * s, 18 * s, "SAVE", "save", { 1, 0.7, 0.3 })
-	-- the status line
-	VBFont.Text(status, x1 + 8, y1 + 4, 9 * s, "o", 0.5, 0.85, 0.6, 1)
+	Button(bx, by, 74 * s, 20 * s, "CREATE", "create", { 0.3, 0.9, 0.45 })
+	Button(bx + 78 * s, by, 74 * s, 20 * s, "SPAWN", "spawn", { 0.4, 0.8, 1 })
+	Button(bx + 156 * s, by, 66 * s, 20 * s, "SAVE", "save", { 1, 0.7, 0.3 })
 end
 
 function widget:IsAbove(x, y)

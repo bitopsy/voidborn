@@ -28,6 +28,13 @@ local MAX_COUNT = 50
 local NUM_KEYS = { "hp", "metal", "energy", "buildtime", "sight", "speed", "range", "dmg", "reload", "alt", "x", "z", "count", "team", "pngsize", "fire", "move", "repeat" }
 local STR_KEYS = { "id", "name", "base", "lua", "png", "shape" }
 
+-- the price rules (shared with the forge panel in LuaUI)
+local okCost, Cost = pcall(VFS.Include, "LuaRules/Headers/vb_cost.h.lua")
+if not okCost or type(Cost) ~= "table" or type(Cost.Cost) ~= "function" then
+	Cost = { Cost = function() return nil end, BaseDamage = function() return 0 end,
+	         BaseRange = function() return 0 end, Primitives = function() return 0 end, RATE = {} }
+end
+
 local function Say(s) Spring.Echo("[VB dev] " .. s) end
 
 local function Allowed(playerID)
@@ -115,12 +122,14 @@ local function Customize(unitID, defID, teamID, spec, applied, skipped, luaFn)
 		if Try({ Spring.SetUnitMaxHealth }, unitID, hp) then Try({ Spring.SetUnitHealth }, unitID, hp); applied.hp = true
 		else skipped[#skipped + 1] = "hp" end
 	end
-	if spec.metal or spec.energy or spec.buildtime then
-		local c = {}
-		if spec.metal then c.metalCost = spec.metal end
-		if spec.energy then c.energyCost = spec.energy end
-		if spec.buildtime then c.buildTime = spec.buildtime end
+	-- the price: a unit that is stronger than its base unit costs more, and it
+	-- takes longer to build.  The rules are in LuaRules/Headers/vb_cost.h.lua, the
+	-- same file the forge panel uses to show the price while you design.
+	local cost = Cost.Cost(spec, UnitDefs[defID])
+	if cost then
+		local c = { metalCost = cost.metal, energyCost = cost.energy, buildTime = cost.build }
 		if Try({ Spring.SetUnitCosts }, unitID, c) then applied.costs = true else skipped[#skipped + 1] = "costs" end
+		if cost.premium > 0 then applied.premium = true end
 	end
 	if spec.sight then
 		if Try({ Spring.SetUnitSensorRadius }, unitID, "los", spec.sight) then applied.sight = true else skipped[#skipped + 1] = "sight" end
@@ -235,6 +244,11 @@ local function HandleSpawn(spec, playerID)
 	if #keys > 0 then msg = msg .. " | applied: " .. table.concat(keys, ", ") end
 	if #skipped > 0 then msg = msg .. " | NOT applied: " .. table.concat(skipped, "; ") end
 	if made < count then msg = msg .. " | (some spawns refused: unit limit or blocked spot)" end
+	-- what the unit costs (the forge shows the same numbers)
+	local cost = Cost.Cost(spec, ud)
+	if cost then
+		msg = msg .. string.format(" | price: %d metal, %d energy, %ds build", cost.metal, cost.energy, cost.build)
+	end
 	Say(msg)
 end
 

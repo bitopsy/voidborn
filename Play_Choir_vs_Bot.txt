@@ -16,7 +16,7 @@
 		commander_ends=1;
 		startmetal=1000;
 		startenergy=1000;
-		bot_skill=2;
+		bot_skill=1;
 	}
 	[PLAYER0]
 	{

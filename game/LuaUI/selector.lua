@@ -65,7 +65,11 @@ if (1 > 0) then
 end
 
 
-local maxWidth = 0.01
+local nameW   = 0      -- pixel width of the NAME column
+local errW    = 0      -- pixel width of the ERROR column (0 = no widget has an error, column hidden)
+local errCount = 0
+local hdrTop  = 0      -- top of the table header strip
+local xName, xHist, xMemR, xSizeR, xErr = 0, 0, 0, 0, 0   -- column anchors (set by UpdateGeometry)
 local borderx = yStep * 0.75
 local bordery = yStep * 0.75
 
@@ -91,7 +95,7 @@ local scrollbargrabpos = 0.0
 
 function widget:Initialize()
   widgetHandler.knownChanged = true
-  Spring.Echo("[VB] WidgetSelector loaded (Voidborn memory columns + dotted histograms active)")
+  Spring.Echo("[VB] WidgetSelector loaded (table layout, dotted memory histogram, error column)")
 end
 
 
@@ -109,13 +113,21 @@ end
 local COL_SIZE_W = 64         -- pixel widths of the right-hand columns
 local COL_MEM_W  = 80
 local COL_GAP    = 14
-local COLS_PX    = COL_SIZE_W + COL_MEM_W + COL_GAP
+
+-- dotted histogram: HIST_DOTS dots, each DOT_SZ px square, DOT_STEP px apart
+local HIST_DOTS  = 20
+local DOT_SZ     = 3
+local DOT_STEP   = 5
+local HIST_W     = HIST_DOTS * DOT_STEP - (DOT_STEP - DOT_SZ)
+local HIST_LOG   = true           -- true: log scale (small widgets stay visible), false: linear
+local ERR_MAX_W  = 440            -- widest the ERROR column may grow (px); longer text is cut with "..."
+
 local MEM_REFRESH   = 1.5     -- seconds between estimates
 local MEM_NODE_CAP  = 200000  -- safety cap on objects visited per widget
 
 local memBytes   = {}         -- widget name -> estimated bytes (active widgets only)
 local memTimer   = nil
-local totals     = { active = 0, src = 0, mem = 0, springMem = 0 }
+local totals     = { active = 0, src = 0, mem = 0, springMem = 0, maxMem = 0 }
 local skipSet    = nil
 
 local function FmtBytes(n)
@@ -123,12 +135,6 @@ local function FmtBytes(n)
   if (n < 1048576) then return string.format("%.1f KB", n / 1024) end
   return string.format("%.2f MB", n / 1048576)
 end
-
--- Dotted histogram bar for one widget's memory usage.
--- The bar is scaled against MEM_HIST_MAX so small values still show a dot or two.
-local MEM_HIST_MAX = 4 * 1024 * 1024   -- 4 MB = full bar
-
-local MEM_HIST_MAX = 4 * 1024 * 1024   -- 4 MB = full bar for the per-widget bar
 
 -- Spring's LuaGL has no gl.Point(): points are drawn with
 --   gl.BeginEnd(GL.POINTS, gl.Vertex, x, y)
@@ -144,16 +150,55 @@ local function DrawDots(pts, r, g, b, a, size)
   gl.PointSize(1)
 end
 
--- Dotted histogram bar for one widget's memory usage (scaled to MEM_HIST_MAX).
-local function DrawMemHistogram(bytes, x, y, width, height)
-  if (not bytes or bytes <= 0) then return end
-  local step = 3
-  local n = math.max(1, math.floor((width / step) * math.min(1, bytes / MEM_HIST_MAX)))
-  local pts = {}
-  for i = 0, n - 1 do
-    pts[#pts + 1] = { x + i * step, y + height * 0.5 }
+-- Fraction (0..1) of the histogram a widget fills, relative to the heaviest active widget.
+local function MemFraction(b)
+  if (not b or b <= 0) then return 0 end
+  local top = math.max(totals.maxMem or 0, 64 * 1024)
+  if (HIST_LOG) then
+    return math.min(1, math.log(1 + b / 1024) / math.log(1 + top / 1024))
   end
-  DrawDots(pts, 0.0, 0.85, 1.0, 0.95, 2)
+  return math.min(1, b / top)
+end
+
+-- ---------------------------------------------------------------------------
+-- errors: runtime errors (widgetHandler.widgetErrors, by widget name) and load
+-- failures (widgetHandler.failedWidgets, by file name) recorded by widgets.lua
+-- ---------------------------------------------------------------------------
+local function GetWidgetError(name, data)
+  local e = widgetHandler.widgetErrors and widgetHandler.widgetErrors[name]
+  if (e) then return e.msg, e.where end
+  local f = data.filename and widgetHandler.failedWidgets and widgetHandler.failedWidgets[data.filename]
+  if (f) then return f.msg, "load" end
+  return nil
+end
+
+local errTextCache = {}
+local function ErrorText(msg, where)          -- single line, short paths, "[CallIn]" prefix
+  local key = (where or "") .. "|" .. msg
+  local c = errTextCache[key]
+  if (c) then return c end
+  local t = tostring(msg)
+  t = t:match("^[^\n]*") or t
+  t = t:gsub("LuaUI/[%w_/%-%.]-/", "")
+  if (where and where ~= "load") then t = "[" .. where .. "] " .. t end
+  errTextCache[key] = t
+  return t
+end
+
+local errMeasure = {}
+local fitCache, fitCacheW = {}, -1
+local function FitError(text)                 -- cut to the ERROR column width
+  if (fitCacheW ~= errW) then fitCache = {}; fitCacheW = errW end
+  local c = fitCache[text]
+  if (c) then return c end
+  local out = text
+  if (fontSize * gl.GetTextWidth(out) > errW) then
+    local charW = math.max(1, fontSize * gl.GetTextWidth("M"))
+    local n = math.max(4, math.floor(errW / charW))
+    out = text:sub(1, n - 3) .. "..."
+  end
+  fitCache[text] = out
+  return out
 end
 
 -- ---------------------------------------------------------------------------
@@ -343,7 +388,8 @@ local function RefreshMemory(force)
   if (not force and memTimer and Spring.DiffTimers(now, memTimer) < MEM_REFRESH) then return end
   memTimer = now
   skipSet = skipSet or BuildSkipSet()
-  local active, src, mem = 0, 0, 0
+  local active, src, mem, top = 0, 0, 0, 0
+  local myName = widget:GetInfo().name
   for name, data in pairs(widgetHandler.knownWidgets) do
     if (data.active) then
       local w = widgetHandler:FindWidget(name)
@@ -351,6 +397,7 @@ local function RefreshMemory(force)
         local ok, b = pcall(EstimateBytes, w, skipSet)
         memBytes[name] = ok and b or 0
         mem = mem + memBytes[name]
+        if (name ~= myName and memBytes[name] > top) then top = memBytes[name] end
       end
       active = active + 1
       src = src + (data.size or 0)
@@ -360,6 +407,7 @@ local function RefreshMemory(force)
   end
   local springMem = EstimateSpringEngineMemory()
   totals.active, totals.src, totals.mem = active, src, mem
+  totals.maxMem = top
   totals.springMem = springMem
   PushHistory(mem, springMem, collectgarbage("count") * 1024)
 end
@@ -368,13 +416,39 @@ local function UpdateGeometry()
   midx  = vsx * 0.5
   midy  = vsy * 0.5
 
-  local halfWidth = maxWidth * fontSize * 0.5
-  minx = floor(midx - halfWidth - borderx)
-  maxx = floor(midx + halfWidth + borderx)
+  -- width wanted by the ERROR column (only exists while some widget has an error)
+  local want = 0
+  errCount = 0
+  for _, nd in ipairs(fullWidgetsList) do
+    local m, where = GetWidgetError(nd[1], nd[2])
+    if (m) then
+      errCount = errCount + 1
+      local t = ErrorText(m, where)
+      local ew = errMeasure[t]
+      if (not ew) then ew = fontSize * gl.GetTextWidth(t); errMeasure[t] = ew end
+      if (ew > want) then want = ew end
+    end
+  end
+
+  local fixed = nameW + COL_GAP + HIST_W + COL_GAP + COL_MEM_W + COL_GAP + COL_SIZE_W
+  local cap = math.min(ERR_MAX_W, vsx * 0.96 - 2 * borderx - fixed - 2 * COL_GAP)
+  errW = (want > 0) and floor(math.max(120, math.min(want, cap))) or 0
+  local inner = fixed + ((errW > 0) and (2 * COL_GAP + errW) or 0)
+
+  minx = floor(midx - inner * 0.5 - borderx)
+  maxx = floor(midx + inner * 0.5 + borderx)
+
+  -- column anchors:  NAME | histogram + MEMORY (right-aligned) | SIZE (right-aligned) | ERROR
+  xName  = minx + borderx
+  xHist  = xName + nameW + COL_GAP
+  xMemR  = xHist + HIST_W + COL_GAP + COL_MEM_W
+  xSizeR = xMemR + COL_GAP + COL_SIZE_W
+  xErr   = xSizeR + 2 * COL_GAP
 
   local ySize = yStep * (#widgetsList)
   miny = floor(midy - (0.5 * ySize) - bordery - fontSize * 0.5)
   maxy = floor(midy + (0.5 * ySize) + bordery)
+  hdrTop = maxy + yStep + 4
 end
 
 
@@ -423,8 +497,13 @@ end
 
 
 local function SortWidgetListFunc(nd1, nd2)
-  if (nd1[2].fromZip ~= nd2[2].fromZip) then
-    return nd1[2].fromZip  -- mod widgets first
+  local f1, f2 = nd1[2].failed and true or false, nd2[2].failed and true or false
+  if (f1 ~= f2) then
+    return f1  -- files that failed to load first
+  end
+  local z1, z2 = nd1[2].fromZip and true or false, nd2[2].fromZip and true or false
+  if (z1 ~= z2) then
+    return z1  -- mod widgets first
   end
   return (nd1[1] < nd2[1]) -- sort by name
 end
@@ -437,25 +516,40 @@ local function UpdateList()
   widgetHandler.knownChanged = false
 
   local myName = widget:GetInfo().name
-  maxWidth = 0
+  nameW = 0
   widgetsList = {}
+  fullWidgetsList = {}
+  local knownFiles = {}
+  local myCount = 0
+
+  local function Measure(label)
+    local width = fontSize * gl.GetTextWidth(label)
+    if (width > nameW) then nameW = width end
+  end
+
   for name,data in pairs(widgetHandler.knownWidgets) do
+    if (data.filename) then knownFiles[data.filename] = true end
     if (name ~= myName) then
+      myCount = myCount + 1
       table.insert(fullWidgetsList, { name, data })
-      -- look for the maxWidth
-      local width = fontSize * gl.GetTextWidth(name)
-      if (width > maxWidth) then
-        maxWidth = width
-      end
+      Measure(data.fromZip and ('*' .. name .. '*') or name)
     end
   end
-  
-  -- room for the SIZE and MEMORY columns on the right
-  maxWidth = (maxWidth + COLS_PX + fontSize) / fontSize
 
-  local myCount = #fullWidgetsList
   if (widgetHandler.knownCount ~= (myCount + 1)) then
     error('knownCount mismatch')
+  end
+
+  -- widget files that failed to load are not "known"; list them too so their error is visible
+  for filename, f in pairs(widgetHandler.failedWidgets or {}) do
+    if (not knownFiles[filename]) then
+      local label = f.basename or filename
+      table.insert(fullWidgetsList, { label, {
+        failed = true, active = false, filename = filename,
+        basename = f.basename, fromZip = f.fromZip,
+      } })
+      Measure(label)
+    end
   end
 
   table.sort(fullWidgetsList, SortWidgetListFunc)
@@ -497,59 +591,27 @@ end
 function widget:DrawScreen()
   UpdateList()
   RefreshMemory()
-  gl.BeginText()
+  UpdateGeometry()
 
-  -- column x positions (right-aligned text)
-  local memX  = maxx - borderx
-  local sizeX = memX - COL_MEM_W - COL_GAP   -- right edge of the SIZE column
-
-  -- draw the header
-  gl.Text("Widget Selector", midx, maxy + 5, fontSize * 1.25, "oc")
-  gl.Text('\255\255\255\128' .. "SIZE",   sizeX, maxy + 5, fontSize, "or")
-  gl.Text('\255\255\255\128' .. "MEMORY", memX,  maxy + 5, fontSize, "or")
-
-  -- draw the box
-  gl.Color(0.3, 0.3, 0.3, 1.0)
-  gl.Texture(":n:bitmaps/detailtex.bmp")
-  local ts = (2.0 / 512)  --  texture scale 
-  gl.Shape(GL.QUADS, {
-    { v = { minx, miny }, t = { minx * ts, miny * ts } },
-    { v = { maxx, miny }, t = { maxx * ts, miny * ts } },
-    { v = { maxx, maxy }, t = { maxx * ts, maxy * ts } },
-    { v = { minx, maxy }, t = { minx * ts, maxy * ts } } 
-  })
-  gl.Texture(false)
-
-
-  -- draw the widget labels
   local mx,my,lmb,mmb,rmb = Spring.GetMouseState()
-  
-  local tcol = WhiteStr
-  if minx < mx and mx < minx + 30 and miny - 20 < my and my < miny then
-    tcol = '\255\031\031\255'
-  end
-  gl.Text(tcol .. 'All', minx + 15, miny - 15, fontSize * 1.25, "oc")
-  tcol = WhiteStr
-  if maxx - 50 < mx and mx < maxx and miny - 20 < my and my < miny then
-    tcol = '\255\031\031\255'
-  end
-  gl.Text(tcol .. 'None', maxx - 25, miny - 15, fontSize * 1.25, "oc")
-  
-  
   local nd = not widgetHandler.tweakMode and self:AboveLabel(mx, my)
+
+  ---------------------------------------------------------------------------
+  -- pass 0: work out what every visible row looks like
+  ---------------------------------------------------------------------------
+  local rows = {}
   local pointedY = nil
   local pointedEnabled = false
-  local pointedName = (nd and nd[1]) or nil
   local posy = maxy - yStep - bordery
   sby1 = posy + fontSize + fontSpace * 0.5
   for _,namedata in ipairs(widgetsList) do
     local name = namedata[1]
     local data = namedata[2]
-    local color = ''
-    local pointed = (pointedName == name)
     local order = widgetHandler.orderList[name]
-    local enabled = order and (order > 0)
+    local enabled = (not data.failed) and order and (order > 0)
     local active = data.active
+    local pointed = (nd == namedata) and not data.failed
+    local color
     if (pointed and not activescrollbar) then
       pointedY = posy
       pointedEnabled = data.active
@@ -564,33 +626,97 @@ function widget:DrawScreen()
               (enabled and '\255\200\200\064') or '\255\224\064\064'
     end
 
-    local tmpName
+    local row = { y = posy, active = active }
     if (data.fromZip) then
-      -- FIXME: extra chars not counted in text length
-      tmpName = WhiteStr .. '*' .. color .. name .. WhiteStr .. '*'
+      row.nameText = WhiteStr .. '*' .. color .. name .. WhiteStr .. '*'
     else
-      tmpName = color .. name
+      row.nameText = color .. name
     end
 
-    gl.Text(color..tmpName, minx + borderx, posy + fontSize * 0.5, fontSize, "v")
-    -- size of the widget's source file, and the live memory estimate while it is active
-    local sizeTxt = data.size and FmtBytes(data.size) or "?"
     local mb = memBytes[name]
-    local memTxt, memCol
-    if (active and mb) then
-      memTxt, memCol = "~" .. FmtBytes(mb), '\255\128\224\255'
+    if (data.failed) then
+      row.memText, row.memCol = "failed", '\255\255\112\112'
+      row.sizeText = "?"
     else
-      memTxt, memCol = "off", '\255\128\128\128'
+      if (active and mb) then
+        row.mb = mb
+        row.memText, row.memCol = "~" .. FmtBytes(mb), '\255\128\224\255'
+      else
+        row.memText, row.memCol = "off", '\255\128\128\128'
+      end
+      row.sizeText = data.size and FmtBytes(data.size) or "?"
     end
-    gl.Text('\255\200\200\200' .. sizeTxt, sizeX, posy + fontSize * 0.5, fontSize, "vr")
-    gl.Text(memCol .. memTxt,                 memX,  posy + fontSize * 0.5, fontSize, "vr")
-    -- dotted histogram of the memory usage (one dot per slice, scaled to MEM_HIST_MAX)
-    if (active and mb and mb > 0) then
-      DrawMemHistogram(mb, sizeX - 34, posy + 2, 30, fontSize)
+
+    local em, where = GetWidgetError(name, data)
+    if (em and errW > 0) then
+      row.err = FitError(ErrorText(em, where))
     end
+    rows[#rows + 1] = row
     posy = posy - yStep
   end
-  
+
+  ---------------------------------------------------------------------------
+  -- pass 1: geometry (panel, stripes, column lines, dotted histograms, scrollbar)
+  ---------------------------------------------------------------------------
+  gl.Texture(false)
+  gl.Color(0.3, 0.3, 0.3, 1.0)
+  gl.Texture(":n:bitmaps/detailtex.bmp")
+  local ts = (2.0 / 512)  --  texture scale
+  gl.Shape(GL.QUADS, {
+    { v = { minx, miny }, t = { minx * ts, miny * ts } },
+    { v = { maxx, miny }, t = { maxx * ts, miny * ts } },
+    { v = { maxx, hdrTop }, t = { maxx * ts, hdrTop * ts } },
+    { v = { minx, hdrTop }, t = { minx * ts, hdrTop * ts } }
+  })
+  gl.Texture(false)
+
+  -- header strip + rule under it
+  gl.Color(0, 0, 0, 0.45)
+  gl.Rect(minx, maxy, maxx, hdrTop)
+  gl.Color(1, 1, 1, 0.35)
+  gl.Rect(minx, maxy - 0.5, maxx, maxy + 0.5)
+
+  -- zebra stripes; rows with an error get a red tint
+  for i, row in ipairs(rows) do
+    local y0 = row.y - fontSpace * 0.5
+    local y1 = row.y + fontSize + fontSpace * 0.5
+    if (row.err) then
+      gl.Color(0.85, 0.10, 0.10, 0.16)
+      gl.Rect(minx, y0, maxx, y1)
+    elseif (i % 2 == 0) then
+      gl.Color(1, 1, 1, 0.045)
+      gl.Rect(minx, y0, maxx, y1)
+    end
+  end
+
+  -- thin column separators
+  gl.Color(1, 1, 1, 0.10)
+  local seps = { xHist - COL_GAP * 0.5, xMemR + COL_GAP * 0.5 }
+  if (errW > 0) then seps[#seps + 1] = xSizeR + COL_GAP end
+  for _, sx in ipairs(seps) do
+    gl.Rect(sx, miny, sx + 1, hdrTop)
+  end
+
+  -- dotted memory histogram: filled dots run cyan -> orange, empty slots are a faint track
+  for _, row in ipairs(rows) do
+    local y0 = row.y + fontSize * 0.5 - DOT_SZ * 0.5
+    local filled = 0
+    if (row.mb and row.mb > 0) then
+      filled = math.max(1, floor(MemFraction(row.mb) * HIST_DOTS + 0.5))
+    end
+    for d = 1, HIST_DOTS do
+      local x0 = xHist + (d - 1) * DOT_STEP
+      if (d <= filled) then
+        local t = (d - 1) / (HIST_DOTS - 1)
+        gl.Color(0.10 + 0.90 * t, 0.85 - 0.25 * t, 1.0 - 0.80 * t, 0.9)
+      else
+        gl.Color(1, 1, 1, row.active and 0.12 or 0.06)
+      end
+      gl.Rect(x0, y0, x0 + DOT_SZ, y0 + DOT_SZ)
+    end
+  end
+
+  -- scrollbar
   if #widgetsList < #fullWidgetsList then
     sby2 = posy + yStep - fontSpace * 0.5
     sbheight = sby1 - sby2
@@ -726,20 +852,12 @@ function widget:DrawScreen()
     gl.Blending(GL.SRC_ALPHA, GL.ONE_MINUS_SRC_ALPHA)
   end
 
-  -- totals line under the box
-  gl.Text(string.format('\255\200\200\200' .. "%d active   source %s   widget memory ~%s   (Lua heap %s)   Spring: %s",
-                        totals.active, FmtBytes(totals.src), FmtBytes(totals.mem),
-                        FmtBytes(collectgarbage("count") * 1024),
-                        FmtBytes(totals.springMem)),
-          midx, miny - 36, fontSize, "oc")
-  gl.Text('\255\160\160\160' .. "memory = live tables/strings/closures held by the widget (estimate, excludes compiled code)",
-          midx, miny - 52, fontSize * 0.85, "oc")
 
-  -- outline the box
-  xn = minx - 0.5
-  yn = miny - 0.5
-  xp = maxx + 0.5
-  yp = maxy + 0.5
+  -- outline the table (header strip included)
+  local xn = minx - 0.5
+  local yn = miny - 0.5
+  local xp = maxx + 0.5
+  local yp = hdrTop + 0.5
   gl.Color(1, 1, 1)
   gl.Shape(GL.LINE_LOOP, {
     { v = { xn, yn } }, { v = { xp, yn } },
@@ -754,6 +872,59 @@ function widget:DrawScreen()
     { v = { xn, yn } }, { v = { xp, yn } },
     { v = { xp, yp } }, { v = { xn, yp } }
   })
+
+  ---------------------------------------------------------------------------
+  -- pass 2: text
+  ---------------------------------------------------------------------------
+  gl.BeginText()
+
+  gl.Text("Widget Selector", midx, hdrTop + 8, fontSize * 1.25, "oc")
+
+  local hy = maxy + (hdrTop - maxy) * 0.5
+  local hc = '\255\255\255\128'
+  gl.Text(hc .. "WIDGET", xName,  hy, fontSize, "vo")
+  gl.Text(hc .. "MEMORY", xHist,  hy, fontSize, "vo")
+  gl.Text(hc .. "SIZE",   xSizeR, hy, fontSize, "vor")
+  if (errW > 0) then
+    gl.Text('\255\255\128\128' .. "ERROR", xErr, hy, fontSize, "vo")
+  end
+
+  for _, row in ipairs(rows) do
+    local ty = row.y + fontSize * 0.5
+    gl.Text(row.nameText, xName, ty, fontSize, "v")
+    gl.Text(row.memCol .. row.memText, xMemR, ty, fontSize, "vr")
+    gl.Text('\255\200\200\200' .. row.sizeText, xSizeR, ty, fontSize, "vr")
+    if (row.err) then
+      gl.Text('\255\255\112\112' .. row.err, xErr, ty, fontSize, "v")
+    end
+  end
+
+  -- All / None buttons
+  local tcol = WhiteStr
+  if minx < mx and mx < minx + 30 and miny - 20 < my and my < miny then
+    tcol = '\255\031\031\255'
+  end
+  gl.Text(tcol .. 'All', minx + 15, miny - 15, fontSize * 1.25, "oc")
+  tcol = WhiteStr
+  if maxx - 50 < mx and mx < maxx and miny - 20 < my and my < miny then
+    tcol = '\255\031\031\255'
+  end
+  gl.Text(tcol .. 'None', maxx - 25, miny - 15, fontSize * 1.25, "oc")
+
+  -- totals line under the table
+  local totalsTxt = string.format('\255\200\200\200' .. "%d active   source %s   widget memory ~%s   (Lua heap %s)   Spring: %s",
+                                  totals.active, FmtBytes(totals.src), FmtBytes(totals.mem),
+                                  FmtBytes(collectgarbage("count") * 1024),
+                                  FmtBytes(totals.springMem))
+  if (errCount > 0) then
+    totalsTxt = totalsTxt .. '\255\255\112\112' .. string.format("   %d with errors", errCount)
+  end
+  gl.Text(totalsTxt, midx, miny - 36, fontSize, "oc")
+  gl.Text('\255\160\160\160' .. "memory = live tables/strings/closures held by the widget (estimate, excludes compiled code)",
+          midx, miny - 52, fontSize * 0.85, "oc")
+  gl.Text('\255\160\160\160' .. string.format("dots: %s scale, full row = heaviest widget (%s)",
+                                                 HIST_LOG and "log" or "linear", FmtBytes(totals.maxMem)),
+          midx, miny - 66, fontSize * 0.85, "oc")
 
   gl.EndText()
 
@@ -846,14 +1017,16 @@ function widget:MouseRelease(x, y, button)
   if button == 1 then
     if minx < x and x < minx + 30 and miny - 20 < y and y < miny then
       for _,namedata in ipairs(fullWidgetsList) do
-        widgetHandler:EnableWidget(namedata[1])
+        if (not namedata[2].failed) then widgetHandler:EnableWidget(namedata[1]) end
       end
       return -1
     end
     if maxx - 50 < x and x < maxx and miny - 20 < y and y < miny then
       for _,namedata in ipairs(fullWidgetsList) do
-        widgetHandler:DisableWidget(namedata[1])
-        widgetHandler.orderList[namedata[1]] = 0
+        if (not namedata[2].failed) then
+          widgetHandler:DisableWidget(namedata[1])
+          widgetHandler.orderList[namedata[1]] = 0
+        end
       end
       widgetHandler:SaveConfigData()    
       return -1
@@ -867,6 +1040,7 @@ function widget:MouseRelease(x, y, button)
   
   local name = namedata[1]
   local data = namedata[2]
+  if (data.failed) then return -1 end  -- file never loaded: nothing to toggle
   
   if (button == 1) then
     widgetHandler:ToggleWidget(name)
@@ -903,7 +1077,7 @@ end
 function widget:IsAbove(x, y)
   UpdateList()
   if ((x < minx) or (x > maxx + yStep) or
-      (y < miny - 20) or (y > maxy)) then
+      (y < miny - 20) or (y > hdrTop)) then
     return false
   end
   return true
@@ -937,6 +1111,12 @@ function widget:GetTooltip(x, y)
   end
   if (d.fromZip) then
     tt = tt..RedStr..' (mod widget)'
+  end
+  local em, where = GetWidgetError(n, d)
+  if (em) then
+    local what = (where and where ~= "load") and (' in ' .. where .. '()') or ' while loading'
+    if (#em > 500) then em = em:sub(1, 497) .. '...' end
+    tt = tt..'\n'..RedStr..'Error'..what..':\n'..WhiteStr..em
   end
   return tt
 end

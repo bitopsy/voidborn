@@ -74,6 +74,9 @@ widgetHandler = {
   knownCount = 0,
   knownChanged = true,
 
+  widgetErrors  = {},  -- widget name -> { msg = "...", where = "Draw..." }  (runtime errors, shown by F11 selector)
+  failedWidgets = {},  -- filename    -> { msg = "...", basename = "..." }   (files that failed to load)
+
   commands = {},
   customCommands = {},
   inCommandsChanged = false,
@@ -390,23 +393,30 @@ end
 
 function widgetHandler:LoadWidget(filename, fromZip)
   local basename = Basename(filename)
+
+  -- log the failure and remember it so the F11 selector can display it
+  local function Fail(msg)
+    msg = tostring(msg)
+    Spring.Log(section, LOG.ERROR, 'Failed to load: ' .. basename .. '  (' .. msg .. ')')
+    self.failedWidgets[filename] = { msg = msg, basename = basename, fromZip = fromZip }
+    self.knownChanged = true
+    return nil
+  end
+
   local text = VFS.LoadFile(filename)
   if (text == nil) then
-    Spring.Log(section, LOG.ERROR, 'Failed to load: ' .. basename .. '  (missing file: ' .. filename ..')')
-    return nil
+    return Fail('missing file: ' .. filename)
   end
   local chunk, err = loadstring(text, filename)
   if (chunk == nil) then
-    Spring.Log(section, LOG.ERROR, 'Failed to load: ' .. basename .. '  (' .. err .. ')')
-    return nil
+    return Fail(err)
   end
 
   local widget = widgetHandler:NewWidget()
   setfenv(chunk, widget)
   local success, err = pcall(chunk)
   if (not success) then
-    Spring.Log(section, LOG.ERROR, 'Failed to load: ' .. basename .. '  (' .. err .. ')')
-    return nil
+    return Fail(err)
   end
   if (err == false) then
     return nil -- widget asked for a silent death
@@ -425,15 +435,20 @@ function widgetHandler:LoadWidget(filename, fromZip)
 
   err = self:ValidateWidget(widget)
   if (err) then
-    Spring.Log(section, LOG.ERROR, 'Failed to load: ' .. basename .. '  (' .. err .. ')')
-    return nil
+    return Fail(err)
   end
+
+  -- the file loads cleanly: forget any earlier load / runtime error
+  if (self.failedWidgets[filename]) then
+    self.failedWidgets[filename] = nil
+    self.knownChanged = true
+  end
+  self.widgetErrors[name] = nil
 
   local knownInfo = self.knownWidgets[name]
   if (knownInfo) then
     if (knownInfo.active) then
-      Spring.Log(section, LOG.ERROR, 'Failed to load: ' .. basename .. '  (duplicate name)')
-      return nil
+      return Fail('duplicate name')
     end
   else
     -- create a knownInfo table
@@ -452,8 +467,7 @@ function widgetHandler:LoadWidget(filename, fromZip)
   knownInfo.size   = #text   -- source size in bytes, shown by the F11 selector
 
   if (widget.GetInfo == nil) then
-    Spring.Log(section, LOG.ERROR, 'Failed to load: ' .. basename .. '  (no GetInfo() call)')
-    return nil
+    return Fail('no GetInfo() call')
   end
 
   local info  = widget:GetInfo()
@@ -629,13 +643,14 @@ local function SafeWrapFuncNoGL(func, funcName)
       table.remove(r, 1)
       return unpack(r)
     else
+      local name = w.whInfo.name
+      -- remember the error so the F11 selector can display it
+      widgetHandler.widgetErrors[name] = { msg = tostring(r[2]), where = funcName }
       if (funcName ~= 'Shutdown') then
         widgetHandler:RemoveWidget(w)
       else
         Spring.Log(section, LOG.ERROR, 'Error in Shutdown()')
       end
-      local name = w.whInfo.name
-      Spring.Log(section, LOG.ERROR, r[1])
       Spring.Log(section, LOG.ERROR, 'Error in ' .. funcName ..'(): ' .. tostring(r[2]))
       Spring.Log(section, LOG.ERROR, 'Removed widget: ' .. name)
       return nil
@@ -657,12 +672,14 @@ local function SafeWrapFuncGL(func, funcName)
       table.remove(r, 1)
       return unpack(r)
     else
+      local name = w.whInfo.name
+      -- remember the error so the F11 selector can display it
+      widgetHandler.widgetErrors[name] = { msg = tostring(r[2]), where = funcName }
       if (funcName ~= 'Shutdown') then
         widgetHandler:RemoveWidget(w)
       else
         Spring.Log(section, LOG.ERROR, 'Error in Shutdown()')
       end
-      local name = w.whInfo.name
       Spring.Log(section, LOG.ERROR, 'Error in ' .. funcName ..'(): ' .. tostring(r[2]))
       Spring.Log(section, LOG.ERROR, 'Removed widget: ' .. name)
       return nil

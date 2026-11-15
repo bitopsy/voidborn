@@ -10,6 +10,8 @@ Two factions of surreal alien monsters fight over floating asteroids in deep spa
 
 ▶ **In a video**: [VOIDBORN 1.0 — New RTS Game allows you to create endless OP units in-game!](https://www.youtube.com/watch?v=TtKTK60Kb-I) (26 minutes)
 
+What is in the first release, in one list: [docs/release-1.0.md](docs/release-1.0.md).
+
 ## Files
 
 | File | Where it goes |

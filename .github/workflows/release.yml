@@ -13,7 +13,7 @@ on:
   release:
     types: [created]
   push:
-    tags: ["v*"]
+    tags: ["v*", "[0-9]*"]
 
 jobs:
   build:
@@ -38,18 +38,18 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y p7zip-full
 
-      - name: Only build version-shaped tags (e.g. 1.0.0)
+      - name: Only build version-shaped tags (e.g. 1.0 or 1.0.0)
         id: gate
         shell: bash
         env:
           TAG: ${{ github.event.release.tag_name || github.ref_name }}
         run: |
           TAG="${TAG#v}"
-          if [[ "$TAG" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+          if [[ "$TAG" =~ ^[0-9]+\.[0-9]+(\.[0-9]+)?$ ]]; then
             echo "tag=$TAG" >> "$GITHUB_OUTPUT"
             echo "match=true" >> "$GITHUB_OUTPUT"
           else
-            echo "::warning::Tag '$TAG' is not X.Y.X - no archives built."
+            echo "::warning::Tag '$TAG' is not a version - no archives built."
             echo "match=false" >> "$GITHUB_OUTPUT"
           fi
 

@@ -20,6 +20,21 @@ What is in the first release, in one list: [docs/release-1.0.md](docs/release-1.
 | `voidborn_rift.sd7` (+ `.md5.gz`) | the map "Voidborn Rift" → `maps/` folder |
 | `Play_Choir_vs_Bot.txt`, `Play_Maw_vs_Bot.txt`, `Watch_Bot_vs_Bot.txt` | start scripts |
 
+## In the lobby
+
+The game carries the pictures a lobby wants, so it shows up with the right art
+wherever you find it:
+
+* `game/sidepics/choir.png` and `game/sidepics/maw.png` — the faction emblems,
+  named after the factions, so the lobby (SpringLobby, SkyLobby, the TA client)
+  and the Coilbox hub pick them up for the two sides. They are 512 × 512 PNGs:
+  the older TA client wanted a small BMP, the modern ones take anything.
+* `game/bitmaps/loadpictures/voidborn.jpg` (and the PNG beside it) — the loading
+  screen. Coilbox reuses it in its game list until the hub has card art of its
+  own.
+* `tools/gen_sidepics.py` draws all of them, so they stay in the same style as
+  the rest of the art.
+
 ## How to run it
 
 Voidborn is its own game (not a BAR mod), so you start it with an engine binary and a start script, not from the BAR lobby.
@@ -291,6 +306,19 @@ docs/                 notes
 6. `spring-headless` runs `Watch_Bot_vs_Bot.txt` and its log must contain `[VB] build <stamp>` (logged by `game/LuaRules/Gadgets/vb_buildinfo.lua` from the archive the engine really mounted). Without a headless engine the step is reported as NOT verified (`--engine PATH`, `--strict-engine`, `--no-engine-check`)
 
 In game, the title bar of the build panel ends with the same stamp. Options: `--no-install`, `--no-tests`, `--keep-others`.
+
+### Releasing (`.github/workflows/release.yml`)
+
+Pushing a `v1.0.0` tag (or creating a release) builds both archives on the runner
+and attaches them to the release: `voidborn-<tag>.sdz` and
+`voidborn-map-<tag>.sd7`. It runs the same build as here (`build_sdz.py`,
+`tools/build_map.py`, `tools/gen_skybox.py`) and only skips the install and the
+engine check, because a runner has neither an engine nor a games folder. The
+workflow refuses to build anything that is not shaped like `X.Y.Z`.
+
+The map is generated from `map/mapinfo.lua` and the height map the generator
+makes (`tools/build_map.py`, about 20 seconds), together with the skybox the
+map asks for (`tools/gen_skybox.py`, a DDS cubemap with a nebula and stars).
 
 Everything the game contains lives in `game/` (that folder is what `build_sdz.py` zips). The old copies of those folders at the repo root were removed. `tools/` holds the generators (paths are relative to the repo), `map/` the map source, `dist/` the build output.
 

@@ -1,0 +1,85 @@
+name: Build release artifacts
+
+# A tag or a release builds the two archives and attaches them:
+#   dist/voidborn.sdz      the game
+#   dist/voidborn_rift.sd7 the map
+#
+# The build is the same one that runs locally: python3 build_sdz.py compiles
+# every Lua file, runs the smoke tests, builds the archive and compares it with
+# the sources file by file.  Only the install and the engine check are skipped
+# (there is no engine and no games folder on a runner).
+
+on:
+  release:
+    types: [created]
+  push:
+    tags: ["v*"]
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write          # needed to attach the archives to the release
+    steps:
+      - name: Check out the tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name || github.ref }}
+
+      - name: Set up python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install what the build needs
+        run: |
+          python -m pip install --upgrade pip
+          pip install lupa numpy pillow
+          sudo apt-get update
+          sudo apt-get install -y p7zip-full
+
+      - name: Only build version-shaped tags (e.g. 1.0.0)
+        id: gate
+        shell: bash
+        env:
+          TAG: ${{ github.event.release.tag_name || github.ref_name }}
+        run: |
+          TAG="${TAG#v}"
+          if [[ "$TAG" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+            echo "match=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::Tag '$TAG' is not X.Y.X - no archives built."
+            echo "match=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build the game archive
+        if: steps.gate.outputs.match == 'true'
+        run: python3 build_sdz.py --no-install --no-engine-check
+
+      - name: Build the map archive
+        if: steps.gate.outputs.match == 'true'
+        run: |
+          python3 tools/build_map.py
+          python3 tools/gen_skybox.py
+          cd map
+          7z a -t7z -mx=9 ../dist/voidborn_rift.sd7 mapinfo.lua maps > /dev/null
+
+      - name: Make the release if the tag came without one
+        if: steps.gate.outputs.match == 'true' && github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.gate.outputs.tag }}
+        run: |
+          gh release create "$TAG" --title "Voidborn $TAG" --generate-notes --notes-start-tag "$(git tag --sort=-v:refname | sed -n 2p)" || true
+
+      - name: Attach the archives to the release
+        if: steps.gate.outputs.match == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.gate.outputs.tag }}
+          REPO: ${{ github.repository.name }}
+        run: |
+          cp dist/voidborn.sdz      "$REPO-$TAG.sdz"
+          cp dist/voidborn_rift.sd7 "$REPO-map-$TAG.sd7"
+          gh release upload "$TAG" "$REPO-$TAG.sdz" "$REPO-map-$TAG.sd7" --clobber

@@ -237,3 +237,9 @@ print('smf size', os.path.getsize(f'{OUT}/maps/{SHORT}.smf'))
 json.dump(dict(spots=spots, starts=STARTS, size=SZ), open(ROOT + '/out/mapmeta.json', 'w'))
 Image.fromarray(((np.clip(H, -50, 300) + 50) / 350 * 255).astype(np.uint8)).save(OUT + '/height_preview.png')
 print('spots', len(spots))
+
+# ------------------------------------------------------------------ the skybox
+# the mapinfo asks for "skybox.dds"; without it the engine falls back to its
+# default sky and warns about a missing texture
+import gen_skybox
+gen_skybox.main()

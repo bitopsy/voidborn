@@ -217,7 +217,20 @@ for d in data_dirs:
             except OSError as e: say(WARN, f"could not rename {p}: {e}"); shadow += 1
 if not shadow: say(OK, f"no other copy of '{GAME_NAME}' can shadow the new archive")
 maps_dir = os.path.join(os.path.dirname(games_dir), "maps")
-if not glob.glob(os.path.join(maps_dir, "voidborn_rift*")) and not glob.glob(os.path.join(maps_dir, "*oidborn*")):
+# the map travels with the build: install it next to the game so the start
+# scripts find it
+map_src = os.path.join(repo, "dist", "voidborn_rift.sd7")
+if os.path.isfile(map_src) and not args.no_install:
+    try:
+        os.makedirs(maps_dir, exist_ok=True)
+        map_dest = os.path.join(maps_dir, "voidborn_rift.sd7")
+        tmp_map = map_dest + ".part"
+        shutil.copyfile(map_src, tmp_map)
+        os.replace(tmp_map, map_dest)
+        say(OK, f"{maps_dir}/voidborn_rift.sd7  ({os.path.getsize(map_dest)} bytes)")
+    except OSError as e:
+        say(WARN, f"could not install the map: {e}")
+elif not glob.glob(os.path.join(maps_dir, "voidborn_rift*")) and not glob.glob(os.path.join(maps_dir, "*oidborn*")):
     say(WARN, f"no Voidborn Rift map found in {maps_dir} (the Play_*.txt scripts need it; dist/voidborn_rift.sd7 is built by tools/package.sh)")
 
 # ------------------------------------------------------------------------------------------------ 6. the engine

@@ -19,8 +19,12 @@ if not gadgetHandler:IsSyncedCode() then return end
 --   already paid.  When a unit is finished, the gadget hands "vbdev:<spec>" (count=1)
 --   to the existing vb_dev_units gadget, which creates the unit exactly as before.
 --   The state is published to the owner as the team rules param "vbq":
---       <id>|<units left>|<progress 0..1000>|<state b/s/w/h>|<factory unitID or 0>;...
+--       <id>|<units left>|<progress 0..1000>|<state b/s/w/h/p>|<factory unitID or 0>;...
 --   and the ids in vbq:rem / hold / clear may carry the factory: "<id>@<factoryID>".
+--
+--   The states are:  b = building, s = stalled (the team cannot pay), w = waiting in the
+--   queue, h = on hold, p = pending (the factory of the line is still being built, so
+--   the entry waits for the factory to finish; nothing is paid until then).
 --------------------------------------------------------------------------------
 
 local FPS = 30
@@ -185,6 +189,17 @@ local function FactoryCanBuild(fac, ud)
 	return false
 end
 
+-- Is the factory finished?  A factory that is still under construction cannot
+-- build anything yet, so its line waits for it (the entry sits in the queue in
+-- the "p" state - pending - until the factory is done).
+local function FactoryReady(fac)
+	fac = tonumber(fac)
+	if not fac or fac == 0 then return true end       -- the team line of forge designs has no factory
+	if not Spring.ValidUnitID(fac) then return false end
+	if Spring.GetUnitIsBeingBuilt and Spring.GetUnitIsBeingBuilt(fac) then return false end
+	return true
+end
+
 --------------------------------------------------------------------------------
 -- queue operations
 --------------------------------------------------------------------------------
@@ -243,6 +258,8 @@ local function Remove(teamID, tid, n, all, line)
 end
 
 local function Finish(teamID, e, frame)
+	-- the factory has to be finished before the unit may appear
+	if not FactoryReady(e.line) then return end
 	local spec = {}
 	for k, v in pairs(e.spec) do spec[k] = v end
 	spec.count, spec.team = 1, teamID
@@ -326,19 +343,26 @@ function gadget:GameFrame(frame)
 			elseif e ~= active[ln] and e.state ~= "w" then e.state = "w"; dirty[teamID] = true end
 		end
 		for ln, e in pairs(active) do
-			local pr = e.price
-			local dp = math.min(1 / (pr.build * FPS), 1 - e.prog)
-			local m, en = pr.metal * dp, pr.energy * dp
-			if Pay(teamID, m, en) then
-				e.prog = e.prog + dp
-				e.spentM, e.spentE = e.spentM + m, e.spentE + en
-				e.lastOk = frame
-				if e.state ~= "b" then e.state = "b"; dirty[teamID] = true end
-				if e.prog >= 0.9999 then Finish(teamID, e, frame) end
-			elseif frame - e.lastOk > 20 and e.state ~= "s" then
-				e.state = "s"; dirty[teamID] = true
+			if not FactoryReady(e.line) then
+				-- the factory of this line is still being built: the entry waits for it
+				-- (nothing is paid and no progress is made until the factory is done)
+				if e.state ~= "p" then e.state = "p"; dirty[teamID] = true end
+				any = true
+			else
+				local pr = e.price
+				local dp = math.min(1 / (pr.build * FPS), 1 - e.prog)
+				local m, en = pr.metal * dp, pr.energy * dp
+				if Pay(teamID, m, en) then
+					e.prog = e.prog + dp
+					e.spentM, e.spentE = e.spentM + m, e.spentE + en
+					e.lastOk = frame
+					if e.state ~= "b" then e.state = "b"; dirty[teamID] = true end
+					if e.prog >= 0.9999 then Finish(teamID, e, frame) end
+				elseif frame - e.lastOk > 20 and e.state ~= "s" then
+					e.state = "s"; dirty[teamID] = true
+				end
+				any = true
 			end
-			any = true
 		end
 		if any and frame % 4 == 0 then dirty[teamID] = true end
 		if dirty[teamID] then Publish(teamID) end

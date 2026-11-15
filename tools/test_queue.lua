@@ -1,7 +1,8 @@
 -- Mock-engine test of LuaRules/Gadgets/vb_dev_queue.lua.  Run:  python3 tools/test_queue.py
 -- Globals GADGET and HDR (paths) are set by the runner.
 local res, created, rules, spawned, msgs = { metal = 1e6, energy = 1e6 }, {}, {}, {}, {}
-local alive = { [77] = true, [78] = true }
+local alive = { [77] = true, [78] = true, [79] = true }
+local building = {}          -- unitID -> true while the unit is still under construction
 UnitDefs = { [1] = { id = 1, name = "mw_hive", buildOptions = { 2 }, canMove = false, isFactory = true, metalCost = 400, energyCost = 0, buildTime = 3000, health = 100 },
              [2] = { id = 2, name = "mw_gnasher", canMove = true, metalCost = 52, energyCost = 208, buildTime = 468, health = 100, losRadius = 100 },
              [3] = { id = 3, name = "mw_leviathan", canMove = true, metalCost = 900, energyCost = 0, buildTime = 9000, health = 100 } }
@@ -20,7 +21,8 @@ Spring = {
 	GetUnitDefID = function() return 1 end, GetGroundHeight = function() return 0 end,
 	CreateUnit = function(d) created[#created + 1] = d; return #created end,
 	GiveOrderToUnit = function() end, GetTeamStartPosition = function() return 500, 0, 500 end,
-	SendMessageToPlayer = function(_, m) msgs[#msgs + 1] = m end, Echo = function() end }
+	SendMessageToPlayer = function(_, m) msgs[#msgs + 1] = m end, Echo = function() end,
+	GetUnitIsBeingBuilt = function(id) return building[id] == true end }
 gadgetHandler = { IsSyncedCode = function() return true end }
 GG = { VB_ForgeAllowed = function() return forgeOn or cheats end, VB_DevAllowed = function() return cheats end,
        VB_QueueSpawn = function(spec) spawned[#spawned + 1] = spec end }
@@ -52,7 +54,19 @@ check("hold shows as h", (rules.vbq or ""):find("|h|77", 1, true) ~= nil, rules.
 g:RecvLuaMsg("vbq:rem:1:d_mw_gnasher@77", 0); run(1)
 check("remove takes one out", (rules.vbq or ""):find("d_mw_gnasher|2|") ~= nil, rules.vbq)
 
--- 4. factory dies: line removed and paid resources refunded
+-- 4. a factory that is still being built: the unit waits for it and says so
+local n0c, metal0 = #created, res.metal
+building[79] = true
+add(1, '{["base"]="mw_gnasher",["fac"]=79,["id"]="d_mw_gnasher",["plain"]=1}')
+run(30 * 10)
+check("nothing is produced while the factory is unfinished", #created == n0c, #created - n0c)
+check("  ... the entry waits (state p)", (rules.vbq or ""):find("|p|79", 1, true) ~= nil, rules.vbq)
+check("  ... and nothing was paid for it", res.metal == metal0, res.metal - metal0)
+building[79] = nil
+run(3000, function() return #created > n0c end)
+check("the unit is built once the factory is finished", #created == n0c + 1, #created - n0c)
+
+-- 5. factory dies: line removed and paid resources refunded
 local before = res.metal
 run(10)
 alive[77] = false
@@ -60,7 +74,7 @@ g:UnitDestroyed(77, 1, 0)
 g:GameFrame(frame + 1)
 check("dead factory's line is gone", (rules.vbq or "") == "", rules.vbq)
 
--- 5. forge designs: allowed -> spawn at the team start with a sane build time; lua stripped for non-cheaters
+-- 6. forge designs: allowed -> spawn at the team start with a sane build time; lua stripped for non-cheaters
 local n0 = #spawned
 add(1, '{["base"]="mw_gnasher",["id"]="mydesign",["hp"]=500,["lua"]="print(1)"}')
 check("forge design queued (modoption on)", (rules.vbq or ""):find("mydesign|1|") ~= nil, rules.vbq)
@@ -71,7 +85,7 @@ check("  ... in a few seconds, not minutes", frame < 30 * 80, frame / 30 .. " s 
 check("  ... lua= removed for a normal player", sp and sp.lua == nil)
 check("  ... spawn position set (not map centre)", sp and sp.x and math.abs(sp.x - 4096) > 100, sp and sp.x)
 
--- 6. modoption off: forge designs refused
+-- 7. modoption off: forge designs refused
 forgeOn = false
 add(1, '{["base"]="mw_gnasher",["id"]="blocked"}')
 check("forge refused when vb_forge is off", (rules.vbq or ""):find("blocked") == nil and #msgs > 0, msgs[#msgs])

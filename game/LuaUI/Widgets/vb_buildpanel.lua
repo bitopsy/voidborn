@@ -102,12 +102,24 @@ local function RebuildRoster(skip)
 	table.sort(order, function(a, b) return (UnitDefs[a.def].metalCost or 0) < (UnitDefs[b.def].metalCost or 0) end)
 	roster = order
 end
--- the factory that will build this roster unit: the selected one if it can, else the first that can
+-- Is the factory finished?  A factory that is still under construction cannot build
+-- anything yet; the queue entry waits for it (state "p").
+local function FactoryReady(uid)
+	if not uid or not Spring.ValidUnitID(uid) then return false end
+	if Spring.GetUnitIsBeingBuilt and Spring.GetUnitIsBeingBuilt(uid) then return false end
+	return true
+end
+-- the factory that will build this roster unit: the selected one if it can, else the
+-- first that can - a factory that is finished comes first, one that is still being
+-- built is only used when there is no other choice (the entry then waits for it)
 local function RosterFactory(r)
 	local sel = SelectedFactory()
 	if sel then
 		local fd = FactoryDef(sel)
 		if fd and CanBuild(fd, r.def) then return sel end
+	end
+	for _, f in ipairs(r.facs) do
+		if FactoryReady(f) then return f end
 	end
 	return r.facs[1]
 end
@@ -217,7 +229,7 @@ end
 
 -- pie chart of the production progress of a saved design.
 --   state: "b" building (green)   "s" stalled, not enough resources (red)   "w" waiting in the queue (blue)
---          "h" on hold (yellow, with a pause sign)
+--          "h" on hold (yellow, with a pause sign)   "p" pending (cyan, the factory is still being built)
 local function PieVerts(cx, cy, r, frac)
 	local v = { { v = { cx, cy } } }
 	local steps = math.max(2, math.ceil(48 * frac))
@@ -227,7 +239,7 @@ local function PieVerts(cx, cy, r, frac)
 	end
 	return v
 end
-local PIE_COL = { b = { 0.3, 1.0, 0.45 }, s = { 1.0, 0.4, 0.25 }, w = { 0.5, 0.65, 1.0 }, h = { 1.0, 0.85, 0.2 } }
+local PIE_COL = { b = { 0.3, 1.0, 0.45 }, s = { 1.0, 0.4, 0.25 }, w = { 0.5, 0.65, 1.0 }, h = { 1.0, 0.85, 0.2 }, p = { 0.3, 0.85, 1.0 } }
 local function DrawPie(cx, cy, r, prog, st, s)
 	prog = math.max(0, math.min(1, prog or 0))
 	local col = PIE_COL[st] or PIE_COL.w
@@ -248,6 +260,13 @@ local function DrawPie(cx, cy, r, prog, st, s)
 		gl.Rect(cx + r * 0.1, cy - r * 0.45, cx + r * 0.32, cy + r * 0.45)
 	elseif st == "s" then
 		VBFont.Text("!", cx - 3 * s, cy - 6 * s, 14 * s, "o", 1, 1, 1, 1)
+	elseif st == "p" then                                       -- a clock: the factory is still building
+		gl.Color(0, 0, 0, 0.9)
+		local ring = {}
+		for i = 0, 15 do local a = math.pi * 2 * i / 16; ring[#ring + 1] = { v = { cx + r * 0.46 * math.cos(a), cy + r * 0.46 * math.sin(a) } } end
+		gl.Shape(GL.LINE_LOOP, ring)
+		gl.Rect(cx - 1 * s, cy - r * 0.46, cx + 1 * s, cy + 1 * s)
+		gl.Rect(cx - 1 * s, cy - 1 * s, cx + r * 0.3, cy + 1 * s)
 	elseif st == "w" and prog <= 0.004 then
 		VBFont.Text("...", cx - 7 * s, cy - 4 * s, 10 * s, "o", 1, 1, 1, 1)
 	else
@@ -714,7 +733,8 @@ function widget:DrawScreen()
 		local q = queue[hoverTpl]
 		local l1 = hoverTpl .. "   (base: " .. tostring(t.base) .. ")"
 		local l2 = pr and string.format("metal %d   energy %d   time %ds", math.floor(pr.metal + 0.5), math.floor(pr.energy + 0.5), math.floor(pr.build + 0.5)) or "price unknown"
-		local st = q and ({ b = "building", s = "STALLED: not enough metal/energy", w = "waiting", h = "ON HOLD" })[q.st] or nil
+		local st = q and ({ b = "building", s = "STALLED: not enough metal/energy", w = "waiting", h = "ON HOLD",
+			p = "PENDING: the factory is still being built" })[q.st] or nil
 		if q then l2 = l2 .. "   |   " .. math.floor(q.prog * 100 + 0.5) .. "%  " .. (st or "") end
 		local l3 = "click +1 (shift +5)   right-click -1   middle: hold   ctrl+click: edit   red x / ctrl+right: delete"
 		local tw = math.max(w, VBFont.Width(l3, 9) + 14, VBFont.Width(l2, 10) + 14, VBFont.Width(l1, 11) + 14)
@@ -738,7 +758,8 @@ function widget:DrawScreen()
 		local q = fac and queue[PlainId(rd.name) .. "@" .. fac]
 		local l1 = (rd.humanName or rd.name) .. "   (built by your " .. ((fac and FactoryDef(fac) and (FactoryDef(fac).humanName or FactoryDef(fac).name)) or "factory") .. ")"
 		local l2 = pr and string.format("metal %d   energy %d   time %.1fs", math.floor(pr.metal + 0.5), math.floor(pr.energy + 0.5), pr.build) or "price unknown"
-		local st = q and ({ b = "building", s = "STALLED: not enough metal/energy", w = "waiting", h = "ON HOLD" })[q.st] or nil
+		local st = q and ({ b = "building", s = "STALLED: not enough metal/energy", w = "waiting", h = "ON HOLD",
+			p = "PENDING: the factory is still being built" })[q.st] or nil
 		if q then l2 = l2 .. "   |   " .. math.floor(q.prog * 100 + 0.5) .. "%  " .. (st or "") end
 		local l3 = "click +1 (shift +5)   right-click -1   middle: hold   ctrl+right: cancel line"
 		local tw = math.max(w, VBFont.Width(l3, 9) + 14, VBFont.Width(l2, 10) + 14, VBFont.Width(l1, 11) + 14)

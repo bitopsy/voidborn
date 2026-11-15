@@ -68,9 +68,12 @@ nav.topnav .mini{font-size:14px;padding:7px 15px}
 .pagehead p{max-width:62ch;margin:0 auto 22px;color:#b9b4d4;font-size:18px}
 
 /* ---- maps -------------------------------------------------------------- */
-.maps{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:20px;margin-top:22px}
+.maps{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:20px;margin-top:22px;align-items:start}
 .mapcard{background:linear-gradient(160deg,#150f2c,#0c0818);border:1px solid var(--line);border-radius:4px 22px 4px 22px;overflow:hidden;display:flex;flex-direction:column}
-.mapcard .shot{width:100%;aspect-ratio:1/1;object-fit:cover;display:block;background:#0a0718;border-bottom:1px solid var(--line)}
+/* the picture keeps its square shape: without flex:none the card would stretch it
+   to the height of the tallest card in the row.  contain so a wide map (the 2:1
+   ones) is shown whole instead of cropped */
+.mapcard .shot{width:100%;height:auto;flex:none;align-self:flex-start;aspect-ratio:1/1;object-fit:contain;display:block;background:#0a0718;border-bottom:1px solid var(--line)}
 .mapcard .body{padding:18px 20px 20px;flex:1;display:flex;flex-direction:column}
 .mapcard h3{margin:0 0 4px;font-size:22px}
 .mapcard .desc{color:var(--dim);font-size:14.5px;margin:0 0 12px;flex:1}
@@ -81,6 +84,31 @@ nav.topnav .mini{font-size:14px;padding:7px 15px}
 .mapcard .row .btn{font-size:14px;padding:7px 13px}
 .official{border-color:var(--violet);box-shadow:0 0 26px #7a4dff33}
 .badge{display:inline-block;font:600 12px Oxanium,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:var(--ember);border:1px solid #ff9a3c55;border-radius:99px;padding:2px 10px;margin-left:8px;vertical-align:middle}
+
+/* ---- the game demo (a local poster, YouTube only when the visitor asks) -- */
+.video{position:relative;margin:22px 0 0;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:#0a0718}
+.video img{width:100%;height:auto;display:block}
+.video .play{position:absolute;inset:0;display:grid;place-items:center;border:0;background:transparent;cursor:pointer;padding:0}
+.video .play span{width:74px;height:52px;border-radius:14px;background:#ff0033;display:grid;place-items:center;
+  box-shadow:0 8px 26px #000a;transition:transform .15s}
+.video .play span::after{content:"";border-left:20px solid #fff;border-top:12px solid transparent;border-bottom:12px solid transparent;margin-left:5px}
+.video .play:hover span{transform:scale(1.08)}
+.video iframe{width:100%;aspect-ratio:16/9;height:auto;border:0;display:block}
+.video .caption{padding:12px 16px;color:var(--dim);font-size:15px;border-top:1px solid var(--line)}
+.video .caption b{color:#fff}
+
+/* ---- roadmap ----------------------------------------------------------- */
+.road{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:18px;margin-top:22px}
+.roadcard{background:linear-gradient(160deg,#150f2c,#0c0818);border:1px solid var(--line);border-left:3px solid var(--acc);padding:22px;border-radius:4px 22px 4px 4px}
+.roadcard h3{margin:0 0 4px;font-size:21px;color:#fff}
+.roadcard .state{font:600 12px Oxanium,sans-serif;letter-spacing:.07em;text-transform:uppercase;color:var(--acc);margin:0 0 10px}
+.roadcard p{margin:0;color:var(--dim);font-size:15.5px}
+.roadcard .when{margin-top:12px;font-size:13.5px;color:#7d7896}
+.roadcard.soon{border-left-color:var(--ember)}
+.roadcard.soon .state{color:var(--ember)}
+.roadcard.planned{border-left-color:#4a4470}
+.roadcard.planned .state{color:#6c6690}
+.roadcard a{font-weight:600}
 
 /* ---- download / play ---------------------------------------------------- */
 .dl{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px;margin-top:22px}

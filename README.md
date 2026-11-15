@@ -8,6 +8,8 @@ Two factions of surreal alien monsters fight over floating asteroids in deep spa
 * **Choir of the Eye** — pale, many-eyed cyclopes. Long-range lasers, fragile at close quarters.
 * **Maw Swarm** — chitinous, toothed, many-legged. Short reach, tougher, regenerating, cheaper.
 
+▶ **In a video**: [VOIDBORN 1.0 — New RTS Game allows you to create endless OP units in-game!](https://www.youtube.com/watch?v=TtKTK60Kb-I) (26 minutes)
+
 ## Files
 
 | File | Where it goes |
@@ -63,7 +65,7 @@ directory and it shows up in the map list of the game &ndash; no rebuild needed.
 | Minecraft Blockland Overworld v2 | ![Minecraft Blockland Overworld v2](https://raw.githubusercontent.com/bitopsy/BAR-Maps/master/BLOCKLAND/minecraft_blockland_overworld_v2_minimap.png) | 8,192 x 8,192 | 8 | 94 | 188 | [0.82 MB](https://github.com/bitopsy/BAR-Maps/raw/master/BLOCKLAND/minecraft_blockland_overworld_v2.sd7) | [md](https://github.com/bitopsy/BAR-Maps/tree/master/BLOCKLAND) |
 | Chess Classical v1 | ![Chess Classical v1](https://raw.githubusercontent.com/bitopsy/BAR-Maps/master/CHESS/chess-minimap.png) | 5,120 x 5,120 | 2 | 25 | 50 | [0.5 MB](https://github.com/bitopsy/BAR-Maps/raw/master/CHESS/chess_classical_v1.sd7) | [md](https://github.com/bitopsy/BAR-Maps/tree/master/CHESS) |
 | Paris | ![Paris](https://raw.githubusercontent.com/bitopsy/BAR-Maps/master/PARIS/paris_preview.png) | 8,192 x 8,192 | 20 | 117 | 234 | [21.84 MB](https://github.com/bitopsy/BAR-Maps/raw/master/PARIS/paris.sd7) | [md](https://github.com/bitopsy/BAR-Maps/tree/master/PARIS) |
-| planet_earth | ![planet_earth](https://raw.githubusercontent.com/bitopsy/BAR-Maps/master/planet_earth/planet_earth_preview.png) |  | &mdash; | &mdash; | &mdash; | &mdash; no archive yet | [md](https://github.com/bitopsy/BAR-Maps/tree/master/planet_earth) |
+| Planet Earth | ![Planet Earth](https://raw.githubusercontent.com/bitopsy/BAR-Maps/master/planet_earth/planet_earth_preview.png) | 12,288 x 6,144 | 16 | 193 | 579 | [23.08 MB](https://github.com/bitopsy/BAR-Maps/raw/master/planet_earth/planet_earth_v1.sd7) | [md](https://github.com/bitopsy/BAR-Maps/tree/master/planet_earth) |
 | Planet Mars | ![Planet Mars](https://raw.githubusercontent.com/bitopsy/BAR-Maps/master/planet_mars/planet_mars_minimap.png) | 8,192 x 8,192 | 8 | 77 | 232 | [22.89 MB](https://github.com/bitopsy/BAR-Maps/raw/master/planet_mars/planet_mars.sd7) | [md](https://github.com/bitopsy/BAR-Maps/tree/master/planet_mars) |
 | Cosmic Spaceship | ![Cosmic Spaceship](https://raw.githubusercontent.com/bitopsy/BAR-Maps/master/SPACESHIP/SPACESHIP-MINIMAP.png) | 5,120 x 5,120 | 8 | 17 | 58 | [5.16 MB](https://github.com/bitopsy/BAR-Maps/raw/master/SPACESHIP/cosmic_spaceship_v1.sd7) | [md](https://github.com/bitopsy/BAR-Maps/tree/master/SPACESHIP) |
 | USA | ![USA](https://raw.githubusercontent.com/bitopsy/BAR-Maps/master/USA/usa_minimap.png) | 10,240 x 6,144 | 16 | 160 | 320 | [18.55 MB](https://github.com/bitopsy/BAR-Maps/raw/master/USA/usa.sd7) | [md](https://github.com/bitopsy/BAR-Maps/tree/master/USA) |
@@ -218,9 +220,24 @@ Known simplifications: no sounds; unit icons use the engine default; the bot is 
 
 * **SkyLobby**: https://github.com/skynet-gh/skylobby/releases/latest — the lobby client for Spring engine games (it is the successor to SpringLobby). Download the installer for your platform there, then use it to find and join multiplayer games of Voidborn. The manual is at https://github.com/skynet-gh/skylobby/wiki/User-Guide. Host your own server to keep a persistent 24/7 Voidborn world running.
 * **Discord**: https://discord.com/channels/1481771055063502925 — Join the Voidborn community to find games, discuss strategies, and coordinate with other players.
-* **Website**: https://f33.fr/vb/ — Official Voidborn website with downloads, changelog, and community posts. It has a page per subject: [Play & Download](https://f33.fr/vb/play.html), [Maps](https://f33.fr/vb/maps.html) and the [Unit Forge](https://f33.fr/vb/forge.html) (how a custom unit is designed, what it costs and how it grows and splits).
+* **Website**: https://f33.fr/vb/ — Official Voidborn website with downloads, changelog, and community posts. It has a page per subject: [Play](https://f33.fr/vb/play.html), [Maps](https://f33.fr/vb/maps.html), the [Unit Forge](https://f33.fr/vb/forge.html) (how a custom unit is designed, what it costs and how it grows and splits) and the [Roadmap](https://f33.fr/vb/roadmap.html).
 
 We are looking for volunteer 24/7 hosts to keep a persistent Voidborn server running. If you have a server that can run the Spring engine 24/7, please join the Discord and let us know! Help grow the multiplayer community.
+
+## Roadmap
+
+What is being worked on now (the same list is on the website: <https://f33.fr/vb/roadmap.html>):
+
+| Project | State | What it means |
+|---|---|---|
+| **Custom unit balancing and taxation** | in development | the forge prices a custom unit by what you changed; the balance pass over the whole roster is next, so a design nobody plays against is not worth making and one that beats the game is taxed hard |
+| **Factory upgrade from T1 to T2** | in development | a factory that can be upgraded into its second tier: bigger, more expensive, with a build time of its own and a production line that can be switched over |
+| **Unit experience evolution and upgrade, with proliferation control** | in development | units already grow and split; evolution takes that further into a next form, and proliferation control keeps the number of units and the metal in the map in check |
+| **A third faction** | planned | its own shape, units, economy and art, plus the balance that makes three different ways to play worth playing &ndash; the biggest single piece of work |
+| **Hosting games and replays** | planned | a persistent world, a list of the matches running on it and a replay archive that keeps the good games |
+| **Steam** | looking for help | a bigger audience needs distributors: streamers, youtubers and curators who think a game about creating your own OP units is worth talking about. Join the [Discord](https://discord.com/channels/1481771055063502925/) and say so |
+
+The game in a video: [VOIDBORN 1.0 &ndash; New RTS Game allows you to create endless OP units in-game!](https://www.youtube.com/watch?v=TtKTK60Kb-I) (26 minutes).
 
 ## Production queue (stock units and forge designs)
 

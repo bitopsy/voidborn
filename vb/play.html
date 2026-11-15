@@ -13,9 +13,10 @@
 <nav class="topnav"><div class="wrap">
 <a class="brand" href="./index.html">VOID<span>BORN</span></a>
 <a class="navlink" href="./index.html">Home</a>
-<a class="navlink" href="./play.html" aria-current="page">Play &amp; Download</a>
+<a class="navlink" href="./play.html" aria-current="page">Play</a>
 <a class="navlink" href="./maps.html">Maps</a>
 <a class="navlink" href="./forge.html">Unit Forge</a>
+<a class="navlink" href="./roadmap.html">Roadmap</a>
 <span class="spacer"></span>
 <a class="btn sm dc" href="https://discord.com/channels/1481771055063502925/">Discord</a>
 </div></nav>
@@ -91,6 +92,16 @@ islands of ore. Put it into the <code>maps/</code> folder.</p>
 </div>
 </div></section>
 
+<section id="demo"><div class="wrap">
+<h2>See it first</h2>
+<p class="lead">A recording of Voidborn 1.0 in play &ndash; the armies, the factories, the build panel and the unit forge doing their thing.</p>
+<div class="video" id="demobox">
+<img src="img/demo.webp" width="1280" height="720" loading="lazy" decoding="async" alt="Video still of Voidborn 1.0">
+<button class="play" type="button" aria-label="Play the Voidborn demo video"><span></span></button>
+</div>
+<p class="lead" style="margin-top:14px">26 minutes on <a href="https://www.youtube.com/watch?v=TtKTK60Kb-I" rel="noopener">YouTube</a>.</p>
+</div></section>
+
 <section id="multiplayer"><div class="wrap">
 <h2>Multiplayer</h2>
 <p class="lead">Voidborn is played through <a href="https://github.com/skynet-gh/skylobby/releases/latest" rel="noopener">SkyLobby</a>,
@@ -114,8 +125,28 @@ a commander with a super weapon, and their own economy.
 </div></section>
 
 <footer><div class="wrap">
-<p><a href="./index.html">Voidborn</a> &middot; <a href="./play.html">Play &amp; Download</a> &middot; <a href="./maps.html">Maps</a> &middot; <a href="./forge.html">Unit Forge</a> &middot;
+<p><a href="./index.html">Voidborn</a> &middot; <a href="./play.html">Play</a> &middot; <a href="./maps.html">Maps</a> &middot; <a href="./forge.html">Unit Forge</a> &middot; <a href="./roadmap.html">Roadmap</a> &middot;
 <a href="https://github.com/bitopsy/voidborn">Source code</a> &middot; <a href="https://github.com/bitopsy/BAR-Maps">Maps</a></p>
 <p>Free and open source. Voidborn is a project of goddot.</p>
 </div></footer>
+
+<script>
+// the poster is a local picture; YouTube is only asked for when the visitor
+// presses play, so the page itself loads nothing from the network
+(function () {
+  var box = document.getElementById('demobox');
+  if (!box) return;
+  var btn = box.querySelector('.play');
+  if (!btn) return;
+  btn.addEventListener('click', function () {
+    var f = document.createElement('iframe');
+    f.src = 'https://www.youtube-nocookie.com/embed/TtKTK60Kb-I?autoplay=1&rel=0';
+    f.title = 'VOIDBORN 1.0 - demo';
+    f.setAttribute('allow', 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture');
+    f.setAttribute('allowfullscreen', '');
+    box.innerHTML = '';
+    box.appendChild(f);
+  });
+})();
+</script>
 </body></html>

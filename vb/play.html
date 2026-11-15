@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Play &amp; Download Voidborn – Linux, Windows, multiplayer</title>
+<meta name="description" content="Download Voidborn for Linux and Windows, install the game and the map into your Spring engine data folder, and play online with SkyLobby.">
+<meta name="color-scheme" content="dark">
+<link rel="preload" href="./fonts/oxanium-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="./img/logo.webp" as="image" type="image/webp" fetchpriority="high">
+<link rel="stylesheet" href="./fonts/oxanium.css">
+<link rel="stylesheet" href="./style.css">
+</head><body>
+
+<nav class="topnav"><div class="wrap">
+<a class="brand" href="./index.html">VOID<span>BORN</span></a>
+<a class="navlink" href="./index.html">Home</a>
+<a class="navlink" href="./play.html" aria-current="page">Play &amp; Download</a>
+<a class="navlink" href="./maps.html">Maps</a>
+<a class="navlink" href="./forge.html">Unit Forge</a>
+<span class="spacer"></span>
+<a class="btn sm dc" href="https://discord.com/channels/1481771055063502925/">Discord</a>
+</div></nav>
+
+<header class="pagehead"><div class="wrap">
+<img class="logo" src="img/logo.webp" width="150" height="150" fetchpriority="high" decoding="async" alt="Voidborn emblem">
+<h1>PLAY</h1>
+<p>Voidborn is its own game, not a mod of another one: you need the Spring engine and two files.
+Everything is free, there is no account, no launcher and nothing to buy.</p>
+</div></header>
+
+<section id="quick"><div class="wrap">
+<h2>Three steps and you are in the void</h2>
+<ol class="steps">
+<li><b>Get the engine.</b> The game runs on the Spring / Recoil engine. On Linux and Windows the easiest way is
+<a href="https://www.beyondallreason.info/download" rel="noopener">Beyond All Reason</a> (it ships the same engine plus a launcher),
+or the plain <a href="https://springrts.com/" rel="noopener">Spring engine</a> itself.</li>
+<li><b>Put the two files in place.</b> <code>voidborn.sdz</code> goes into the <code>games/</code> folder of your engine data
+directory, <code>voidborn_rift.sd7</code> into <code>maps/</code>. Everything else is inside the archive.</li>
+<li><b>Start a match.</b> Run the engine with one of the start scripts that come with the game, for example
+<code>spring Voidborn 1.0.sdz Play_Choir_vs_Bot.txt</code>, or pick the game in the launcher and play against the bot.</li>
+</ol>
+<div class="note">
+<b>Flatpak installs of BAR?</b> The data directory lives under
+<code>~/.var/app/info.beyondallreason.bar/data/engine/&lt;version&gt;/</code> &ndash; the folder that already holds BAR's own
+<code>games/</code> and <code>maps/</code>. Copy the files there. You may have to start the game from a Flatpak shell.
+</div>
+</div></section>
+
+<section id="download"><div class="wrap">
+<h2>Download</h2>
+<p class="lead">The game archive and the map are in the repository. Grab them straight from here, or clone the repository and
+run <code>python3 build_sdz.py</code> to build the archive yourself from the sources.</p>
+
+<div class="dl">
+<div class="dlcard">
+<h3>The game</h3>
+<p style="color:var(--dim);font-size:15px;margin:0">The whole game: units, weapons, scripts, the interface and the map generator.
+Unpack it into the <code>games/</code> folder of your engine data directory.</p>
+<ul class="files">
+<li><a href="https://github.com/bitopsy/voidborn/raw/master/dist/voidborn.sdz" rel="noopener">voidborn.sdz</a><span>5.1 MB &middot; the game</span></li>
+<li><a href="https://github.com/bitopsy/voidborn" rel="noopener">the whole repository</a><span>source, generators, tests</span></li>
+</ul>
+</div>
+
+<div class="dlcard">
+<h3>The map</h3>
+<p style="color:var(--dim);font-size:15px;margin:0">Voidborn Rift, the official arena: two tiered home asteroids, a central Eye and
+islands of ore. Put it into the <code>maps/</code> folder.</p>
+<ul class="files">
+<li><a href="https://github.com/bitopsy/voidborn/raw/master/dist/voidborn_rift.sd7" rel="noopener">voidborn_rift.sd7</a><span>0.9 MB &middot; Voidborn Rift</span></li>
+<li><a href="./maps.html">more maps</a><span>the map repository</span></li>
+</ul>
+</div>
+
+<div class="dlcard">
+<h3>Start scripts</h3>
+<p style="color:var(--dim);font-size:15px;margin:0">Ready-made matches. <code>Play_*</code> starts you against the bot,
+<code>Watch_Bot_vs_Bot.txt</code> sends two bots at each other so you can just watch.</p>
+<ul class="files">
+<li><a href="https://github.com/bitopsy/voidborn/raw/master/Play_Choir_vs_Bot.txt" rel="noopener">Play_Choir_vs_Bot.txt</a><span>you (Choir) vs the bot</span></li>
+<li><a href="https://github.com/bitopsy/voidborn/raw/master/Play_Maw_vs_Bot.txt" rel="noopener">Play_Maw_vs_Bot.txt</a><span>you (Maw) vs the bot</span></li>
+<li><a href="https://github.com/bitopsy/voidborn/raw/master/Watch_Bot_vs_Bot.txt" rel="noopener">Watch_Bot_vs_Bot.txt</a><span>two bots, spectate</span></li>
+</ul>
+</div>
+</div>
+
+<div class="kv" style="margin-top:26px">
+<div><b>Linux</b><span>Flatpak, AppImage or the plain engine: all three work</span></div>
+<div><b>Windows</b><span>the Spring / BAR engine runs it unchanged</span></div>
+<div><b>macOS</b><span>the engine needs a port, the game itself is portable</span></div>
+<div><b>Open source</b><span>MIT-style licence, fork it and ship your own version</span></div>
+</div>
+</div></section>
+
+<section id="multiplayer"><div class="wrap">
+<h2>Multiplayer</h2>
+<p class="lead">Voidborn is played through <a href="https://github.com/skynet-gh/skylobby/releases/latest" rel="noopener">SkyLobby</a>,
+the lobby client for Spring engine games (it is the successor to SpringLobby). Install it, point it at your engine
+directory and it lists every running Voidborn server.</p>
+
+<div class="grid">
+<div class="card big"><h3>Find a game</h3><p>SkyLobby lists the live servers with their map, the teams that are free and how long the
+match has been running. Join with two clicks.</p></div>
+<div class="card big"><h3>Host your own</h3><p>Run the engine as a host, open the port and the server shows up in the lobby for everybody else.
+We are looking for volunteer 24/7 hosts &ndash; if you can keep one running, <a href="https://discord.com/channels/1481771055063502925/">join the Discord</a> and say so.</p></div>
+<div class="card"><h3>Without a lobby</h3><p>Every match is a start script, so you can also connect directly to a server address if someone gives you one.</p></div>
+<div class="card"><h3>Cheats off by default</h3><p>The unit forge is available to everybody, but the free <code>/vbcreate</code> console needs cheats or a single player.</p></div>
+</div>
+
+<div class="note" style="margin-top:26px">
+<b>Which side do you pick?</b> The <b>Choir of the Eye</b> are pale, many-eyed cyclopes with long-range lasers; the
+<b>Maw Swarm</b> are chitinous, toothed and many-legged, cheap, tough and short-reaching. Both have six mobile unit types,
+a commander with a super weapon, and their own economy.
+</div>
+</div></section>
+
+<footer><div class="wrap">
+<p><a href="./index.html">Voidborn</a> &middot; <a href="./play.html">Play &amp; Download</a> &middot; <a href="./maps.html">Maps</a> &middot; <a href="./forge.html">Unit Forge</a> &middot;
+<a href="https://github.com/bitopsy/voidborn">Source code</a> &middot; <a href="https://github.com/bitopsy/BAR-Maps">Maps</a></p>
+<p>Free and open source. Voidborn is a project of goddot.</p>
+</div></footer>
+</body></html>

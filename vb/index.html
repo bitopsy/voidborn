@@ -6,62 +6,24 @@
 <link rel="preload" href="./fonts/oxanium-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="./img/logo.webp" as="image" type="image/webp" fetchpriority="high">
 <link rel="stylesheet" href="./fonts/oxanium.css">
-<style>
-:root{--void:#07050f;--panel:#0f0b1d;--line:#2d2450;--violet:#8b5cff;--eye:#6fb3ff;--bone:#d5dbea;--dim:#9a96b6;--ember:#ff9a3c;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:dark}
-html{scroll-padding-top:env(safe-area-inset-top,0px);scroll-behavior:smooth}
-*,*::before,*::after{box-sizing:inherit}
-body{margin:0;background:radial-gradient(ellipse at 50% 0,#2a1370 0,#0c0820 38%,#07050f 70%) fixed;color:var(--bone);font:17px/1.65 system-ui,-apple-system,"Segoe UI",sans-serif;overflow-x:hidden}
-h1,h2,h3,h4,.btn,.chip,.tag{font-family:Oxanium,Impact,sans-serif}
-a{color:var(--eye)}
-.wrap{max-width:1180px;margin:0 auto;padding:0 22px}
-section{padding:80px 0}
-h2{font-size:clamp(28px,4.6vw,48px);margin:0 0 14px;font-weight:800;line-height:1.1}
-h3{font-size:26px;margin:36px 0 6px;color:#fff}
-.lead{max-width:62ch;color:var(--dim);margin:0 0 30px}
-.hero{min-height:92svh;display:grid;place-items:center;text-align:center;padding:50px 0 40px}
-.logo{width:min(210px,50vw);border-radius:34px;box-shadow:0 0 70px #7a4dff88,0 0 0 1px #ffffff18}
-h1{font-size:clamp(54px,13vw,148px);line-height:.95;margin:26px 0 10px;font-weight:800;letter-spacing:.06em;background:linear-gradient(#fff,#a99cff 60%,#5a3fd0);-webkit-background-clip:text;background-clip:text;color:transparent}
-.hero h2{font-size:clamp(22px,3.6vw,38px);max-width:24ch;margin:0 auto 14px}
-.hero p{max-width:60ch;margin:0 auto 26px;color:#b9b4d4;font-size:19px}
-.btns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
-.btn{font-weight:600;font-size:17px;padding:13px 24px;border-radius:6px;text-decoration:none;border:1px solid var(--violet);color:#fff;background:linear-gradient(#6b3df0,#4a22b8)}
-.btn.alt{background:transparent;border-color:var(--line);color:var(--bone)}
-.btn.dc{background:#5865f2;border-color:#7983f5}
-.btn:hover{filter:brightness(1.2)}
-.btn:focus-visible{outline:2px solid var(--eye);outline-offset:2px}
-.chips{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:28px}
-.chip{border:1px solid var(--line);background:#120d26;padding:6px 14px;border-radius:99px;font-weight:600;font-size:15px}.chip b{color:var(--ember)}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px}
-.card{background:linear-gradient(160deg,#150f2c,#0c0818);border:1px solid var(--line);padding:24px;border-radius:4px 22px 4px 22px}
-.card h3{margin:0 0 8px;font-size:22px}.card p{margin:0;color:var(--dim);font-size:16px}
-.card.big{border-color:var(--violet)}
-.leg{color:var(--dim);font-size:15px;margin:0 0 6px}
-.ug{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px;margin-top:14px}
-.u,.s{background:#0c0818;border:1px solid var(--line);border-top:3px solid var(--acc);padding:14px;border-radius:4px}
-.top{display:flex;justify-content:space-between;align-items:center;gap:8px}
-.ic{width:112px;height:112px;flex:none}
-.sp{background-size:400% 400%;background-repeat:no-repeat}
-.choir{background-image:url(img/choir.webp)}.maw{background-image:url(img/maw.webp)}
-.rd{width:112px;height:112px;flex:none;background:radial-gradient(circle,#14307055,transparent 70%);border-radius:50%}
-.u h4,.s h4{margin:8px 0 0;font-size:19px;color:#fff}
-.r{margin:0;color:var(--acc);font:600 14px Oxanium,sans-serif}
-.m{margin:6px 0 0;color:var(--dim);font-size:13.5px;line-height:1.5}
-.s{text-align:center;padding:10px}.s .ic{width:96px;height:96px;margin:0 auto}.sg{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-top:14px}
-.mapbox{display:grid;grid-template-columns:1fr 1fr;gap:34px;align-items:center}
-.mm{width:100%;height:auto;border-radius:6px;border:1px solid var(--line);margin-bottom:14px}
-pre{background:#0c0818;border:1px solid var(--line);padding:18px;border-radius:6px;overflow-x:auto;font-size:14.5px;color:#cdd6f6}
-.dev{border:1px solid var(--violet);border-radius:6px 30px 6px 30px;padding:clamp(24px,5vw,56px);background:linear-gradient(140deg,#1d1050,#0b0718 70%)}
-.dev .chips{justify-content:flex-start;margin:18px 0 26px}
-footer{border-top:1px solid var(--line);padding:30px 0 46px;color:var(--dim);text-align:center;font-size:15px}
-@media(max-width:860px){.mapbox{grid-template-columns:1fr}}
-</style></head><body>
+<link rel="stylesheet" href="./style.css"></head><body>
+
+<nav class="topnav"><div class="wrap">
+<a class="brand" href="./index.html">VOID<span>BORN</span></a>
+<a class="navlink" href="./index.html" aria-current="page">Home</a>
+<a class="navlink" href="./play.html">Play &amp; Download</a>
+<a class="navlink" href="./maps.html">Maps</a>
+<a class="navlink" href="./forge.html">Unit Forge</a>
+<span class="spacer"></span>
+<a class="btn sm dc" href="https://discord.com/channels/1481771055063502925/">Discord</a>
+</div></nav>
 
 <header class="hero"><div class="wrap">
 <img class="logo" src="img/logo.webp" width="210" height="210" fetchpriority="high" decoding="async" alt="Voidborn emblem: a one-eyed metallic monster haloed by rings above a purple vortex">
 <h1>VOIDBORN</h1>
 <h2>Two alien armies. One shattered void. Every unit flies.</h2>
 <p>A 3D space RTS that runs directly on the Spring/Recoil engine. Free, open source, and built so you can create your own units.</p>
-<div class="btns"><a class="btn" href="https://github.com/bitopsy/voidborn">Get the game on GitHub</a><a class="btn dc" href="https://discord.com/channels/1481771055063502925/">Join the Discord</a><a class="btn alt" href="#units">Inspect the units</a></div>
+<div class="btns"><a class="btn" href="./play.html">Download and play</a><a class="btn alt" href="https://github.com/bitopsy/voidborn">Get the game on GitHub</a><a class="btn dc" href="https://discord.com/channels/1481771055063502925/">Join the Discord</a><a class="btn alt" href="#units">Inspect the units</a></div>
 <div class="chips"><span class="chip"><b>Free</b> forever</span><span class="chip"><b>Open source</b> on GitHub</span><span class="chip"><b>16</b> units, 2 factions</span><span class="chip"><b>43</b> metal spots on the Rift</span></div>
 </div></header>
 
@@ -91,10 +53,26 @@ footer{border-top:1px solid var(--line);padding:30px 0 46px;color:var(--dim);tex
 <div style="--acc:#ff9a3c"><h3>Maw Swarm</h3><div class="sg"><div class="s"><div class="ic sp maw" style="background-position:0.00% 66.67%"></div><h4>Brood Hive</h4><p class="r">Factory</p></div><div class="s"><div class="ic sp maw" style="background-position:33.33% 66.67%"></div><h4>Root Drill</h4><p class="r">Metal extractor</p></div><div class="s"><div class="ic sp maw" style="background-position:66.67% 66.67%"></div><h4>Sunbloom</h4><p class="r">Energy</p></div><div class="s"><div class="ic sp maw" style="background-position:100.00% 66.67%"></div><h4>Heartfire Egg</h4><p class="r">Advanced energy</p></div><div class="s"><div class="ic sp maw" style="background-position:0.00% 100.00%"></div><h4>Gut Cyst</h4><p class="r">Storage</p></div><div class="s"><div class="ic sp maw" style="background-position:33.33% 100.00%"></div><h4>Listening Maw</h4><p class="r">Radar</p></div><div class="s"><div class="ic sp maw" style="background-position:66.67% 100.00%"></div><h4>Tooth Spire</h4><p class="r">Light defence</p></div><div class="s"><div class="ic sp maw" style="background-position:100.00% 100.00%"></div><h4>Maw Bastion</h4><p class="r">Heavy defence</p></div></div></div>
 </div></section>
 
-<section id="map"><div class="wrap mapbox"><div>
-<h2>Voidborn Rift</h2>
-<p class="lead" style="margin:0">A 5120 × 5120 map for 2–4 players. Two symmetric home asteroids hold ten metal spots each, with three terrace heights and a crater-ring Eye in the centre. Islands float in a true void under a star and nebula skybox, and 43 metal spots are up for grabs.</p></div>
-<div><img class="mm" src="img/minimap.webp" width="520" height="520" loading="lazy" decoding="async" alt="Voidborn Rift minimap"><div class="chips" style="justify-content:flex-start;margin:0"><span class="chip"><b>43</b> metal spots</span><span class="chip">2v2 start spots</span><span class="chip"><b>3</b> terrace heights</span><span class="chip">No water, only void</span></div></div></div></section>
+<section id="map"><div class="wrap">
+<h2>Voidborn Rift, and a family of arenas</h2>
+<p class="lead">The official map is <b>Voidborn Rift</b>: a 5120 &times; 5120 void of floating asteroids for 2&ndash;4 players. Two
+symmetric home asteroids hold ten metal spots each, with three terrace heights and a crater-ring Eye in the centre. Islands float
+in a true void under a star and nebula skybox, and 43 metal spots are up for grabs.</p>
+<div class="grid">
+<div class="card big"><h3>Voidborn Rift</h3><p>The official arena. No water, only void &ndash; everything flies, and the height you fight at
+matters more than the ground you stand on.</p><p style="margin-top:12px"><a class="btn sm" href="./maps.html">All the maps</a></p></div>
+<div class="card big"><h3>Ten more arenas</h3><p>The map repository holds ten more: Akuma, Avatar, Blockland, Chess, Paris, Planet Earth,
+Planet Mars, Cosmic Spaceship, the USA and Yin-Yang &ndash; from a 2-player duel to a 20-player free-for-all, each with its own
+size, terrain, metal layout and preview.</p><p style="margin-top:12px"><a class="btn sm alt" href="./maps.html">Map list with statistics</a></p></div>
+</div>
+<div class="mapbox" style="margin-top:26px"><div>
+<img class="mm" src="img/minimap.webp" width="520" height="520" loading="lazy" decoding="async" alt="Voidborn Rift minimap">
+</div><div>
+<div class="chips" style="justify-content:flex-start;margin:0"><span class="chip"><b>43</b> metal spots</span><span class="chip">2v2 start spots</span><span class="chip"><b>3</b> terrace heights</span><span class="chip">No water, only void</span></div>
+<p class="lead" style="margin-top:18px">Every map is a <code>.sd7</code> archive you drop into the <code>maps/</code> folder of your engine
+data directory. No rebuild of the game needed.</p>
+</div></div>
+</div></section>
 
 <section id="play"><div class="wrap">
 <h2>Play it in five minutes</h2>
@@ -102,7 +80,54 @@ footer{border-top:1px solid var(--line);padding:30px 0 46px;color:var(--dim);tex
 <pre>&lt;Spring data dir&gt;/games/voidborn.sdz
 &lt;Spring data dir&gt;/maps/voidborn_rift.sd7
 &lt;Spring data dir&gt;/engine/&lt;version&gt;/spring  /path/to/Play_Choir_vs_Bot.txt</pre>
-<p class="lead">When the game screen loads, press Enter or the Start button. Use <b>Play_Maw_vs_Bot.txt</b> for the swarm, or <b>Watch_Bot_vs_Bot.txt</b> to spectate. To make your own units, run <b>python3 tools/gen_assets.py &amp;&amp; python3 tools/gen_defs.py</b> from the source zip and rebuild.</p>
+<p class="lead">When the game screen loads, press Enter or the Start button. Use <b>Play_Maw_vs_Bot.txt</b> for the swarm, or <b>Watch_Bot_vs_Bot.txt</b> to spectate.</p>
+<div class="btns" style="justify-content:flex-start;margin-top:20px">
+<a class="btn" href="./play.html">Downloads for Linux and Windows</a>
+<a class="btn alt" href="https://github.com/skynet-gh/skylobby/releases/latest">SkyLobby for multiplayer</a>
+<a class="btn alt" href="https://springrts.com/">The Spring engine</a>
+</div>
+</div></section>
+
+<section id="features"><div class="wrap">
+<h2>Built for the game, not for a screenshot</h2>
+<p class="lead">The interface is written in Lua and runs inside the engine: everything below is drawn by the game itself,
+with no external tool and nothing to install.</p>
+<div class="grid">
+<div class="card big"><h3>A production queue that queues</h3><p>The build panel always lists every mobile unit your factories can build.
+Click one and it is queued at the selected factory, or at the first factory that can build it. Every factory has its own
+line and they all build in parallel, each tile showing a pie chart and how many are waiting. Middle click holds a line,
+right click takes one unit out, ctrl+right cancels the line and refunds what was paid.</p></div>
+<div class="card big"><h3>A factory that is not finished yet</h3><p>Order a unit from a hive that is still under construction and it waits for it:
+the tile shows a cyan clock, the hover text says <em>pending</em>, and not a single unit of metal is paid until the hive is
+done. Then the line starts on its own.</p></div>
+<div class="card"><h3>Health bars</h3><p>A bar above every visible unit: green to red for yours and your allies, red for the enemy,
+and a second blue bar for the build progress of an unfinished structure.</p></div>
+<div class="card"><h3>Sensor ranges</h3><p>The line of sight (green) and the radar (blue) circles on the ground for the units you
+select, and for the structure you are placing.</p></div>
+<div class="card"><h3>Role icons when you zoom out</h3><p>Far out, every unit turns into a white glyph of its role &ndash; commander,
+builder, scout, raider, artillery, heavy &ndash; which the engine tints with the team colour.</p></div>
+<div class="card"><h3>Everything is measurable</h3><p>The unit census tracks every unit on the field: totals, histograms of health, speed,
+range, damage and experience, and which units are closest to splitting.</p></div>
+</div>
+</div></section>
+
+<section id="forge"><div class="wrap">
+<h2>Create your own units, and pay for them</h2>
+<p class="lead">Voidborn is not a closed game. The unit forge takes an existing unit, changes its numbers with sliders, gives it a
+brand new 3D body built out of primitives and maps a picture onto it &ndash; then puts a price on it, because a unit that is
+stronger than the one it was cloned from is not free.</p>
+<div class="grid">
+<div class="card"><h3>The price is worked out for you</h3><p>Health, speed, range, damage, reload, sight, altitude, the 3D body and the
+group size all add a share of the base metal cost of the unit. The premium also costs build time: the unit takes up to nine
+times as long to build as the one it was cloned from.</p></div>
+<div class="card"><h3>Units grow and split</h3><p>Every mobile unit grows as it gains experience and splits in two at 0.14 &ndash; by then
+it has doubled in size. Both halves keep the health fraction, the orders and the whole design. The host sets both numbers
+in the settings panel.</p></div>
+</div>
+<div class="btns" style="justify-content:flex-start;margin-top:22px">
+<a class="btn" href="./forge.html">How the forge, the price and the split work</a>
+<a class="btn alt" href="https://github.com/bitopsy/voidborn">Read the source</a>
+</div>
 </div></section>
 
 <section id="join"><div class="wrap"><div class="dev">
@@ -112,5 +137,9 @@ footer{border-top:1px solid var(--line);padding:30px 0 46px;color:var(--dim);tex
 <div class="btns" style="justify-content:flex-start"><a class="btn" href="https://github.com/bitopsy/voidborn">Fork on GitHub</a><a class="btn dc" href="https://discord.com/channels/1481771055063502925/">Join the Discord</a><a class="btn alt" href="https://github.com/bitopsy/voidborn/issues">Open an issue</a></div>
 </div></div></section>
 
-<footer><div class="wrap">Voidborn is a free, open-source game by <a href="https://github.com/bitopsy">bitopsy</a> · <a href="https://github.com/bitopsy/voidborn">GitHub</a> · <a href="https://discord.com/channels/1481771055063502925/">Discord</a></div></footer>
+<footer><div class="wrap">
+<p><a href="./index.html">Voidborn</a> &middot; <a href="./play.html">Play &amp; Download</a> &middot; <a href="./maps.html">Maps</a> &middot; <a href="./forge.html">Unit Forge</a> &middot;
+<a href="https://github.com/bitopsy/voidborn">GitHub</a> &middot; <a href="https://github.com/bitopsy/BAR-Maps">Maps repo</a> &middot; <a href="https://discord.com/channels/1481771055063502925/">Discord</a></p>
+<p>Voidborn is a free, open-source game by <a href="https://github.com/bitopsy">bitopsy</a>.</p>
+</div></footer>
 </body></html>

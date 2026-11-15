@@ -1,0 +1,116 @@
+/* Voidborn website - shared stylesheet (all pages).
+   The dark space theme: violet and eye-blue on near-black, Oxanium for the headings.
+   Everything is local: no request leaves the site. */
+
+:root{--void:#07050f;--panel:#0f0b1d;--line:#2d2450;--violet:#8b5cff;--eye:#6fb3ff;--bone:#d5dbea;--dim:#9a96b6;--ember:#ff9a3c;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px);scroll-behavior:smooth}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:radial-gradient(ellipse at 50% 0,#2a1370 0,#0c0820 38%,#07050f 70%) fixed;color:var(--bone);font:17px/1.65 system-ui,-apple-system,"Segoe UI",sans-serif;overflow-x:hidden}
+h1,h2,h3,h4,.btn,.chip,.tag{font-family:Oxanium,Impact,sans-serif}
+a{color:var(--eye)}
+.wrap{max-width:1180px;margin:0 auto;padding:0 22px}
+section{padding:80px 0}
+h2{font-size:clamp(28px,4.6vw,48px);margin:0 0 14px;font-weight:800;line-height:1.1}
+h3{font-size:26px;margin:36px 0 6px;color:#fff}
+.lead{max-width:62ch;color:var(--dim);margin:0 0 30px}
+.hero{min-height:92svh;display:grid;place-items:center;text-align:center;padding:50px 0 40px}
+.logo{width:min(210px,50vw);border-radius:34px;box-shadow:0 0 70px #7a4dff88,0 0 0 1px #ffffff18}
+h1{font-size:clamp(54px,13vw,148px);line-height:.95;margin:26px 0 10px;font-weight:800;letter-spacing:.06em;background:linear-gradient(#fff,#a99cff 60%,#5a3fd0);-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero h2{font-size:clamp(22px,3.6vw,38px);max-width:24ch;margin:0 auto 14px}
+.hero p{max-width:60ch;margin:0 auto 26px;color:#b9b4d4;font-size:19px}
+.btns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.btn{font-weight:600;font-size:17px;padding:13px 24px;border-radius:6px;text-decoration:none;border:1px solid var(--violet);color:#fff;background:linear-gradient(#6b3df0,#4a22b8)}
+.btn.alt{background:transparent;border-color:var(--line);color:var(--bone)}
+.btn.dc{background:#5865f2;border-color:#7983f5}
+.btn.sm{padding:9px 16px;font-size:15px}
+.btn:hover{filter:brightness(1.2)}
+.btn:focus-visible{outline:2px solid var(--eye);outline-offset:2px}
+.chips{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:28px}
+.chip{border:1px solid var(--line);background:#120d26;padding:6px 14px;border-radius:99px;font-weight:600;font-size:15px}.chip b{color:var(--ember)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px}
+.card{background:linear-gradient(160deg,#150f2c,#0c0818);border:1px solid var(--line);padding:24px;border-radius:4px 22px 4px 22px}
+.card h3{margin:0 0 8px;font-size:22px}.card p{margin:0;color:var(--dim);font-size:16px}
+.card.big{border-color:var(--violet)}
+.leg{color:var(--dim);font-size:15px;margin:0 0 6px}
+.ug{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px;margin-top:14px}
+.u,.s{background:#0c0818;border:1px solid var(--line);border-top:3px solid var(--acc);padding:14px;border-radius:4px}
+.top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.ic{width:112px;height:112px;flex:none}
+.sp{background-size:400% 400%;background-repeat:no-repeat}
+.choir{background-image:url(img/choir.webp)}.maw{background-image:url(img/maw.webp)}
+.rd{width:112px;height:112px;flex:none;background:radial-gradient(circle,#14307055,transparent 70%);border-radius:50%}
+.u h4,.s h4{margin:8px 0 0;font-size:19px;color:#fff}
+.r{margin:0;color:var(--acc);font:600 14px Oxanium,sans-serif}
+.m{margin:6px 0 0;color:var(--dim);font-size:13.5px;line-height:1.5}
+.s{text-align:center;padding:10px}.s .ic{width:96px;height:96px;margin:0 auto}.sg{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+.mapbox{display:grid;grid-template-columns:1fr 1fr;gap:34px;align-items:center}
+.mm{width:100%;height:auto;border-radius:6px;border:1px solid var(--line);margin-bottom:14px}
+pre{background:#0c0818;border:1px solid var(--line);padding:18px;border-radius:6px;overflow-x:auto;font-size:14.5px;color:#cdd6f6}
+.dev{border:1px solid var(--violet);border-radius:6px 30px 6px 30px;padding:clamp(24px,5vw,56px);background:linear-gradient(140deg,#1d1050,#0b0718 70%)}
+.dev .chips{justify-content:flex-start;margin:18px 0 26px}
+footer{border-top:1px solid var(--line);padding:30px 0 46px;color:var(--dim);text-align:center;font-size:15px}
+@media(max-width:860px){.mapbox{grid-template-columns:1fr}}
+
+/* ---- navigation ------------------------------------------------------- */
+nav.topnav{position:sticky;top:0;z-index:20;background:#0a0718ee;backdrop-filter:blur(9px);border-bottom:1px solid var(--line)}
+nav.topnav .wrap{display:flex;align-items:center;gap:18px;min-height:58px}
+nav.topnav .brand{font-family:Oxanium,Impact,sans-serif;font-weight:800;font-size:19px;letter-spacing:.05em;color:#fff;text-decoration:none;white-space:nowrap}
+nav.topnav .brand span{color:var(--violet)}
+nav.topnav a.navlink{color:var(--dim);text-decoration:none;font-weight:600;font-size:15px;padding:6px 2px;border-bottom:2px solid transparent}
+nav.topnav a.navlink:hover,nav.topnav a.navlink[aria-current]{color:#fff;border-bottom-color:var(--violet)}
+nav.topnav .spacer{flex:1}
+nav.topnav .mini{font-size:14px;padding:7px 15px}
+@media(max-width:640px){nav.topnav .wrap{gap:12px;flex-wrap:wrap;padding-top:6px;padding-bottom:6px}nav.topnav a.navlink{font-size:14px}}
+
+/* ---- page head (the sub pages) ----------------------------------------- */
+.pagehead{padding:64px 0 8px;text-align:center}
+.pagehead h1{font-size:clamp(38px,7vw,86px);margin:12px 0 10px}
+.pagehead p{max-width:62ch;margin:0 auto 22px;color:#b9b4d4;font-size:18px}
+
+/* ---- maps -------------------------------------------------------------- */
+.maps{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:20px;margin-top:22px}
+.mapcard{background:linear-gradient(160deg,#150f2c,#0c0818);border:1px solid var(--line);border-radius:4px 22px 4px 22px;overflow:hidden;display:flex;flex-direction:column}
+.mapcard .shot{width:100%;aspect-ratio:1/1;object-fit:cover;display:block;background:#0a0718;border-bottom:1px solid var(--line)}
+.mapcard .body{padding:18px 20px 20px;flex:1;display:flex;flex-direction:column}
+.mapcard h3{margin:0 0 4px;font-size:22px}
+.mapcard .desc{color:var(--dim);font-size:14.5px;margin:0 0 12px;flex:1}
+.mapcard .facts{display:grid;grid-template-columns:auto 1fr;gap:2px 12px;font-size:14px;margin:0 0 14px}
+.mapcard .facts dt{color:#7d7896}
+.mapcard .facts dd{margin:0;color:var(--bone)}
+.mapcard .row{display:flex;gap:8px;flex-wrap:wrap}
+.mapcard .row .btn{font-size:14px;padding:7px 13px}
+.official{border-color:var(--violet);box-shadow:0 0 26px #7a4dff33}
+.badge{display:inline-block;font:600 12px Oxanium,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:var(--ember);border:1px solid #ff9a3c55;border-radius:99px;padding:2px 10px;margin-left:8px;vertical-align:middle}
+
+/* ---- download / play ---------------------------------------------------- */
+.dl{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px;margin-top:22px}
+.dlcard{background:linear-gradient(160deg,#150f2c,#0c0818);border:1px solid var(--line);padding:24px;border-radius:4px 22px 4px 22px}
+.dlcard h3{margin:0 0 6px;font-size:22px}
+.dlcard .files{margin:14px 0 0;padding:0;list-style:none;border-top:1px solid var(--line)}
+.dlcard .files li{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid #1d1738;font-size:15px}
+.dlcard .files li span{color:var(--dim);font-size:13.5px}
+.dlcard .files a{font-weight:600;text-decoration:none}
+.dlcard .files a:hover{text-decoration:underline}
+table.t{width:100%;border-collapse:collapse;margin:18px 0;font-size:15px}
+table.t th,table.t td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+table.t th{color:var(--dim);font:600 13px Oxanium,sans-serif;letter-spacing:.05em;text-transform:uppercase}
+table.t td.num{text-align:right;color:var(--bone);white-space:nowrap}
+table.t tr:hover td{background:#120d26}
+.steps{counter-reset:st;list-style:none;padding:0;margin:16px 0 0}
+.steps li{counter-increment:st;position:relative;padding:0 0 18px 52px}
+.steps li::before{content:counter(st);position:absolute;left:0;top:0;width:34px;height:34px;border:1px solid var(--violet);border-radius:50%;display:grid;place-items:center;font:600 15px Oxanium,sans-serif;color:#fff}
+.steps li b{display:block;color:#fff}
+.steps li p{margin:2px 0 0;color:var(--dim);font-size:15px}
+
+/* ---- forge / balance ---------------------------------------------------- */
+.rates{width:100%;border-collapse:collapse;margin:14px 0;font-size:15px}
+.rates th,.rates td{padding:8px 12px;border-bottom:1px solid var(--line);text-align:left}
+.rates th{color:var(--dim);font:600 13px Oxanium,sans-serif;letter-spacing:.05em;text-transform:uppercase}
+.rates td.n{text-align:right;font-variant-numeric:tabular-nums}
+.rates tr:hover td{background:#120d26}
+.note{border-left:3px solid var(--violet);background:#100b23;padding:14px 18px;border-radius:0 8px 8px 0;margin:18px 0;color:var(--dim);font-size:15.5px}
+.note b{color:#fff}
+.kv{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin:16px 0}
+.kv div{background:#0c0818;border:1px solid var(--line);border-radius:8px;padding:14px 16px}
+.kv b{display:block;color:#fff;font-size:19px;font-family:Oxanium,sans-serif}
+.kv span{color:var(--dim);font-size:14px}

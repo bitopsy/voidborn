@@ -63,7 +63,9 @@ jobs:
           python3 tools/build_map.py
           python3 tools/gen_skybox.py
           cd map
-          7z a -t7z -mx=9 ../dist/voidborn_rift.sd7 mapinfo.lua maps > /dev/null
+          # -ms=on: the archive is read once and decompressed whole, and solid
+          # makes it a little smaller than separate streams
+          7z a -t7z -mx=9 -ms=on ../dist/voidborn_rift.sd7 mapinfo.lua maps > /dev/null
 
       - name: Make the release if the tag came without one
         if: steps.gate.outputs.match == 'true' && github.event_name == 'push'

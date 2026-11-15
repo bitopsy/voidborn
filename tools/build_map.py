@@ -1,3 +1,5 @@
+import os as _os
+ROOT = _os.path.abspath(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), ".."))
 """Voidborn Rift - space map generator (SMF/SMT + mapinfo + skybox)."""
 import numpy as np, struct, hashlib, os, sys, math, json
 sys.path.insert(0, os.path.dirname(__file__))
@@ -7,7 +9,7 @@ from PIL import Image
 N = 10                         # map size in 512-elmo units
 MAPX = N * 64                  # heightmap squares
 SZ = MAPX * 8                  # elmos
-OUT = '/home/claude/vb/map'
+OUT = ROOT + '/map'
 SHORT = 'voidrift'
 MINH, MAXH = -300.0, 700.0
 METAL_VALUE = int(sys.argv[1]) if len(sys.argv) > 1 else 255
@@ -232,6 +234,6 @@ with open(f'{OUT}/maps/{SHORT}.smf', 'wb') as f:
                         off_h, off_type, off_tiles, off_mini, off_metal, off_feat, 0))
     f.write(h16.tobytes()); f.write(type_map.tobytes()); f.write(tiles_section); f.write(mini_dxt); f.write(MM.tobytes()); f.write(feat_section)
 print('smf size', os.path.getsize(f'{OUT}/maps/{SHORT}.smf'))
-json.dump(dict(spots=spots, starts=STARTS, size=SZ), open('/home/claude/vb/out/mapmeta.json', 'w'))
+json.dump(dict(spots=spots, starts=STARTS, size=SZ), open(ROOT + '/out/mapmeta.json', 'w'))
 Image.fromarray(((np.clip(H, -50, 300) + 50) / 350 * 255).astype(np.uint8)).save(OUT + '/height_preview.png')
 print('spots', len(spots))

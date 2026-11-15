@@ -252,6 +252,22 @@ local function HandleSpawn(spec, playerID)
 	Say(msg)
 end
 
+-- Entry points for the production queue (vb_dev_queue.lua).  The console (/vbcreate) stays free and cheat-gated,
+-- but a unit that the queue already charged for may be created by anyone when the "vb_forge" modoption is on.
+GG.VB_DevAllowed = Allowed        -- cheats on, or a single human: may run lua= and use the free console
+function GG.VB_ForgeAllowed(playerID)
+	if Allowed(playerID) then return true end
+	local fo = Spring.GetModOptions().vb_forge
+	return fo == nil or fo == "1" or fo == 1 or fo == true
+end
+function GG.VB_QueueSpawn(t, playerID)
+	local spec = {}
+	for _, k in ipairs(NUM_KEYS) do if type(t[k]) == "number" then spec[k] = t[k] end end
+	for _, k in ipairs(STR_KEYS) do if type(t[k]) == "string" then spec[k] = t[k] end end
+	if not Allowed(playerID) then spec.lua = nil end      -- no custom scripts in a real match
+	HandleSpawn(spec, playerID)
+end
+
 function gadget:RecvLuaMsg(msg, playerID)
 	if type(msg) ~= "string" or msg:sub(1, #PREFIX) ~= PREFIX then return end
 	if not Allowed(playerID) then

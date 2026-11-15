@@ -1,3 +1,5 @@
+import os as _os
+ROOT = _os.path.abspath(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), ".."))
 import os, json, sys
 sys.path.insert(0, os.path.dirname(__file__))
 from designs_a import CHOIR
@@ -7,7 +9,7 @@ from textures import build
 from render import render
 from PIL import Image, ImageDraw
 
-G = '/home/claude/vb/game'
+G = ROOT + '/game'
 meta = {}
 texs = {}
 for fac in ('choir', 'maw'):
@@ -23,5 +25,5 @@ for fac, table in (('choir', CHOIR), ('maw', MAW)):
         img = render(M, texs[fac], 128, yaw=30, pitch=18, bg=(20, 16, 34) if fac == 'choir' else (30, 14, 12))
         d = ImageDraw.Draw(img); d.rectangle([0, 0, 127, 127], outline=(220, 190, 90) if fac == 'choir' else (255, 120, 30), width=3)
         img.save(f'{G}/unitpics/{name}.png')
-json.dump(meta, open('/home/claude/vb/out/meta.json', 'w'), indent=1)
+json.dump(meta, open(ROOT + '/out/meta.json', 'w'), indent=1)
 print(len(meta), 'models written')

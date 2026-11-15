@@ -37,6 +37,10 @@ C.RATE = {
 C.BUILD_FACTOR = 0.60
 -- the build time penalty never grows past this multiple of the base build time
 C.MAX_RATIO = 8
+-- buildTime is in BUILD POINTS, not seconds: a builder with workerTime W adds W points per second
+-- (the Voidborn factories have workerTime 100).  The production queue builds at this rate, so a
+-- 468 point unit takes 4.7 s, exactly as it does in a factory.  Raise it to make the queue faster.
+C.BUILD_POWER = 100
 
 --------------------------------------------------------------------------------
 -- helpers
@@ -154,7 +158,8 @@ function C.Cost(spec, ud)
 	return {
 		metal   = math.floor(metal),
 		energy  = math.floor(energy),
-		build   = math.max(1, math.floor(build)),
+		build   = math.max(1, math.floor(build)),                    -- build POINTS
+		seconds = math.max(0.5, build / C.BUILD_POWER),             -- what the queue really takes
 		premium = math.floor(premium),
 		count   = count,
 	}

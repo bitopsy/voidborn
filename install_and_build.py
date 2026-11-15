@@ -52,17 +52,6 @@ if bad: sys.exit(f"\n{bad} file(s) wrong after install - something is blocking w
 if not os.path.isfile(os.path.join(game, "modinfo.lua")):
     sys.exit("ERROR: game/modinfo.lua missing")
 
-# 4. build: zip the CONTENTS of game/ (modinfo.lua at archive root), forward slashes
-out = os.path.join(repo, "dist", "voidborn.sdz")
-os.makedirs(os.path.dirname(out), exist_ok=True)
-n = 0
-with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED, compresslevel=9) as zo:
-    for root, dirs, files in os.walk(game):
-        if os.path.abspath(root) == game and "game" in dirs: dirs.remove("game")  # skip bad nested folder
-        dirs.sort()
-        for f in sorted(files):
-            if f in (".DS_Store", "Thumbs.db"): continue
-            full = os.path.join(root, f)
-            zo.write(full, os.path.relpath(full, game).replace(os.sep, "/")); n += 1
-print(f"\nbuilt {out} ({n} files, {os.path.getsize(out)} bytes)")
-print("copy it to your games/ folder as voidborn.sdz")
+# 4. build with the checked builder (lua syntax, tests, archive verification, install into ~/.spring/games, engine check)
+import subprocess
+sys.exit(subprocess.call([sys.executable, os.path.join(repo, "build_sdz.py"), repo]))

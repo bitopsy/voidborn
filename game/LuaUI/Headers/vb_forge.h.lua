@@ -11,6 +11,8 @@
     * the shape codec (a shape becomes a string, so it can travel over LuaRulesMsg)
     * mesh builders (box, sphere, cylinder, cone) plus the drawing helpers
     * the list of PNG files that can be mapped onto a shape
+    * the price of a design and the client side of the production queue
+      (LuaRules/Gadgets/vb_dev_queue.lua does the real work)
 
   A shape is a list of primitives:
     { type = "box", size = {sx,sy,sz}, pos = {px,py,pz}, rot = {rx,ry,rz},
@@ -88,6 +90,106 @@ F.IsForgeReady = F.IsForgeReady or function() return F.open ~= nil end
 function F.RequestOpen()
 	if F.open then F.open() else F.openRequest = true end
 end
+
+--------------------------------------------------------------------------------
+-- ids and prices
+--------------------------------------------------------------------------------
+-- template ids travel through the queue protocol, so keep them boring
+function F.SafeId(s)
+	s = tostring(s or ""):gsub("[^%w_%-]", "_"):sub(1, 24)
+	return s
+end
+
+-- the price rules (the same file the LuaRules gadget uses)
+local okCost, Cost = pcall(VFS.Include, "LuaRules/Headers/vb_cost.h.lua")
+
+-- price of ONE unit of this design: { metal, energy, build (seconds), premium } or nil
+-- NB: UnitDefNames[name] already IS the unit def (not an id).
+function F.Price(spec)
+	local ud = spec and spec.base and UnitDefNames[spec.base]
+	if not ud then return nil end
+	local s = {}
+	for k, v in pairs(spec) do s[k] = v end
+	s.count = 1
+	if okCost and type(Cost) == "table" and type(Cost.Cost) == "function" then
+		local ok, p = pcall(Cost.Cost, s, ud)
+		if ok and type(p) == "table" then
+			p.build = p.seconds or p.build      -- the panels show SECONDS (build points / BUILD_POWER)
+			return p
+		end
+	end
+	local function Pick(v, base) v = tonumber(v) or 0; if v > 0 then return v end return base or 0 end
+	return { metal = Pick(s.metal, ud.metalCost), energy = Pick(s.energy, ud.energyCost),
+		build = Pick(s.buildtime, ud.buildTime or 3000) / 100, premium = 0 }
+end
+
+--------------------------------------------------------------------------------
+-- the production queue (client side)
+--------------------------------------------------------------------------------
+-- Units are no longer created the moment a button is pressed.  They are sent to the
+-- gadget LuaRules/Gadgets/vb_dev_queue.lua, which takes the metal and energy while the
+-- unit is being built, shows progress, honours HOLD and only then creates the unit.
+-- If that gadget is not installed everything falls back to the old instant, free creation.
+function F.QueueReady()
+	return (Spring.GetGameRulesParam("vbq_ready") or 0) == 1
+end
+
+local function Clean(spec)
+	local keep = {}
+	for k, v in pairs(spec) do
+		if k ~= "x" and k ~= "z" then keep[k] = v end
+	end
+	return keep
+end
+
+-- queue n units of this spec.  Returns true when the queue took it (false = instant fallback).
+function F.QueueAddSpec(spec, n)
+	n = math.max(1, math.floor(tonumber(n) or 1))
+	local keep = Clean(spec)
+	if F.QueueReady() then
+		keep.count = 1
+		Spring.SendLuaRulesMsg("vbq:add:" .. n .. ":" .. F.Ser(keep))
+		return true
+	end
+	keep.count = n
+	Spring.SendLuaRulesMsg("vbdev:" .. F.Ser(keep))
+	return false
+end
+
+-- queue n units of a saved template
+function F.QueueAdd(tid, n)
+	local t = F.templates[tid]
+	if not t then return false end
+	return F.QueueAddSpec(t, n)
+end
+
+function F.QueueRemove(tid, n) Spring.SendLuaRulesMsg("vbq:rem:" .. math.max(1, n or 1) .. ":" .. tid) end
+function F.QueueHold(tid)      Spring.SendLuaRulesMsg("vbq:hold:1:" .. tid) end
+function F.QueueClear(tid)     Spring.SendLuaRulesMsg("vbq:clear:1:" .. tid) end
+
+-- id -> { n = units left (including the one being built), prog = 0..1,
+--         st = "b" building | "s" stalled (not enough resources) | "w" waiting | "h" on hold }
+-- plus the ids in queue order.  A stock unit is also found as "<id>@<factoryID>" (every factory has its own line)
+function F.ReadQueue()
+	local out, order = {}, {}
+	local s = Spring.GetTeamRulesParam(Spring.GetMyTeamID(), "vbq")
+	if type(s) == "string" and s ~= "" then
+		for item in s:gmatch("[^;]+") do
+			local tid, n, pm, st, fac = item:match("^([^|]*)|(%d+)|(%d+)|(%a)|?(%d*)$")
+			if tid then
+				local e = { n = tonumber(n), prog = tonumber(pm) / 1000, st = st, fac = tonumber(fac) or 0 }
+				if not out[tid] then out[tid] = e; order[#order + 1] = tid end
+				if e.fac > 0 then out[tid .. "@" .. e.fac] = e end      -- stock units: one line per factory
+			end
+		end
+	end
+	return out, order
+end
+
+-- other widgets (the build panel) ask the forge to edit / forget a saved unit
+F.loadRequest = F.loadRequest or nil
+function F.EditTemplate(tid) F.loadRequest = tid; F.RequestOpen() end
+function F.DeleteTemplate(tid) F.QueueClear(tid); F.DelTemplate(tid) end
 
 --------------------------------------------------------------------------------
 -- the primitive kinds

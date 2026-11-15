@@ -1,6 +1,8 @@
+import os as _os
+ROOT = _os.path.abspath(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), ".."))
 import os, json, math
-G = '/home/claude/vb/game'
-meta = json.load(open('/home/claude/vb/out/meta.json'))
+G = ROOT + '/game'
+meta = json.load(open(ROOT + '/out/meta.json'))
 
 # ---------------------------------------------------------------- lua serializer
 def lua(v, ind=0):
@@ -111,11 +113,14 @@ UNITS = [
 ID = {u['id']: u for u in UNITS}
 
 # ---------------------------------------------------------------- build unitdefs
+# zoomed-out icon per role, shared by both factions (the icons are made by tools/gen_icons.py -> game/gamedata/icontypes.lua)
+ICON_KINDS = {k: 'vb_' + k for k in ('com', 'con', 'scout', 'raider', 'assault', 'art', 'support', 'heavy', 'fac', 'mex', 'solar',
+                                      'heart', 'store', 'radar', 'def1', 'def2')}
 def unitdef(u):
     m = meta[u['id']]; k = u['kind']; fac = u['fac']
     d = dict(name=u['name'], description=u['desc'], objectName=u['id'] + '.s3o', buildPic=u['id'] + '.png',
              maxDamage=u['hp'], metalCost=u['m'], energyCost=u.get('e', u['m'] * 4), buildTime=u.get('bt', u['m'] * 9),
-             sightDistance=u.get('sight', 450), category='VOIDBORN', iconType='default', capturable=False, autoHeal=u.get('heal', 0),
+             sightDistance=u.get('sight', 450), category='VOIDBORN', iconType=ICON_KINDS.get(k, 'default'), capturable=False, autoHeal=u.get('heal', 0),
              idleAutoHeal=u.get('heal', 0) * 2, idleTime=300, explodeAs='vb_big' if k in ('heart', 'heavy', 'com') else 'vb_med' if u['m'] > 200 else 'vb_small',
              selfDestructAs='vb_big' if k in ('heart', 'heavy', 'com') else 'vb_med' if u['m'] > 200 else 'vb_small',
              customParams={'faction': fac, 'kind': k, 'iscommander': 'true' if k == 'com' else 'false'}, corpse='', mass=u['hp'] / 10 + u['m'])

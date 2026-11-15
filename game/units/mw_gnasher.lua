@@ -11,7 +11,7 @@ return {
 		buildTime = 468,
 		sightDistance = 420,
 		category = "VOIDBORN",
-		iconType = "default",
+		iconType = "vb_raider",
 		capturable = false,
 		autoHeal = 2,
 		idleAutoHeal = 4,

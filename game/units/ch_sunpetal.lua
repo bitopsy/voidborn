@@ -11,7 +11,7 @@ return {
 		buildTime = 1500,
 		sightDistance = 260,
 		category = "VOIDBORN",
-		iconType = "default",
+		iconType = "vb_solar",
 		capturable = false,
 		autoHeal = 0,
 		idleAutoHeal = 0,

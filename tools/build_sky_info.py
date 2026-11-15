@@ -1,7 +1,9 @@
+import os as _os
+ROOT = _os.path.abspath(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), ".."))
 import numpy as np, struct, sys, os
 sys.path.insert(0, os.path.dirname(__file__))
 from dxt import encode_image
-OUT = '/home/claude/vb/map'
+OUT = ROOT + '/map'
 S = 1024
 rs = np.random.RandomState(5)
 def face_dirs(face):

@@ -11,7 +11,7 @@ return {
 		buildTime = 1755,
 		sightDistance = 520,
 		category = "VOIDBORN",
-		iconType = "default",
+		iconType = "vb_assault",
 		capturable = false,
 		autoHeal = 0,
 		idleAutoHeal = 0,

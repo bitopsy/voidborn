@@ -197,6 +197,7 @@ local function FactoryReady(fac)
 	if not fac or fac == 0 then return true end       -- the team line of forge designs has no factory
 	if not Spring.ValidUnitID(fac) then return false end
 	if Spring.GetUnitIsBeingBuilt and Spring.GetUnitIsBeingBuilt(fac) then return false end
+	if GG.VB_FactoryBusy and GG.VB_FactoryBusy(fac) then return false end      -- being upgraded to tier 2
 	return true
 end
 
@@ -223,6 +224,11 @@ local function Add(teamID, playerID, spec, n)
 		-- a forge design: the player has to be allowed to use the forge, and only cheaters may run lua=
 		if not (GG.VB_ForgeAllowed and GG.VB_ForgeAllowed(playerID)) then
 			Spring.SendMessageToPlayer(playerID, "[VB] the unit forge is switched off in this game (modoption vb_forge)")
+			return
+		end
+		-- ... and has to own a finished tier 2 factory (upgrade the faction's factory first)
+		if GG.VB_ForgeUnlocked and not GG.VB_ForgeUnlocked(teamID) then
+			Spring.SendMessageToPlayer(playerID, "[VB] custom units need a Tier 2 factory: upgrade your factory first")
 			return
 		end
 		if spec.lua and not (GG.VB_DevAllowed and GG.VB_DevAllowed(playerID)) then spec.lua = nil end
@@ -304,8 +310,20 @@ function gadget:Shutdown()
 	Spring.SetGameRulesParam("vbq_ready", 0)
 end
 
+-- a factory that is replaced by its tier 2 version (vb_factory_upgrade.lua) keeps its lines: they move to the new unit
+function GG.VB_FactorySwap(oldID, newID)
+	for teamID, q in pairs(queues) do
+		for _, e in ipairs(q) do
+			if (e.line or 0) == oldID then e.line = newID end
+			if e.spec and tonumber(e.spec.fac) == oldID then e.spec.fac = newID end
+		end
+		dirty[teamID] = true
+	end
+end
+
 -- a factory that dies takes its line with it: refund what was paid
 function gadget:UnitDestroyed(unitID, unitDefID, teamID)
+	if GG.VB_swapping == unitID then return end          -- only being replaced by its tier 2 version
 	local q = queues[teamID]
 	if not q then return end
 	for i = #q, 1, -1 do

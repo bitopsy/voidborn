@@ -11,6 +11,7 @@ def items(*names): return "{ " + ", ".join('"vb_%s"' % n for n in names) + " }"
 # ----------------------------------------------------------------------------- units
 def unit_sounds(fac, kind):
     f = "choir" if fac == "choir" else "maw"
+    if kind in ("fac2", "raider2", "assault2", "art2", "support2", "heavy2"): kind = kind[:-1]      # tier 2 units sound like their tier 1 role
     s = {}
     if kind in ("com", "con", "scout", "raider", "assault", "art", "support", "heavy"):
         s["select"] = items("select_" + f); s["ok"] = items("ok_" + f); s["cant"] = items("ui_error")

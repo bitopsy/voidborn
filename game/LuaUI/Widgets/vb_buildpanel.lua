@@ -20,7 +20,8 @@ end
 local NOFORGE = { RequestOpen = function() end, IsForgeReady = function() return false end, templates = {},
 	TemplateIds = function() return {} end, ReadQueue = function() return {}, {} end, Price = function() return nil end,
 	QueueReady = function() return false end, QueueAdd = function() end, QueueRemove = function() end,
-	QueueHold = function() end, EditTemplate = function() end, DeleteTemplate = function() end, PngPath = function() end }
+	QueueHold = function() end, EditTemplate = function() end, DeleteTemplate = function() end, PngPath = function() end,
+	T2Ready = function() return true end }
 -- The forge widget publishes its own table in WG.VBForge; prefer it when it is ready, so that the two
 -- widgets always talk about the same templates even if the header got loaded twice.
 local function ForgeRef()
@@ -32,6 +33,33 @@ end
 -- build points per second of the production queue (same header the forge and the gadgets use)
 local okCH, CostH = pcall(VFS.Include, "LuaRules/Headers/vb_cost.h.lua")
 local BUILD_POWER = (okCH and type(CostH) == "table" and tonumber(CostH.BUILD_POWER)) or 100
+
+-- Tier 2: the [+] tile and the saved designs stay grey until the faction's factory is upgraded to Tier 2.
+local function T2Locked()
+	local F = ForgeRef()
+	return F.T2Ready and not F.T2Ready() or false
+end
+local UPG_COST
+local function UpgradeCost()      -- { metal, energy } read from the factory defs, the one place the rule lives
+	if UPG_COST then return UPG_COST end
+	UPG_COST = { metal = 2000, energy = 2800 }
+	for id, ud in pairs(UnitDefs) do
+		local cp = type(id) == "number" and ud.customParams
+		if cp and cp.upgrade_metal then
+			UPG_COST = { metal = tonumber(cp.upgrade_metal) or 2000, energy = tonumber(cp.upgrade_energy) or 2800 }
+			break
+		end
+	end
+	return UPG_COST
+end
+local function UpgradeProgress()  -- 0..1 of the most advanced upgrade of mine under way, or nil
+	local s = Spring.GetTeamRulesParam(Spring.GetMyTeamID(), "vbu_list")
+	local best
+	if type(s) == "string" then
+		for _, p in s:gmatch("(%d+:)(%d+)") do best = math.max(best or 0, (tonumber(p) or 0) / 1000) end
+	end
+	return best
+end
 
 local function Snd(name, vol) Spring.PlaySoundFile("sounds/" .. name .. ".wav", vol or 0.7, "ui") end
 local lastHoverID, lastHoverSnd   -- id of the command last hovered (nil = none), timer of the last hover sound
@@ -162,6 +190,7 @@ local builds, toggles, orders = {}, {}, {}
 local rects, panelBox, hover, hoverRect, lastH, frame = {}, nil, nil, nil, 120, 0
 local hoverTpl, hoverTplRect = nil, nil   -- saved design under the mouse
 local hoverRu, hoverRuRect = nil, nil      -- roster tile (stock unit) under the mouse
+local hoverPlus, hoverPlusRect = false, nil   -- the [+] tile is under the mouse
 
 local function Refresh()
 	local cmds = Spring.GetActiveCmdDescs() or {}
@@ -541,6 +570,7 @@ function widget:DrawScreen()
 
 	local _, activeID = Spring.GetActiveCommand()
 	hover, hoverRect = nil, nil
+	hoverPlus, hoverPlusRect = false, nil
 	local top = y2 - title - pad
 	-- build icons
 	for n, b in ipairs(builds) do
@@ -608,6 +638,7 @@ function widget:DrawScreen()
 		if over then hoverTpl, hoverTplRect = tid, r end
 		local t = F.templates[tid] or {}
 		local q = queue[tid]
+		local locked = T2Locked()
 		Box(ix, iy, ix + icon, iy + icon, 0.07, 0.1, 0.14, 1)
 		local tex
 		if t.png and t.png ~= "" and F.PngPath and F.PngPath(t.png) then tex = F.PngPath(t.png)
@@ -616,7 +647,11 @@ function widget:DrawScreen()
 			gl.Color(1, 1, 1, (q and q.st == "h") and 0.45 or 1)
 			gl.Texture(tex); gl.TexRect(ix, iy, ix + icon, iy + icon); gl.Texture(false)
 		end
-		if over then Frame(ix, iy, ix + icon, iy + icon, 1, 1, 1, 0.9)
+		if locked then      -- greyed out until the Tier 2 factory is up
+			Box(ix, iy, ix + icon, iy + icon, 0.04, 0.04, 0.05, 0.72)
+			Frame(ix, iy, ix + icon, iy + icon, 0.4, 0.4, 0.45, 0.9)
+			VBFont.Text("T2", ix + icon / 2 - VBFont.Width("T2", 14 * s) / 2, iy + icon / 2 - 4 * s, 14 * s, "o", 0.75, 0.75, 0.8, 1)
+		elseif over then Frame(ix, iy, ix + icon, iy + icon, 1, 1, 1, 0.9)
 		else Frame(ix, iy, ix + icon, iy + icon, 0.35, 0.9, 1, 0.9) end
 		if over then      -- red [x]: delete this design
 			local onX = Inside(mx, my, xrect)
@@ -639,12 +674,22 @@ function widget:DrawScreen()
 		local r = { ix, iy, ix + icon, iy + icon, plus = true }
 		rects[#rects + 1] = r
 		local over = Inside(mx, my, r)
-		Box(ix, iy, ix + icon, iy + icon, over and 0.12 or 0.08, over and 0.22 or 0.16, over and 0.16 or 0.12, 1)
-		Frame(ix, iy, ix + icon, iy + icon, over and 0.35 or 0.2, over and 0.95 or 0.55, over and 0.65 or 0.35, over and 0.95 or 0.55)
+		hoverPlus, hoverPlusRect = over, over and r or nil
 		local half = icon / 2
-		gl.Color(over and 0.55 or 0.35, over and 1 or 0.75, over and 0.7 or 0.5, 1)
-		gl.Rect(ix + icon * 0.28, iy + half - 1.5 * s, ix + icon * 0.72, iy + half + 1.5 * s)
-		gl.Rect(ix + half - 1.5 * s, iy + icon * 0.28, ix + half + 1.5 * s, iy + icon * 0.72)
+		if T2Locked() then      -- greyed out: custom units need the Tier 2 factory first
+			Box(ix, iy, ix + icon, iy + icon, 0.07, 0.07, 0.08, 1)
+			Frame(ix, iy, ix + icon, iy + icon, over and 0.7 or 0.4, over and 0.55 or 0.4, over and 0.3 or 0.42, 0.9)
+			gl.Color(0.32, 0.32, 0.36, 1)
+			gl.Rect(ix + icon * 0.28, iy + half - 1.5 * s, ix + icon * 0.72, iy + half + 1.5 * s)
+			gl.Rect(ix + half - 1.5 * s, iy + icon * 0.28, ix + half + 1.5 * s, iy + icon * 0.72)
+			VBFont.Text("T2", ix + icon - VBFont.Width("T2", 10 * s) - 3 * s, iy + 3 * s, 10 * s, "o", 0.85, 0.65, 0.3, 1)
+		else
+			Box(ix, iy, ix + icon, iy + icon, over and 0.12 or 0.08, over and 0.22 or 0.16, over and 0.16 or 0.12, 1)
+			Frame(ix, iy, ix + icon, iy + icon, over and 0.35 or 0.2, over and 0.95 or 0.55, over and 0.65 or 0.35, over and 0.95 or 0.55)
+			gl.Color(over and 0.55 or 0.35, over and 1 or 0.75, over and 0.7 or 0.5, 1)
+			gl.Rect(ix + icon * 0.28, iy + half - 1.5 * s, ix + icon * 0.72, iy + half + 1.5 * s)
+			gl.Rect(ix + half - 1.5 * s, iy + icon * 0.28, ix + half + 1.5 * s, iy + icon * 0.72)
+		end
 	end
 	-- order buttons
 	local oy = top - brows * (icon + gap) - 4 * s
@@ -716,7 +761,7 @@ function widget:DrawScreen()
 	-- Play the hover tick ONCE per button. Refresh() rebuilds the builds/orders/toggles
 	-- tables every 6 frames, so comparing the table identity fired again and again while
 	-- the mouse rested on a button. Compare the command id instead and rate-limit it.
-	local hoverID = hover and hover.c and hover.c.id or (hoverTpl and ("t:" .. hoverTpl)) or (hoverRu and ("r:" .. hoverRu.def)) or nil
+	local hoverID = hover and hover.c and hover.c.id or (hoverTpl and ("t:" .. hoverTpl)) or (hoverRu and ("r:" .. hoverRu.def)) or (hoverPlus and "plus") or nil
 	if hoverID ~= lastHoverID then
 		lastHoverID = hoverID
 		if hoverID ~= nil then
@@ -726,17 +771,40 @@ function widget:DrawScreen()
 			end
 		end
 	end
+	-- hover info of the [+] tile: what it does, or why it is locked
+	if hoverPlus then
+		local tw, l1, l2, l3, cr, cg, cb
+		if T2Locked() then
+			local c, prog = UpgradeCost(), UpgradeProgress()
+			l1 = "Unit forge - LOCKED"
+			l2 = "Upgrade a factory to Tier 2 first: select your factory and press [Upgrade T2]."
+			l3 = prog and string.format("Upgrade under way: %d%%   (%d metal + %d energy)", math.floor(prog * 100 + 0.5), c.metal, c.energy)
+				or string.format("Cost: %d metal + %d energy.  Custom units and saved designs unlock when it is done.", c.metal, c.energy)
+			cr, cg, cb = 1, 0.7, 0.3
+		else
+			l1 = "Unit forge"
+			l2 = "Design a custom unit: shape, stats, weapons."
+			l3 = "Saved designs appear as tiles here and are built through your factories' production lines."
+			cr, cg, cb = 0.6, 1, 0.75
+		end
+		tw = math.max(w, VBFont.Width(l3, 9) + 14, VBFont.Width(l2, 10) + 14, VBFont.Width(l1, 11) + 14)
+		Box(x1, y2 + 2, x1 + tw, y2 + 46, 0.06, 0.06, 0.09, 0.94)
+		Frame(x1, y2 + 2, x1 + tw, y2 + 46, cr, cg, cb, 0.8)
+		VBFont.Text(l1, x1 + 6, y2 + 32, 11, "o", cr, cg, cb, 1)
+		VBFont.Text(l2, x1 + 6, y2 + 19, 10, "o", 1, 0.9, 0.6, 1)
+		VBFont.Text(l3, x1 + 6, y2 + 7, 9, "o", 0.6, 0.65, 0.75, 1)
 	-- hover info for a saved design: price, state of its production and the mouse controls
-	if hoverTpl then
+	elseif hoverTpl then
 		local t = F.templates[hoverTpl] or {}
 		local pr = F.Price and F.Price(t)
 		local q = queue[hoverTpl]
 		local l1 = hoverTpl .. "   (base: " .. tostring(t.base) .. ")"
 		local l2 = pr and string.format("metal %d   energy %d   time %ds", math.floor(pr.metal + 0.5), math.floor(pr.energy + 0.5), math.floor(pr.build + 0.5)) or "price unknown"
 		local st = q and ({ b = "building", s = "STALLED: not enough metal/energy", w = "waiting", h = "ON HOLD",
-			p = "PENDING: the factory is still being built" })[q.st] or nil
+			p = "PENDING: the factory is still being built or upgraded" })[q.st] or nil
 		if q then l2 = l2 .. "   |   " .. math.floor(q.prog * 100 + 0.5) .. "%  " .. (st or "") end
 		local l3 = "click +1 (shift +5)   right-click -1   middle: hold   ctrl+click: edit   red x / ctrl+right: delete"
+		if T2Locked() then l3 = "LOCKED: upgrade your factory to Tier 2 first (select it, press [Upgrade T2])" end
 		local tw = math.max(w, VBFont.Width(l3, 9) + 14, VBFont.Width(l2, 10) + 14, VBFont.Width(l1, 11) + 14)
 		Box(x1, y2 + 2, x1 + tw, y2 + 46, 0.06, 0.06, 0.09, 0.94)
 		Frame(x1, y2 + 2, x1 + tw, y2 + 46, 0.35, 0.9, 1, 0.8)
@@ -759,7 +827,7 @@ function widget:DrawScreen()
 		local l1 = (rd.humanName or rd.name) .. "   (built by your " .. ((fac and FactoryDef(fac) and (FactoryDef(fac).humanName or FactoryDef(fac).name)) or "factory") .. ")"
 		local l2 = pr and string.format("metal %d   energy %d   time %.1fs", math.floor(pr.metal + 0.5), math.floor(pr.energy + 0.5), pr.build) or "price unknown"
 		local st = q and ({ b = "building", s = "STALLED: not enough metal/energy", w = "waiting", h = "ON HOLD",
-			p = "PENDING: the factory is still being built" })[q.st] or nil
+			p = "PENDING: the factory is still being built or upgraded" })[q.st] or nil
 		if q then l2 = l2 .. "   |   " .. math.floor(q.prog * 100 + 0.5) .. "%  " .. (st or "") end
 		local l3 = "click +1 (shift +5)   right-click -1   middle: hold   ctrl+right: cancel line"
 		local tw = math.max(w, VBFont.Width(l3, 9) + 14, VBFont.Width(l2, 10) + 14, VBFont.Width(l1, 11) + 14)
@@ -814,6 +882,11 @@ function widget:MousePress(x, y, button)
 			if r.close then closed = true; Snd("ui_close") return true end
 			if r.scale then scaling = { x0 = x, y0 = y, s0 = scale, top = py + (panelBox and panelBox.h or 0) } return true end
 			if r.drag then drag = { x - px, y - py } return true end
+			if r.plus and T2Locked() then      -- greyed out: say what to do instead of opening anything
+				Snd("ui_error", 0.8)
+				Spring.Echo("[VB] " .. (ForgeRef().T2_HINT or "Custom units need a Tier 2 factory: upgrade your factory first"))
+				return true
+			end
 			if r.plus then
 				-- open the unit forge; if its widget is not running yet, switch it on first
 				local F = ForgeRef()
@@ -834,6 +907,12 @@ function widget:MousePress(x, y, button)
 			if r.tpl and r.del then
 				ForgeRef().DeleteTemplate(r.tpl); Snd("ui_close", 0.6)
 				Spring.Echo("[VB] deleted design '" .. r.tpl .. "'")
+				return true
+			end
+			if r.tpl and T2Locked() and not (button == 3 and select(2, Spring.GetModKeyState())) then
+				-- a saved design cannot be built (or edited) until the Tier 2 factory is up; ctrl+right still deletes it
+				Snd("ui_error", 0.8)
+				Spring.Echo("[VB] " .. (ForgeRef().T2_HINT or "Custom units need a Tier 2 factory: upgrade your factory first"))
 				return true
 			end
 			if r.tpl then

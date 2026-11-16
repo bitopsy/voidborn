@@ -1,5 +1,5 @@
 function widget:GetInfo()
-	return { name = "Voidborn Health Bars", desc = "3D pill shaped health bars above units (and build progress above unfinished structures). /vbhealth cycles always / damaged / off",
+	return { name = "Voidborn Health Bars", desc = "3D pill shaped health bars above the selected units (and build progress above selected unfinished structures). /vbhealth cycles selected / always / damaged / off",
 		author = "goddot info@bitopsy.com", date = "2026", license = "GPL", layer = 0, enabled = true }
 end
 
@@ -14,12 +14,13 @@ local spGetMyTeamID     = Spring.GetMyTeamID
 local spAreTeamsAllied  = Spring.AreTeamsAllied
 local spGetUnitDefID    = Spring.GetUnitDefID
 
-local MODES = { "always", "damaged", "off" }
-local mode = "always"
+local MODES = { "selected", "always", "damaged", "off" }
+local mode = "selected"
 local MAX_BARS = 500                 -- never draw more than this many bars in one frame
 
-function widget:GetConfigData() return { mode = mode } end
-function widget:SetConfigData(d) if d and d.mode then for _, m in ipairs(MODES) do if m == d.mode then mode = m end end end end
+-- v = 2: bars only on selected units is the new default; an older saved "always" is not carried over
+function widget:GetConfigData() return { mode = mode, v = 2 } end
+function widget:SetConfigData(d) if d and d.v == 2 and d.mode then for _, m in ipairs(MODES) do if m == d.mode then mode = m end end end end
 
 local function Cycle()
 	for i, m in ipairs(MODES) do
@@ -101,7 +102,10 @@ function widget:DrawWorld()
 		if hp and maxhp and maxhp > 0 then
 			local building = build and build < 1
 			local f = math.max(0, math.min(1, hp / maxhp))
-			local show = building or mode == "always" or f < 0.999 or spIsUnitSelected(u)
+			local selected = spIsUnitSelected(u)
+			local show
+			if mode == "selected" then show = selected
+			else show = building or mode == "always" or f < 0.999 or selected end
 			if show then
 				local x, y, z = spGetUnitPosition(u)
 				if x then

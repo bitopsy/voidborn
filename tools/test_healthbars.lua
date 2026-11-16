@@ -4,11 +4,12 @@ gl = setmetatable({ BeginEnd = function(_, fn, ...) rects = rects + 1; fn(...) e
 GL = setmetatable({}, { __index = function() return 0 end })
 local hp = { [1] = { 100, 100 }, [2] = { 40, 100 }, [3] = { 10, 100, 0, 0, 0.3 } }
 local echoes = {}
+local sel = {}
 Spring = setmetatable({
 	GetVisibleUnits = function() return { 1, 2, 3 } end,
 	GetUnitHealth = function(u) local h = hp[u]; return h[1], h[2], 0, 0, h[5] or 1 end,
 	GetUnitPosition = function() return 100, 0, 100 end, GetUnitHeight = function() return 30 end, GetUnitRadius = function() return 20 end,
-	GetUnitTeam = function(u) return u == 2 and 1 or 0 end, IsUnitSelected = function() return false end,
+	GetUnitTeam = function(u) return u == 2 and 1 or 0 end, IsUnitSelected = function(u) return sel[u] end,
 	GetMyTeamID = function() return 0 end, AreTeamsAllied = function() return false end,
 	Echo = function(m) echoes[#echoes + 1] = m end,
 }, { __index = function() return function() end end })
@@ -18,6 +19,13 @@ local chunk = assert(loadfile(ROOT .. "/game/LuaUI/Widgets/vb_healthbars.lua"));
 local fails = 0
 local function check(n, ok, i) print((ok and "ok    " or "FAIL  ") .. n .. (i and ("  (" .. tostring(i) .. ")") or "")); if not ok then fails = fails + 1 end end
 w:Initialize()
+rects = 0; w:DrawWorld()
+check("selected (the default): nothing selected, no bars", rects == 0, rects)
+sel[1], sel[3] = true, true
+rects = 0; w:DrawWorld()
+check("selected: only units 1 and 3 get bars (6 pills, and 6 + 6 for the unfinished one)", rects == 6 + 12, rects)
+sel[1], sel[3] = nil, nil
+w:TextCommand("vbhealth")     -- -> always
 rects = 0; w:DrawWorld()
 check("always: 6 pills per tube (outline, glass, body, light, highlight, gloss); the unfinished unit has a second tube", rects == 6 + 6 + 12, rects)
 hp[2] = { 0, 100 }
@@ -31,7 +39,11 @@ w:TextCommand("vbhealth")     -- -> off
 rects = 0; w:DrawWorld()
 check("every pill is a closed fan of vertices", verts > 0 and verts % 16 == 0, verts)
 check("off: nothing is drawn", rects == 0, rects)
-w:TextCommand("vbhealth")     -- -> always
-check("mode is saved", w:GetConfigData().mode == "always")
+w:TextCommand("vbhealth")     -- -> selected
+check("mode is saved", w:GetConfigData().mode == "selected" and w:GetConfigData().v == 2)
+w:SetConfigData({ mode = "always" })       -- an old save without v is ignored
+check("an old saved mode is not carried over", w:GetConfigData().mode == "selected")
+w:SetConfigData({ mode = "damaged", v = 2 })
+check("a current save is restored", w:GetConfigData().mode == "damaged")
 print(fails == 0 and "\nALL PASSED" or ("\n" .. fails .. " FAILED"))
 if fails > 0 then error("healthbar test failed") end

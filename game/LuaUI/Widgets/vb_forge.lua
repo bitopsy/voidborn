@@ -486,10 +486,14 @@ local TITLE, TABH, FOOT = 24, 22, 96
 function widget:Initialize()
 	Spring.Echo("[VB] Unit forge loaded: /vbforge or the [+] tile of the build panel opens it")
 	if widgetHandler and widgetHandler.AddAction then
-		widgetHandler:AddAction("vbforge", function() closed = not closed return true end, nil, "t")
+		widgetHandler:AddAction("vbforge", function() if closed then if Forge.open then Forge.open() end else closed = true end return true end, nil, "t")
 	end
 	-- let the other widgets (the build panel) open this one
 	Forge.open = function()
+		if Forge.T2Ready and not Forge.T2Ready() then      -- locked until the faction's factory is upgraded to Tier 2
+			Spring.Echo("[VB] " .. (Forge.T2_HINT or "the unit forge needs a Tier 2 factory"))
+			return false
+		end
 		closed = false
 		pw, ph = math.min(pw, vsx - 20), math.min(ph, vsy - 20)
 		px = Clamp(px, 10, math.max(10, vsx - pw - 10))
@@ -514,7 +518,7 @@ function widget:Shutdown()
 end
 
 function widget:TextCommand(cmd)
-	if cmd == "vbforge" then closed = not closed return true end
+	if cmd == "vbforge" then if closed then if Forge.open then Forge.open() end else closed = true end return true end
 	-- /vbcreate from the chat fills the id of the forge
 	local id = cmd:match("^vbcreate%s+(%S+)")
 	if id then spec.id = Forge.SafeId(id); status = "id set to " .. spec.id end
@@ -552,6 +556,10 @@ end
 function widget:ViewResize(w, h) vsx, vsy = w, h end
 
 function widget:Update()
+	if not closed and Forge.T2Ready and not Forge.T2Ready() then      -- the last tier 2 factory died: the forge locks again
+		closed = true
+		Spring.Echo("[VB] " .. (Forge.T2_HINT or "the unit forge needs a Tier 2 factory"))
+	end
 	-- another widget (the build panel) asked for the forge to open / to edit a saved unit
 	if Forge.openRequest then
 		Forge.openRequest = false
@@ -560,8 +568,12 @@ function widget:Update()
 	if Forge.loadRequest then
 		local id = Forge.loadRequest
 		Forge.loadRequest = nil
-		LoadTemplate(id)
-		closed = false
+		if Forge.T2Ready and not Forge.T2Ready() then
+			Spring.Echo("[VB] " .. (Forge.T2_HINT or "the unit forge needs a Tier 2 factory"))
+		else
+			LoadTemplate(id)
+			closed = false
+		end
 	end
 end
 

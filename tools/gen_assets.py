@@ -4,6 +4,7 @@ import os, json, sys
 sys.path.insert(0, os.path.dirname(__file__))
 from designs_a import CHOIR
 from designs_b import MAW
+from designs_t2 import CHOIR_T2, MAW_T2
 from mesh import write_s3o
 from textures import build
 from render import render
@@ -14,7 +15,7 @@ meta = {}
 texs = {}
 for fac in ('choir', 'maw'):
     texs[fac] = build(fac, f'{G}/unittextures')
-for fac, table in (('choir', CHOIR), ('maw', MAW)):
+for fac, table in (('choir', {**CHOIR, **CHOIR_T2}), ('maw', {**MAW, **MAW_T2})):
     for name, fn in table.items():
         M = fn()
         info = write_s3o(M, f'{G}/objects3d/{name}.s3o', f'{fac}_tex1.png', f'{fac}_tex2.png')

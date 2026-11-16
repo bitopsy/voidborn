@@ -51,6 +51,16 @@ def dgun(fac, name, rgb):
 def U(id, fac, name, desc, kind, m, hp, **kw):
     d = dict(id=id, fac=fac, name=name, desc=desc, kind=kind, m=m, hp=hp); d.update(kw); return d
 
+# ---------------------------------------------------------------- tier 2
+# Upgrading a faction's tier 1 factory in place costs this much; the T2 factory unlocks the T2 units
+# and (together with them) the unit forge.  The gadget LuaRules/Gadgets/vb_factory_upgrade.lua reads these
+# numbers from the factory's customParams, so this is the one place to tune them.
+UPGRADE_METAL, UPGRADE_ENERGY, UPGRADE_SECONDS = 2000, 2800, 45
+T1_CHOIR = ['ch_seer', 'ch_gazer', 'ch_lashling', 'ch_hoplite', 'ch_basilisk', 'ch_weeper', 'ch_colossus']
+T1_MAW = ['mw_weaver', 'mw_skitter', 'mw_gnasher', 'mw_ravager', 'mw_spitter', 'mw_nurse', 'mw_leviathan']
+T2_CHOIR = ['ch_saccade', 'ch_sclera', 'ch_lance', 'ch_lachryma', 'ch_panopticon']
+T2_MAW = ['mw_shear', 'mw_warmaw', 'mw_rupturer', 'mw_midwife', 'mw_devourer']
+
 CB = lambda p: [p + x for x in ('siphon', 'sunpetal', 'heart', 'vault', 'watcher', 'stare', 'pillar')]
 UNITS = [
  # ---------------- CHOIR OF THE EYE
@@ -71,7 +81,7 @@ UNITS = [
  U('ch_colossus', 'choir', 'Argus Colossus', 'Heavy - hundred-eyed titan; its great eye unmakes whole squads', 'heavy', 1650, 9500, speed=1.05, alt=230, sight=700,
    weapons=[laser('choir', 650, 1.2, 330, '1 0.6 1', 8.0, 52, vel=1200, core=0.8, flare=12, name='Annihilating Gaze'),
             laser('choir', 380, 0.5, 30, '0.5 1 1', 2.2, 10, name='Lesser Eyes')]),
- U('ch_womb', 'choir', 'Iris Womb', 'Factory - the Choir births its army through an unblinking pool', 'fac', 470, 3300, fp=6, build=['ch_seer', 'ch_gazer', 'ch_lashling', 'ch_hoplite', 'ch_basilisk', 'ch_weeper', 'ch_colossus'], bp=100, e=1300, bt=4600, sight=420),
+ U('ch_womb', 'choir', 'Iris Womb', 'Factory - the Choir births its army through an unblinking pool', 'fac', 470, 3300, fp=6, build=['ch_seer', 'ch_gazer', 'ch_lashling', 'ch_hoplite', 'ch_basilisk', 'ch_weeper', 'ch_colossus'], bp=100, e=1300, bt=4600, sight=420, up=('ch_womb2', UPGRADE_METAL, UPGRADE_ENERGY, UPGRADE_SECONDS)),
  U('ch_siphon', 'choir', 'Leech Eye', 'Metal extractor - drinks ore from asteroid marrow', 'mex', 42, 480, fp=2, e=360, bt=1300, sight=240),
  U('ch_sunpetal', 'choir', 'Sun Iris', 'Energy - an iris that drinks starlight', 'solar', 85, 620, fp=3, e=0, bt=1500, sight=260, energy=22),
  U('ch_heart', 'choir', 'Singularity Heart', 'Advanced energy - a caged pinprick black hole', 'heart', 1100, 3600, fp=5, e=4200, bt=18000, sight=300, energy=500),
@@ -83,7 +93,7 @@ UNITS = [
    weapons=[laser('choir', 900, 1.6, 260, '1 0.7 1', 5.0, 40, vel=1400, core=0.8, flare=9, name='Judgement')]),
  # ---------------- MAW SWARM
  U('mw_matriarch', 'maw', 'Matriarch', 'Maw Commander - a gnashing hive-mother that digests its foes', 'com', 2500, 4400, speed=1.8, alt=45, sight=560,
-   build=['mw_hive', 'mw_extractor', 'mw_sunbloom', 'mw_core', 'mw_cyst', 'mw_sensor', 'mw_spine', 'mw_bastion'], bp=95, bd=190,
+   build=['mw_hive', 'mw_extractor', 'mw_sunbloom', 'mw_core', 'mw_cyst', 'mw_sensor', 'mw_spine', 'mw_bastion', 'mw_maw_jaw'], bp=95, bd=190,
    weapons=[laser('maw', 420, 0.55, 48, '0.7 1 0.2', 3.4, 10, name='Acid Spit'), dgun('maw', 'Devour', '0.6 1 0.1')], hover=True, heal=3),
  U('mw_weaver', 'maw', 'Weaver', 'Builder - a spidery spinner that secretes structures from silk', 'con', 90, 560, speed=2.6, alt=50, sight=450,
    build=['mw_hive', 'mw_extractor', 'mw_sunbloom', 'mw_core', 'mw_cyst', 'mw_sensor', 'mw_spine', 'mw_bastion'], bp=70, bd=185, heal=1),
@@ -99,7 +109,7 @@ UNITS = [
  U('mw_leviathan', 'maw', 'Leviathan', 'Heavy - a mile of teeth swimming through vacuum', 'heavy', 1450, 13000, speed=1.0, alt=210, sight=640,
    weapons=[laser('maw', 620, 1.3, 380, '0.7 1 0.1', 9.0, 60, vel=1100, core=0.9, flare=12, name='Acid Cannon'),
             missile('maw', 520, 1.4, 30, burst=3, aoe=30, name='Spore Barrage')], heal=6),
- U('mw_hive', 'maw', 'Brood Hive', 'Factory - a pulsing mound that vomits out the swarm', 'fac', 420, 3500, fp=6, build=['mw_weaver', 'mw_skitter', 'mw_gnasher', 'mw_ravager', 'mw_spitter', 'mw_nurse', 'mw_leviathan'], bp=100, e=1250, bt=4500, sight=420, heal=4),
+ U('mw_hive', 'maw', 'Brood Hive', 'Factory - a pulsing mound that vomits out the swarm', 'fac', 420, 3500, fp=6, build=['mw_weaver', 'mw_skitter', 'mw_gnasher', 'mw_ravager', 'mw_spitter', 'mw_nurse', 'mw_leviathan'], bp=100, e=1250, bt=4500, sight=420, heal=4, up=('mw_hive2', UPGRADE_METAL, UPGRADE_ENERGY, UPGRADE_SECONDS)),
  U('mw_extractor', 'maw', 'Root Drill', 'Metal extractor - roots that bore into asteroid ore', 'mex', 40, 520, fp=2, e=340, bt=1300, sight=240, heal=1),
  U('mw_sunbloom', 'maw', 'Sunbloom', 'Energy - tentacle anemone feeding on starlight', 'solar', 82, 680, fp=3, e=0, bt=1500, sight=260, energy=22, heal=1),
  U('mw_core', 'maw', 'Heartfire Egg', 'Advanced energy - a caged egg that burns like a star', 'heart', 1050, 3900, fp=5, e=4000, bt=17500, sight=300, energy=500, heal=2),
@@ -109,6 +119,31 @@ UNITS = [
    weapons=[laser('maw', 500, 0.45, 19, '0.7 1 0.2', 2.4, 8, name='Acid Spit')], heal=2),
  U('mw_bastion', 'maw', 'Maw Bastion', 'Heavy defence - a titanic maw crowned with spore tubes', 'def2', 520, 5600, fp=4, e=3100, bt=9000, sight=780,
    weapons=[missile('maw', 860, 2.2, 85, burst=3, aoe=50, name='Spore Volley')], heal=4),
+
+ # ================================================================ TIER 2 (needs the upgraded factory)
+ # kind = '<role>2' so that tools that look units up by kind (the AI, the hotkeys) never mix tiers up.
+ U('ch_womb2', 'choir', 'Great Iris Womb', 'Tier 2 Factory - the upgraded womb; births the Choir\'s elite and unlocks the unit forge', 'fac2', 2470, 7200, fp=6, build=T1_CHOIR + T2_CHOIR, bp=220, e=4100, bt=9000, sight=520, tier=2),
+ U('ch_saccade', 'choir', 'Saccade', 'T2 Raider - a dart of fins and one wide eye; its twin pulse stings faster than the eye can follow', 'raider2', 140, 620, speed=5.0, alt=70, sight=520,
+   weapons=[laser('choir', 285, 0.35, 9, '0.55 1 1', 1.8, 6, burst=2, burstrate=0.08, name='Saccade Pulse')], tier=2),
+ U('ch_sclera', 'choir', 'Sclera Knight', 'T2 Assault - an armoured one-eyed champion behind an iris shield', 'assault2', 520, 4200, speed=1.9, alt=100, sight=560,
+   weapons=[laser('choir', 430, 0.6, 78, '0.4 0.9 1', 3.6, 12, name='Knight Gaze'), laser('choir', 330, 0.3, 14, '0.9 0.5 1', 2.0, 6, name='Lash Volley')], tier=2),
+ U('ch_lance', 'choir', 'Lidless Lance', 'T2 Artillery - a coiled serpent whose beam reaches across half the rift', 'art2', 640, 1100, speed=1.6, alt=170, sight=900,
+   weapons=[laser('choir', 1150, 3.2, 330, '1 0.95 0.5', 3.4, 24, vel=1800, core=0.8, flare=8, name='Lance Beam')], tier=2),
+ U('ch_lachryma', 'choir', 'Lachryma', 'T2 Support - a haloed tear-mother; fast builder, rebuilds and mends allies', 'support2', 380, 1800, speed=2.2, alt=115, sight=560, bp=95, bd=210, tier=2),
+ U('ch_panopticon', 'choir', 'Panopticon', 'T2 Heavy - the all-seeing flagship; a hundred eyes and a halo that judges', 'heavy2', 4200, 34000, speed=0.85, alt=300, sight=800,
+   weapons=[laser('choir', 800, 1.3, 900, '1 0.6 1', 11.0, 70, vel=1500, core=0.9, flare=16, name='Verdict'),
+            laser('choir', 480, 0.4, 38, '0.5 1 1', 2.6, 10, burst=2, burstrate=0.1, name='Hundred Eyes')], tier=2),
+ U('mw_hive2', 'maw', 'Great Brood Hive', 'Tier 2 Factory - the grown hive; vomits out the swarm\'s elite and unlocks the unit forge', 'fac2', 2420, 7600, fp=6, build=T1_MAW + T2_MAW, bp=220, e=4050, bt=9000, sight=520, heal=8, tier=2),
+ U('mw_shear', 'maw', 'Shearwing', 'T2 Raider - four-winged wasp with a flaying breath', 'raider2', 130, 1100, speed=4.4, alt=65, sight=500,
+   weapons=[flame(150, 0.1, 9.5)], heal=3, tier=2),
+ U('mw_warmaw', 'maw', 'Warmaw', 'T2 Assault - an armoured war-beast; corrosive bolts and a pod of spore-missiles', 'assault2', 480, 5200, speed=1.8, alt=85, sight=540,
+   weapons=[laser('maw', 400, 0.65, 105, '1 0.55 0.1', 4.0, 16, name='Siege Bolt'), missile('maw', 380, 1.1, 22, burst=3, aoe=30, name='Spore Pod')], heal=5, tier=2),
+ U('mw_rupturer', 'maw', 'Rupturer', 'T2 Artillery - a swollen bile-sac; its salvo bursts over whole squads', 'art2', 620, 1300, speed=1.6, alt=150, sight=900,
+   weapons=[missile('maw', 1180, 3.2, 220, burst=2, aoe=90, name='Bile Salvo')], heal=2, tier=2),
+ U('mw_midwife', 'maw', 'Midwife', 'T2 Support - brood-tender with a cluster of egg-sacs; fast builder, mends the swarm', 'support2', 360, 2000, speed=2.1, alt=110, sight=520, bp=95, bd=210, heal=6, tier=2),
+ U('mw_devourer', 'maw', 'Devourer', 'T2 Heavy - a world-eater behind a gate of teeth', 'heavy2', 3900, 46000, speed=0.8, alt=290, sight=760,
+   weapons=[laser('maw', 700, 1.4, 980, '0.7 1 0.1', 14.0, 80, vel=1300, core=1.0, flare=16, name='Maw Cannon'),
+            missile('maw', 600, 1.2, 40, burst=5, aoe=34, name='Brood Barrage')], heal=12, tier=2),
 ]
 ID = {u['id']: u for u in UNITS}
 
@@ -116,15 +151,21 @@ ID = {u['id']: u for u in UNITS}
 # zoomed-out icon per role, shared by both factions (the icons are made by tools/gen_icons.py -> game/gamedata/icontypes.lua)
 ICON_KINDS = {k: 'vb_' + k for k in ('com', 'con', 'scout', 'raider', 'assault', 'art', 'support', 'heavy', 'fac', 'mex', 'solar',
                                       'heart', 'store', 'radar', 'def1', 'def2')}
+T2_KINDS = ('fac2', 'raider2', 'assault2', 'art2', 'support2', 'heavy2')      # NB: 'def2' (heavy defence) is a T1 kind
+def base_kind(k): return k[:-1] if k in T2_KINDS else k
 def unitdef(u):
     m = meta[u['id']]; k = u['kind']; fac = u['fac']
+    bk = base_kind(k)      # 'raider2' behaves like 'raider'; only customParams.kind keeps the 2
     d = dict(name=u['name'], description=u['desc'], objectName=u['id'] + '.s3o', buildPic=u['id'] + '.png',
              maxDamage=u['hp'], metalCost=u['m'], energyCost=u.get('e', u['m'] * 4), buildTime=u.get('bt', u['m'] * 9),
-             sightDistance=u.get('sight', 450), category='VOIDBORN', iconType=ICON_KINDS.get(k, 'default'), capturable=False, autoHeal=u.get('heal', 0),
-             idleAutoHeal=u.get('heal', 0) * 2, idleTime=300, explodeAs='vb_big' if k in ('heart', 'heavy', 'com') else 'vb_med' if u['m'] > 200 else 'vb_small',
-             selfDestructAs='vb_big' if k in ('heart', 'heavy', 'com') else 'vb_med' if u['m'] > 200 else 'vb_small',
+             sightDistance=u.get('sight', 450), category='VOIDBORN', iconType=ICON_KINDS.get(bk, 'default'), capturable=False, autoHeal=u.get('heal', 0),
+             idleAutoHeal=u.get('heal', 0) * 2, idleTime=300, explodeAs='vb_big' if bk in ('heart', 'heavy', 'com') else 'vb_med' if u['m'] > 200 else 'vb_small',
+             selfDestructAs='vb_big' if bk in ('heart', 'heavy', 'com') else 'vb_med' if u['m'] > 200 else 'vb_small',
              customParams={'faction': fac, 'kind': k, 'iscommander': 'true' if k == 'com' else 'false'}, corpse='', mass=u['hp'] / 10 + u['m'])
-    mobile = k in ('com', 'con', 'scout', 'raider', 'assault', 'art', 'support', 'heavy')
+    if u.get('tier'): d['customParams']['tier'] = str(u['tier'])
+    if u.get('up'):
+        d['customParams'].update(upgrade_to=u['up'][0], upgrade_metal=str(u['up'][1]), upgrade_energy=str(u['up'][2]), upgrade_seconds=str(u['up'][3]))
+    mobile = bk in ('com', 'con', 'scout', 'raider', 'assault', 'art', 'support', 'heavy')
     if mobile:
         d.update(canMove=True, canFly=True, hoverAttack=True, cruiseAlt=u['alt'], maxVelocity=u['speed'], acceleration=0.06 + 0.08 / (1 + u['m'] / 200),
                  brakeRate=0.25, turnRate=700 if u['m'] < 500 else 400, dontLand=True, airStrafe=False, canSubmerge=False, maxWaterDepth=1000,
@@ -137,14 +178,14 @@ def unitdef(u):
                  repairable=True, reclaimable=True, floater=False, movementClass='', stealth=False,
                  crushResistance=100000, mass=100000)
         d.pop('movementClass')
-    if k in ('com', 'con', 'support'):
+    if bk in ('com', 'con', 'support'):
         d.update(builder=True, workerTime=u['bp'], buildDistance=u['bd'], canReclaim=True, canAssist=True, canRepair=True, repairSpeed=u['bp'],
                  reclaimSpeed=u['bp'] * 0.8, terraformSpeed=0, canResurrect=False)
         if u.get('build'): d['buildOptions'] = u['build']
-    if k == 'com':
+    if bk == 'com':
         d.update(metalMake=2.0, energyMake=30.0, metalStorage=500, energyStorage=800, radarDistance=0, showNanoSpray=True, power=3000, decloakDistance=0,
                  canCloak=False, cloakCost=0, autoHeal=u.get('heal', 0), hideDamage=False, workerTime=u['bp'])
-    if k == 'fac':
+    if bk == 'fac':
         d.update(builder=True, workerTime=u['bp'], buildDistance=100, canAssist=False, canReclaim=False, canMove=True, maxVelocity=0, buildOptions=u['build'],
                  yardMap='o' * (u['fp'] ** 2), onoffable=True, activateWhenBuilt=True, canAttack=False, maxSlope=60)
         d['canMove'] = True; d.pop('maxVelocity')
@@ -230,7 +271,7 @@ SPIN_ALWAYS = {'halo': 38, 'petals': 22, 'rings': 25, 'ribs': 12, 'dish': 70, 'f
 SPIN_ACTIVE = {'spin': 200}
 def write_scripts():
     for u in UNITS:
-        pcs = meta[u['id']]['pieces']; k = u['kind']
+        pcs = meta[u['id']]['pieces']; k = base_kind(u['kind'])
         L = ["-- Voidborn LUS script: %s" % u['id'], "local base = piece 'base'"]
         for p in pcs:
             if p != 'base': L.append(f"local {p} = piece '{p}'")

@@ -86,6 +86,16 @@ F.openRequest = F.openRequest or false
 F.open = F.open or nil          -- set by the forge widget when it starts
 F.IsForgeReady = F.IsForgeReady or function() return F.open ~= nil end
 
+-- Tier 2: custom units need a finished tier 2 factory.  The gadget vb_factory_upgrade.lua publishes the state
+-- (game rule "vb_t2_gate", team rule "vb_t2"); with no gadget, with the modoption vb_forge_needs_t2 off, or with
+-- cheats on, the forge is always open.  Used by the build panel ([+] tile, saved designs) and the forge itself.
+function F.T2Ready()
+	if tonumber(Spring.GetGameRulesParam("vb_t2_gate")) ~= 1 then return true end
+	if Spring.IsCheatingEnabled and Spring.IsCheatingEnabled() then return true end
+	return (tonumber(Spring.GetTeamRulesParam(Spring.GetMyTeamID(), "vb_t2")) or 0) > 0
+end
+F.T2_HINT = "Custom units need a Tier 2 factory: select your factory and press Upgrade T2 first"
+
 -- ask the forge to open itself
 function F.RequestOpen()
 	if F.open then F.open() else F.openRequest = true end

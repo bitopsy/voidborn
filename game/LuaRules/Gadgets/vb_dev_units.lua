@@ -274,6 +274,13 @@ function gadget:RecvLuaMsg(msg, playerID)
 		Say("dev unit creation needs cheats (/cheat) or a single-player game")
 		return true
 	end
+	-- custom units need a finished tier 2 factory (vb_factory_upgrade.lua); cheats and the modoption lift that
+	local teamID = select(4, Spring.GetPlayerInfo(playerID, false))
+	if teamID and GG.VB_ForgeUnlocked and not GG.VB_ForgeUnlocked(teamID) then
+		Say("custom units need a Tier 2 factory: upgrade your factory first")
+		Spring.SendMessageToPlayer(playerID, "[VB] custom units need a Tier 2 factory: upgrade your factory first")
+		return true
+	end
 	local spec, err = ParseSpec(msg:sub(#PREFIX + 1))
 	if not spec then Say(err) return true end
 	HandleSpawn(spec, playerID)

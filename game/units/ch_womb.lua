@@ -22,6 +22,10 @@ return {
 			faction = "choir",
 			kind = "fac",
 			iscommander = "false",
+			upgrade_to = "ch_womb2",
+			upgrade_metal = "2000",
+			upgrade_energy = "2800",
+			upgrade_seconds = "45",
 		},
 		corpse = "",
 		sounds = {

@@ -50,9 +50,12 @@ local function Radius(unitID, ud, kind)
 	return ud and ud.radarRadius or 0
 end
 
+local FADE_SELECTED = 0.5      -- circles are half as opaque while any unit is selected
+local fade = 1
+
 local function Circle(x, y, z, r, col, width)
 	if not r or r <= 1 then return end
-	gl.LineWidth(width); gl.Color(col[1], col[2], col[3], col[4])
+	gl.LineWidth(width); gl.Color(col[1], col[2], col[3], col[4] * fade)
 	gl.DrawGroundCircle(x, y, z, r, RES)
 end
 
@@ -79,8 +82,10 @@ function widget:DrawWorld()
 	gl.DepthTest(false)
 	gl.Blending(GL.SRC_ALPHA, GL.ONE_MINUS_SRC_ALPHA)
 	drawn = {}
+	local sel = spGetSelectedUnits()
+	fade = (sel and #sel > 0) and FADE_SELECTED or 1
 	local list
-	if mode == "all" then list = spGetTeamUnits(spGetMyTeamID()) else list = spGetSelectedUnits() end
+	if mode == "all" then list = spGetTeamUnits(spGetMyTeamID()) else list = sel end
 	if list then
 		for i = 1, math.min(#list, MAX_UNITS) do DrawUnit(list[i]) end
 	end

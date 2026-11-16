@@ -19,6 +19,9 @@ local FACTORY_KEYS = {
 }
 -- -----------------------------------------------------------------------------
 
+-- the dashboard's KEYS page reads these
+WG.VBHotkeys = { orders = ORDER_KEYS, build = BUILD_KEYS, factory = FACTORY_KEYS }
+
 local function Describe(tbl) local t = {} for k, v in pairs(tbl) do t[#t + 1] = k:upper() .. "=" .. v end table.sort(t) return table.concat(t, "  ") end
 
 -- Ctrl+B: detonate every selected unit (the LuaRules gadget vb_explode.lua applies the blasts;

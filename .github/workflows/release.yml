@@ -67,6 +67,59 @@ jobs:
           # archive can be read one by one
           7z a -t7z -mx=9 -ms=off ../dist/voidborn_rift.sd7 mapinfo.lua maps > /dev/null
 
+      - name: Package Linux and Windows Standalones
+        if: steps.gate.outputs.match == 'true'
+        env:
+          TAG: ${{ steps.gate.outputs.tag }}
+          REPO: ${{ github.repository.name }}
+          ENGINE_VERSION="2026.09.02" # Match your engine version tag
+        run: |
+          # ==========================================
+          # 1. BUILD LINUX STANDALONE
+          # ==========================================
+          mkdir -p bundle-linux/spring bundle-linux/maps bundle-linux/games
+          cp dist/voidborn.sdz bundle-linux/games/
+          cp dist/voidborn_rift.sd7 bundle-linux/maps/
+          
+          # Copy all three start scripts
+          cp Play_Choir_vs_Bot.txt bundle-linux/
+          cp Play_Maw_vs_Bot.txt bundle-linux/
+          cp Watch_Bot_vs_Bot.txt bundle-linux/
+          
+          # Download and extract Linux Engine binaries
+          wget -q "https://github.com/beyond-all-reason/spring/releases/download/$ENGINE_VERSION/recoil_${ENGINE_VERSION}_amd64-linux.7z" -O engine-linux.7z
+          mkdir -p engine-linux-extracted
+          7z x engine-linux.7z -oengine-linux-extracted > /dev/null
+          cp -r engine-linux-extracted/* bundle-linux/spring/
+          
+          # Zip Linux package
+          cd bundle-linux
+          zip -r "../$REPO-standalone-$TAG-linux.zip" .
+          cd ..
+          
+          # ==========================================
+          # 2. BUILD WINDOWS STANDALONE
+          # ==========================================
+          mkdir -p bundle-windows/spring bundle-windows/maps bundle-windows/games
+          cp dist/voidborn.sdz bundle-windows/games/
+          cp dist/voidborn_rift.sd7 bundle-windows/maps/
+          
+          # Copy all three start scripts
+          cp Play_Choir_vs_Bot.txt bundle-windows/
+          cp Play_Maw_vs_Bot.txt bundle-windows/
+          cp Watch_Bot_vs_Bot.txt bundle-windows/
+          
+          # Download and extract Windows Engine binaries
+          wget -q "https://github.com/beyond-all-reason/spring/releases/download/$ENGINE_VERSION/recoil_${ENGINE_VERSION}_amd64-windows.7z" -O engine-win.7z
+          mkdir -p engine-win-extracted
+          7z x engine-win.7z -oengine-win-extracted > /dev/null
+          cp -r engine-win-extracted/* bundle-windows/spring/
+          
+          # Zip Windows package
+          cd bundle-windows
+          zip -r "../$REPO-standalone-$TAG-windows.zip" .
+          cd ..
+          
       - name: Make the release if the tag came without one
         if: steps.gate.outputs.match == 'true' && github.event_name == 'push'
         env:

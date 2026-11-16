@@ -618,7 +618,7 @@ local KIND_NAMES = {
 	art = "Artillery", support = "Support unit", heavy = "Heavy unit",
 }
 local DEFAULT_KEYS = {
-	orders = { a = "attack", s = "stop", m = "move", f = "fight", p = "patrol", g = "guard", r = "repair", e = "reclaim", t = "resurrect", d = "dgun", w = "wait", y = "capture" },
+	orders = { a = "attack", s = "stop", m = "move", f = "fight", p = "patrol", g = "guard", r = "repair", e = "reclaim", t = "resurrect", d = "vbdgun", q = "vbdestab", k = "vbcloak", w = "wait", y = "capture" },
 	build = { z = "mex", x = "solar", c = "fac", v = "radar", b = "store", n = "def1", j = "def2", u = "heart" },
 	factory = { z = "con", x = "scout", c = "raider", v = "assault", b = "art", n = "support", j = "heavy" },
 }
@@ -696,7 +696,7 @@ local function DrawMenu(ctx)
 	menuRect = nil
 	if not st.menu then return end
 	local h = sc(24)
-	local items = { { "STATS", "overview" }, { "SETTINGS", "settings" }, { "KEYS", "keys" }, { "ABOUT", "about" } }
+	local items = { { "STATS", "overview" }, { "SETTINGS", "settings" }, { "KEYS", "keys" }, { "ABOUT", "about" }, { "RESIGN", "resign" } }
 	local info = string.format("%d PLAYERS", counts[1]) .. (counts[1] ~= counts[4] and string.format("  -  %d ALIVE", counts[4]) or "")
 	local w = sc(14) * 2
 	for _, it in ipairs(items) do w = w + D.W(it[1], sc(10)) + sc(24) + sc(3) end
@@ -709,16 +709,32 @@ local function DrawMenu(ctx)
 	D.Rect(x1, y1, x1 + w, y2, C.bg, 0.88)
 	D.Frame(x1, y1, x1 + w, y2, C.line, 1)
 	D.Rect(x1, y1, x1 + w, y1 + 1, C.accent, 0.5)
+	-- the backing region goes FIRST: D.Hit() walks the regions from the last to the first, so a region
+	-- registered after the buttons would swallow every click on them
+	D.Region(x1, y1, x1 + w, y2, {})
 	local x = x1 + sc(14)
 	for _, it in ipairs(items) do
 		local bw = D.W(it[1], sc(10)) + sc(24)
-		D.Button(x, y1 + sc(3), x + bw, y2 - sc(3), it[1], { click = function() Open(it[2]) end, tip = it[1] == "STATS" and "Statistics dashboard (Ctrl+Shift+D)" or nil })
+		local tip
+		if it[1] == "STATS" then
+			tip = "Statistics dashboard (Ctrl+Shift+D)"
+		elseif it[1] == "RESIGN" then
+			tip = "Resign from the match"
+		else
+			tip = nil
+		end
+		local click
+		if it[1] == "RESIGN" then
+			click = function() Spring.SendCommands("resign"); Close() end
+		else
+			click = function() Open(it[2]) end
+		end
+		D.Button(x, y1 + sc(3), x + bw, y2 - sc(3), it[1], { click = click, tip = tip })
 		x = x + bw + sc(3)
 	end
 	local rank
 	for _, r in ipairs(Stats.Leaderboard()) do if r.team.ally == Spring.GetMyAllyTeamID() then rank = rank or r.rank end end
 	D.Text(info, x + sc(8), y1 + sc(8), sc(9), "o", C.dim)
-	D.Region(x1, y1, x1 + w, y2, {})
 end
 
 local function TeamCards(x1, y1, x2, y2, ctx)

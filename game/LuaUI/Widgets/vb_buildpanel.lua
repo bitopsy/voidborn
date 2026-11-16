@@ -236,8 +236,9 @@ function widget:TextCommand(cmd) if cmd == "vbpanel" then closed = not closed re
 function widget:GetConfigData() return { px = px, py = py, scale = scale, closed = closed } end
 function widget:SetConfigData(d)
 	if d and d.px then px, py = d.px, d.py end
+	-- always open by default; ignore saved closed state
+	closed = false
 	if d and d.scale then scale = math.max(MIN_SCALE, math.min(MAX_SCALE, d.scale)) end
-	if d and d.closed ~= nil then closed = d.closed end
 end
 function widget:ViewResize(w, h) vsx, vsy = w, h end
 function widget:Update()

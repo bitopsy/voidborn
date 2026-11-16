@@ -183,7 +183,9 @@ if gadgetHandler:IsSyncedCode() then
 
 		local cap = Clamp((maxHealth or ud.health or 100) / HEALTH_DIV, 2, MAX_ENERGY)
 		local seed = math.max(cap * SEED_FRAC, 0.5)
-		local baseR = Clamp(Spring.GetUnitRadius(unitID) or 20, 14, 120)
+		-- the size follows the energy: a patch that holds a lot is a big one, and a
+		-- patch that holds little is a small one
+		local baseR = Clamp(8 + 2.4 * math.sqrt(cap), 14, 120)
 
 		if count >= MAX_FUNGI then DropSmallest() end
 		local heading = Spring.GetUnitHeading(unitID) or 0
@@ -324,42 +326,47 @@ else  -- UNSYNCED: the gray matter, the shrinking unit and the 3D mushrooms
 	-- the shapes: each returns a profile; heights are about 1.0 to 1.7 and radii about 0.4 to 1.2
 	local SHAPES = {}
 	function SHAPES.dome(p)
-		return {
+		-- the first 5 points are the stalk, the rest is the cap: it opens later
+		return { split = 5, profile = {
 			P(0, 0, p.stalk), P(0.20, 0, p.stalk), P(0.15, 0.08, p.stalk), P(0.105, 0.30, p.stalk), P(0.09, 0.55, p.stalk),
 			P(0.11, 0.60, p.gill, { gill = true }), P(0.36, 0.58, p.gill, { gill = true }), P(0.64, 0.60, p.gill, { gill = true }),
 			P(0.82, 0.68, p.rim, { em = 0.6, spot = 6 }),
 			P(0.80, 0.80, p.cap), P(0.64, 0.94, p.cap), P(0.42, 1.03, p.cap), P(0.17, 1.08, p.cap), P(0, 1.095, p.cap),
-		}
+		} }
 	end
 	function SHAPES.bell(p)
-		return {
+		-- the first 4 points are the stalk, the rest is the cap: it opens later
+		return { split = 4, profile = {
 			P(0, 0, p.stalk), P(0.14, 0, p.stalk), P(0.09, 0.12, p.stalk), P(0.06, 0.50, p.stalk), P(0.05, 0.95, p.stalk),
 			P(0.07, 1.00, p.gill, { gill = true }), P(0.28, 0.97, p.gill, { gill = true }),
 			P(0.44, 1.00, p.rim, { em = 0.5, spot = 8 }),
 			P(0.42, 1.10, p.cap), P(0.33, 1.28, p.cap), P(0.20, 1.46, p.cap), P(0.08, 1.58, p.cap), P(0, 1.62, p.cap),
-		}
+		} }
 	end
 	function SHAPES.parasol(p)
-		return {
+		-- the first 3 points are the stalk, the rest is the cap: it opens later
+		return { split = 3, profile = {
 			P(0, 0, p.stalk), P(0.10, 0, p.stalk), P(0.05, 0.20, p.stalk), P(0.04, 0.90, p.stalk),
 			P(0.05, 0.95, p.gill, { gill = true }), P(0.50, 0.92, p.gill, { gill = true }), P(1.00, 0.97, p.gill, { gill = true, ruf = 0.07 }),
 			P(1.15, 1.03, p.rim, { em = 0.7, spot = 4, ruf = 0.10 }),
 			P(1.05, 1.10, p.cap, { ruf = 0.07 }), P(0.70, 1.17, p.cap), P(0.35, 1.22, p.cap), P(0.10, 1.25, p.cap), P(0, 1.26, p.cap),
-		}
+		} }
 	end
 	function SHAPES.morel(p)
-		return {
+		-- the first 4 points are the stalk, the rest is the cap: it opens later
+		return { split = 4, profile = {
 			P(0, 0, p.stalk), P(0.22, 0, p.stalk), P(0.16, 0.10, p.stalk), P(0.13, 0.35, p.stalk), P(0.15, 0.45, p.stalk),
 			P(0.32, 0.50, p.cap, { pit = 0.06 }), P(0.50, 0.75, p.cap, { pit = 0.09 }), P(0.52, 1.05, p.cap, { pit = 0.10 }),
 			P(0.42, 1.35, p.cap, { pit = 0.10 }), P(0.25, 1.55, p.cap, { pit = 0.08, em = 0.15 }), P(0.08, 1.65, p.cap), P(0, 1.67, p.cap),
-		}
+		} }
 	end
 	function SHAPES.stinkhorn(p)
-		return {
+		-- the first 6 points are the stalk, the rest is the cap: it opens later
+		return { split = 6, profile = {
 			P(0, 0, p.stalk), P(0.20, 0, p.stalk), P(0.22, 0.10, p.gill), P(0.12, 0.25, p.stalk), P(0.085, 0.50, p.stalk), P(0.09, 1.00, p.stalk),
 			P(0.16, 1.08, p.cap), P(0.18, 1.28, p.cap, { em = 0.2, spot = 6 }), P(0.13, 1.50, p.cap),
 			P(0.05, 1.62, p.rim, { em = 0.9 }), P(0, 1.66, p.rim, { em = 0.9 }),
-		}
+		} }
 	end
 
 	local FORMS = {                         -- 8 looks: shape x palette
@@ -371,22 +378,57 @@ else  -- UNSYNCED: the gray matter, the shrinking unit and the 3D mushrooms
 		{ 0, 0, 0.55, 0.05 }, { 0.42, 0.10, 0.38, -0.18 }, { -0.35, 0.30, 0.42, 0.15 }, { 0.10, -0.45, 0.30, 0.10 }, { -0.20, -0.40, 0.26, -0.12 },
 	}
 
-	local lists = {}                        -- built in Initialize: lists.forms[i] = { solid, glow, col }, lists.blobs[i]
+	local lists = {}                        -- built in Initialize: lists.forms[i] = { stalk, caps = {...}, col }, lists.blobs[i]
+
+	-- a slice of a profile: the stalk is the first part, the cap the rest
+	local function Slice(profile, a, b)
+		local t = {}
+		for i = a, b do t[#t + 1] = profile[i] end
+		return t
+	end
+
 	local function BuildForm(form, idx)
 		local pal = PAL[form.pal]
-		local acc, glows = {}, {}
+		local acc, glows, caps = {}, {}, {}
+		-- one shape: the stalk goes up first, the cap opens afterwards.  The cap is
+		-- scaled about the top of the stalk, so a young mushroom is a little stalk
+		-- with a bud on it.
+		local function Add(shapeFn, opts)
+			local sh = shapeFn(pal)
+			local prof, split = sh.profile, sh.split
+			local sAcc, sGlows, cAcc, cGlows = {}, {}, {}, {}
+			Lathe(sAcc, sGlows, Slice(prof, 1, split), opts)
+			Lathe(cAcc, cGlows, Slice(prof, split + 1, #prof), opts)
+			for i = 1, #sAcc do acc[#acc + 1] = sAcc[i] end
+			for i = 1, #sGlows do glows[#glows + 1] = sGlows[i] end
+			local anchor = prof[split]
+			caps[#caps + 1] = {
+				acc = cAcc, glows = cGlows,
+				ax = opts.ox or 0, ay = anchor.y * (opts.sc or 1), az = opts.oz or 0,
+			}
+		end
 		if form.shape == "cluster" then
+			-- a cluster is a handful of small mushrooms, each with its own bud
 			for i, c in ipairs(CLUSTER) do
-				Lathe(acc, glows, SHAPES.dome(pal), { ox = c[1], oz = c[2], sc = c[3], lean = c[4], ph = i })
+				Add(SHAPES.dome, { ox = c[1], oz = c[2], sc = c[3], lean = c[4], ph = i })
 			end
 		else
-			Lathe(acc, glows, SHAPES[form.shape](pal), { ph = idx })
+			Add(SHAPES[form.shape], { ph = idx })
 		end
-		return {
-			solid = gl.CreateList(function() EmitTriangles(acc) end),
-			glow  = gl.CreateList(function() EmitGlows(glows) end),
-			col   = pal.glow,
+		local out = {
+			stalk = gl.CreateList(function() EmitTriangles(acc) end),
+			glow = gl.CreateList(function() EmitGlows(glows) end),
+			caps = {},
+			col = pal.glow,
 		}
+		for _, cap in ipairs(caps) do
+			out.caps[#out.caps + 1] = {
+				list = gl.CreateList(function() EmitTriangles(cap.acc) end),
+				glow = gl.CreateList(function() EmitGlows(cap.glows) end),
+				ax = cap.ax, ay = cap.ay, az = cap.az,
+			}
+		end
+		return out
 	end
 
 	-- the gray matter: a bumpy, folded lump (a sphere of radius ~1, squashed when drawn)
@@ -449,6 +491,7 @@ else  -- UNSYNCED: the gray matter, the shrinking unit and the 3D mushrooms
 				th = (j - 1) / n * 0.6,                                -- growth at which this one starts to sprout
 				spin = 360 * Hash(fid, j * 7 + 5),
 				ph = 2 * pi * Hash(fid, j * 7 + 6),
+				bud = Hash(fid, j * 7 + 8) < 0.34,                    -- a third of them stay small mushrooms
 			}
 		end
 		return slots
@@ -511,6 +554,14 @@ else  -- UNSYNCED: the gray matter, the shrinking unit and the 3D mushrooms
 	end
 
 	local function Ease(u) return 1 - (1 - u) * (1 - u) end       -- ease-out, no overshoot: sizes never exceed their cap
+
+	-- the cap opens after the stalk is up: a young mushroom is a little stalk with a
+	-- bud on it, and only later does the cap spread out.  A bud stays a bud.
+	local function CapOpen(gj, s)
+		if s.bud then return 0.18 end
+		local c = Ease(Clamp((gj - 0.42) / 0.58, 0, 1))
+		return 0.18 + 0.82 * c
+	end
 
 	-- put the origin on the lump's surface in direction (dx,dy,dz), z axis along the mushroom
 	local function Place(p, s, m, t, rb, w)
@@ -604,11 +655,22 @@ else  -- UNSYNCED: the gray matter, the shrinking unit and the 3D mushrooms
 					if gj > 0 then
 						local m = S * s.size * 0.55 * Ease(gj) * (1 - 0.35 * (p.w or 0))
 						if m > 0.3 then
+							local form = lists.forms[s.form]
+							local open = CapOpen(gj, s)
 							glPushMatrix()
 							glTranslate(p.x, cy, p.z)
 							glRotate(p.yaw, 0, 1, 0)
 							Place(p, s, m, t, rb, p.w or 0)
-							glCallList(lists.forms[s.form].solid)
+							glCallList(form.stalk)
+							-- the caps open out of the top of the stalk
+							for _, cap in ipairs(form.caps) do
+								glPushMatrix()
+								glTranslate(cap.ax, cap.ay, cap.az)
+								glScale(open, open, open)
+								glTranslate(-cap.ax, -cap.ay, -cap.az)
+								glCallList(cap.list)
+								glPopMatrix()
+							end
 							glPopMatrix()
 						end
 					end
@@ -631,13 +693,24 @@ else  -- UNSYNCED: the gray matter, the shrinking unit and the 3D mushrooms
 					local gj = Clamp((G - s.th) / (1 - s.th), 0, 1)
 					local m = S * s.size * 0.55 * Ease(gj) * (1 - 0.35 * (p.w or 0))
 					if gj > 0 and m > 0.3 then
-						local col = lists.forms[s.form].col
+						local form = lists.forms[s.form]
+						local col = form.col
+						local open = CapOpen(gj, s)
 						glColor(col[1], col[2], col[3], 0.30 + 0.20 * sin(t * 2.2 + s.ph))
 						glPushMatrix()
 						glTranslate(p.x, cy, p.z)
 						glRotate(p.yaw, 0, 1, 0)
 						Place(p, s, m, t, rb, p.w or 0)
-						glCallList(lists.forms[s.form].glow)
+						-- the glowing spots sit on the cap, so they open with it
+						for _, cap in ipairs(form.caps) do
+							glPushMatrix()
+							glTranslate(cap.ax, cap.ay, cap.az)
+							glScale(open, open, open)
+							glTranslate(-cap.ax, -cap.ay, -cap.az)
+							glCallList(cap.glow)
+							glPopMatrix()
+						end
+						glCallList(form.glow)
 						glPopMatrix()
 					end
 				end

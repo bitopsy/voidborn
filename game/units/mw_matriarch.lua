@@ -78,8 +78,12 @@ return {
 		showNanoSpray = true,
 		power = 3000,
 		decloakDistance = 0,
-		canCloak = false,
-		cloakCost = 0,
+		canCloak = true,
+		cloakCost = 0,             -- no engine upkeep: vb_cloak.lua charges 300 E/s itself
+		cloakCostMoving = 0,
+		cloakTimeout = 30,
+		initCloaked = false,
+		minCloakDistance = 0,
 		hideDamage = false,
 		weapons = {
 			{
@@ -89,6 +93,10 @@ return {
 			{
 				name = "mw_matriarch_w2",
 				def = "mw_matriarch_w2",
+			},
+			{
+				name = "mw_matriarch_w3",
+				def = "mw_matriarch_w3",
 			},
 		},
 	},

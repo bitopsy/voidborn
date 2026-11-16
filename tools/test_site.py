@@ -14,7 +14,7 @@ import sys
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 SITE = os.path.join(ROOT, "vb")
-PAGES = ["index.html", "play.html", "maps.html", "forge.html", "roadmap.html"]
+PAGES = ["index.html", "play.html", "maps.html", "forge.html", "story.html", "roadmap.html"]
 
 fails = 0
 

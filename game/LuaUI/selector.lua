@@ -38,8 +38,10 @@ include("fonts.lua")
 
 local floor = math.floor
 
-local widgetsList = {}
-local fullWidgetsList = {}
+local widgetsList = {}        -- the visible slice (scrolled)
+local fullWidgetsList = {}     -- every display row: category headers + widget entries
+local entriesAll = {}          -- every widget entry { name, data, category }, sorted; no headers
+local collapsed = {}           -- category name -> true when folded up (click its header)
 
 local vsx, vsy = widgetHandler:GetViewSizes()
 
@@ -69,7 +71,8 @@ local nameW   = 0      -- pixel width of the NAME column
 local errW    = 0      -- pixel width of the ERROR column (0 = no widget has an error, column hidden)
 local errCount = 0
 local hdrTop  = 0      -- top of the table header strip
-local xName, xHist, xMemR, xSizeR, xErr = 0, 0, 0, 0, 0   -- column anchors (set by UpdateGeometry)
+local xName, xHist, xMemR, xTrend, xSizeR, xErr = 0, 0, 0, 0, 0, 0   -- column anchors (set by UpdateGeometry)
+local trendW  = 0          -- pixel width of the OVER TIME column (measured once, needs the font)
 local borderx = yStep * 0.75
 local bordery = yStep * 0.75
 
@@ -95,7 +98,7 @@ local scrollbargrabpos = 0.0
 
 function widget:Initialize()
   widgetHandler.knownChanged = true
-  Spring.Echo("[VB] WidgetSelector loaded (table layout, dotted memory histogram, error column)")
+  Spring.Echo("[VB] WidgetSelector loaded (categories, size, memory histogram + ASCII memory-over-time, error column)")
 end
 
 
@@ -113,6 +116,14 @@ end
 local COL_SIZE_W = 64         -- pixel widths of the right-hand columns
 local COL_MEM_W  = 80
 local COL_GAP    = 14
+local NAME_INDENT = 12          -- widget names sit this far in under their category header
+
+-- ASCII memory-over-time, one character per sample (taken every MEM_REFRESH seconds, and ONLY while
+-- this selector is open: the history starts empty each time you press F11).
+-- Each widget is scaled between its own lowest and highest sample:  .  :  -  =  +  #
+-- A flat widget stays on ".", a leaking one climbs. Orange = growing, green = shrinking.
+local TREND_LEN  = 16
+local TREND_RAMP = { ".", ":", "-", "=", "+", "#" }
 
 -- dotted histogram: HIST_DOTS dots, each DOT_SZ px square, DOT_STEP px apart
 local HIST_DOTS  = 20
@@ -126,6 +137,9 @@ local MEM_REFRESH   = 1.5     -- seconds between estimates
 local MEM_NODE_CAP  = 200000  -- safety cap on objects visited per widget
 
 local memBytes   = {}         -- widget name -> estimated bytes (active widgets only)
+local widgetHist = {}         -- widget name -> last TREND_LEN samples (bytes)
+local trendText  = {}         -- widget name -> the ASCII string drawn in the OVER TIME column
+local trendCol   = {}         -- widget name -> its colour escape
 local memTimer   = nil
 local totals     = { active = 0, src = 0, mem = 0, springMem = 0, maxMem = 0 }
 local skipSet    = nil
@@ -383,6 +397,40 @@ local function EstimateBytes(root, skip)
   return bytes
 end
 
+-- record one sample for a widget and rebuild its ASCII trend string
+local function PushWidgetHist(name, b)
+  local h = widgetHist[name]
+  if (not h) then h = {}; widgetHist[name] = h end
+  h[#h + 1] = b
+  if (#h > TREND_LEN) then table.remove(h, 1) end
+
+  local lo, hi = h[1], h[1]
+  for i = 2, #h do
+    if (h[i] < lo) then lo = h[i] end
+    if (h[i] > hi) then hi = h[i] end
+  end
+  local range = hi - lo
+  local flat = range < math.max(1024, 0.03 * hi)       -- changes under ~1 KB / 3% are noise
+  local chars = {}
+  for i = 1, #h do
+    local idx = 1
+    if (not flat) then
+      idx = 1 + floor((h[i] - lo) / range * (#TREND_RAMP - 1) + 0.5)
+    end
+    chars[i] = TREND_RAMP[idx]
+  end
+  trendText[name] = table.concat(chars)
+
+  local first, last = h[1], h[#h]
+  if (#h >= 3 and last - first > math.max(2048, 0.10 * first)) then
+    trendCol[name] = '\255\255\176\080'      -- growing: orange
+  elseif (#h >= 3 and first - last > math.max(2048, 0.10 * first)) then
+    trendCol[name] = '\255\128\255\160'      -- shrinking: green
+  else
+    trendCol[name] = '\255\150\190\220'      -- steady
+  end
+end
+
 local function RefreshMemory(force)
   local now = Spring.GetTimer()
   if (not force and memTimer and Spring.DiffTimers(now, memTimer) < MEM_REFRESH) then return end
@@ -396,6 +444,7 @@ local function RefreshMemory(force)
       if (w) then
         local ok, b = pcall(EstimateBytes, w, skipSet)
         memBytes[name] = ok and b or 0
+        PushWidgetHist(name, memBytes[name])
         mem = mem + memBytes[name]
         if (name ~= myName and memBytes[name] > top) then top = memBytes[name] end
       end
@@ -403,6 +452,7 @@ local function RefreshMemory(force)
       src = src + (data.size or 0)
     else
       memBytes[name] = nil
+      widgetHist[name], trendText[name], trendCol[name] = nil, nil, nil
     end
   end
   local springMem = EstimateSpringEngineMemory()
@@ -412,14 +462,94 @@ local function RefreshMemory(force)
   PushHistory(mem, springMem, collectgarbage("count") * 1024)
 end
 
+-------------------------------------------------------------------------------
+-- Categories
+--   A widget can name its own:   GetInfo() return { ..., category = "Economy" }
+--   (widgets.lua passes it through). Otherwise the category is guessed from the widget name,
+--   then from its description, using the keyword rules below (first rule that matches wins).
+--   Click a category header to fold it up / open it again.
+-------------------------------------------------------------------------------
+local CATEGORY_FAILED = "Failed to load"
+
+local CATEGORY_RULES = {
+  { "Developer",       { "developer", "console", "memory", "profil", "debug", "hello", "selector" } },
+  { "Audio",           { "sound", "audio", "music", "voice" } },
+  { "Economy",         { "reclaim", "metal", "mex", "energy", "resource", "economy", "income", "storage" } },
+  { "Units",           { "unit", "factory", "forge", "census", "commander", "builder", "army" } },
+  { "Info & Overlays", { "timeseries", "3d", "shape", "health", "sensor", "range", "radar", "overlay", "minimap", "graph" } },
+  { "Interface",       { "panel", "dashboard", "hotkey", "setting", "tooltip", "hover", "menu", "button", "bar", "hud", "font" } },
+}
+
+local CATEGORY_ORDER = {
+  [CATEGORY_FAILED] = 0, ["Economy"] = 1, ["Units"] = 2, ["Info & Overlays"] = 3,
+  ["Interface"] = 4, ["Audio"] = 5, ["Developer"] = 6, ["Other"] = 99,
+}
+
+local CATEGORY_COLOR = {
+  [CATEGORY_FAILED] = '\255\255\112\112',
+  ["Economy"]         = '\255\255\224\112',
+  ["Units"]           = '\255\255\168\128',
+  ["Info & Overlays"] = '\255\196\168\255',
+  ["Interface"]       = '\255\128\224\255',
+  ["Audio"]           = '\255\144\255\176',
+  ["Developer"]       = '\255\255\144\208',
+  ["Other"]           = '\255\200\200\200',
+}
+
+local function CatRank(cat) return CATEGORY_ORDER[cat] or 50 end
+local function CatColor(cat) return CATEGORY_COLOR[cat] or CATEGORY_COLOR["Other"] end
+
+local function CategoryOf(name, data)
+  if (data.failed) then return CATEGORY_FAILED end
+  if (type(data.category) == "string" and data.category ~= "") then return data.category end
+  local n = string.lower(name)
+  for pass = 1, 2 do                                  -- pass 1: name only, pass 2: name + description
+    local hay = (pass == 1) and n or (n .. " " .. string.lower(data.desc or ""))
+    for _, rule in ipairs(CATEGORY_RULES) do
+      for _, kw in ipairs(rule[2]) do
+        if (string.find(hay, kw, 1, true)) then return rule[1] end
+      end
+    end
+  end
+  return "Other"
+end
+
+-- the header row of a category: how many are on, their memory, and their source size
+local function HeaderRow(data, posy)
+  local act, src, mem = 0, 0, 0
+  for _, m in ipairs(data.members) do
+    local md = m[2]
+    if (md.active) then
+      act = act + 1
+      mem = mem + (memBytes[m[1]] or 0)
+    end
+    src = src + (md.size or 0)
+  end
+  return {
+    y = posy, header = true, active = false,
+    nameText = CatColor(data.category) .. (collapsed[data.category] and "[+] " or "[-] ") ..
+               string.upper(data.category) .. '\255\160\160\160' ..
+               string.format("   %d/%d on", act, #data.members),
+    memText  = (act > 0) and ("~" .. FmtBytes(mem)) or "",
+    memCol   = '\255\128\224\255',
+    sizeText = FmtBytes(src),
+    sizeCol  = CatColor(data.category),
+  }
+end
+
 local function UpdateGeometry()
   midx  = vsx * 0.5
   midy  = vsy * 0.5
 
+  -- width of the OVER TIME column: TREND_LEN of the widest ramp character
+  if (trendW == 0) then
+    trendW = floor(fontSize * gl.GetTextWidth(string.rep("#", TREND_LEN))) + 2
+  end
+
   -- width wanted by the ERROR column (only exists while some widget has an error)
   local want = 0
   errCount = 0
-  for _, nd in ipairs(fullWidgetsList) do
+  for _, nd in ipairs(entriesAll) do
     local m, where = GetWidgetError(nd[1], nd[2])
     if (m) then
       errCount = errCount + 1
@@ -430,7 +560,7 @@ local function UpdateGeometry()
     end
   end
 
-  local fixed = nameW + COL_GAP + HIST_W + COL_GAP + COL_MEM_W + COL_GAP + COL_SIZE_W
+  local fixed = nameW + COL_GAP + HIST_W + COL_GAP + COL_MEM_W + COL_GAP + trendW + COL_GAP + COL_SIZE_W
   local cap = math.min(ERR_MAX_W, vsx * 0.96 - 2 * borderx - fixed - 2 * COL_GAP)
   errW = (want > 0) and floor(math.max(120, math.min(want, cap))) or 0
   local inner = fixed + ((errW > 0) and (2 * COL_GAP + errW) or 0)
@@ -438,11 +568,12 @@ local function UpdateGeometry()
   minx = floor(midx - inner * 0.5 - borderx)
   maxx = floor(midx + inner * 0.5 + borderx)
 
-  -- column anchors:  NAME | histogram + MEMORY (right-aligned) | SIZE (right-aligned) | ERROR
+  -- column anchors:  NAME | histogram + MEMORY (right-aligned) | OVER TIME | SIZE (right-aligned) | ERROR
   xName  = minx + borderx
   xHist  = xName + nameW + COL_GAP
   xMemR  = xHist + HIST_W + COL_GAP + COL_MEM_W
-  xSizeR = xMemR + COL_GAP + COL_SIZE_W
+  xTrend = xMemR + COL_GAP
+  xSizeR = xTrend + trendW + COL_GAP + COL_SIZE_W
   xErr   = xSizeR + 2 * COL_GAP
 
   local ySize = yStep * (#widgetsList)
@@ -496,16 +627,46 @@ function widget:MouseWheel(up, value)
 end
 
 
+-- entries are { name, data, category }: by category (failed files first), mod widgets first, then by name
 local function SortWidgetListFunc(nd1, nd2)
-  local f1, f2 = nd1[2].failed and true or false, nd2[2].failed and true or false
-  if (f1 ~= f2) then
-    return f1  -- files that failed to load first
+  local r1, r2 = CatRank(nd1[3]), CatRank(nd2[3])
+  if (r1 ~= r2) then
+    return r1 < r2
+  end
+  if (nd1[3] ~= nd2[3]) then
+    return nd1[3] < nd2[3]
   end
   local z1, z2 = nd1[2].fromZip and true or false, nd2[2].fromZip and true or false
   if (z1 ~= z2) then
     return z1  -- mod widgets first
   end
   return (nd1[1] < nd2[1]) -- sort by name
+end
+
+
+-- the rows actually listed: a header per category, then its widgets (unless the category is folded)
+local function BuildDisplayList()
+  fullWidgetsList = {}
+  local last, members
+  for _, e in ipairs(entriesAll) do
+    if (e[3] ~= last) then
+      last = e[3]
+      members = {}
+      fullWidgetsList[#fullWidgetsList + 1] = { last, { header = true, category = last, members = members } }
+    end
+    members[#members + 1] = e
+    if (not collapsed[last]) then
+      fullWidgetsList[#fullWidgetsList + 1] = e
+    end
+  end
+end
+
+
+local function ToggleCategory(cat)
+  collapsed[cat] = not collapsed[cat]
+  BuildDisplayList()
+  UpdateListScroll()
+  UpdateGeometry()
 end
 
 
@@ -519,11 +680,12 @@ local function UpdateList()
   nameW = 0
   widgetsList = {}
   fullWidgetsList = {}
+  entriesAll = {}
   local knownFiles = {}
   local myCount = 0
 
   local function Measure(label)
-    local width = fontSize * gl.GetTextWidth(label)
+    local width = fontSize * gl.GetTextWidth(label) + NAME_INDENT
     if (width > nameW) then nameW = width end
   end
 
@@ -531,7 +693,7 @@ local function UpdateList()
     if (data.filename) then knownFiles[data.filename] = true end
     if (name ~= myName) then
       myCount = myCount + 1
-      table.insert(fullWidgetsList, { name, data })
+      table.insert(entriesAll, { name, data, CategoryOf(name, data) })
       Measure(data.fromZip and ('*' .. name .. '*') or name)
     end
   end
@@ -544,15 +706,16 @@ local function UpdateList()
   for filename, f in pairs(widgetHandler.failedWidgets or {}) do
     if (not knownFiles[filename]) then
       local label = f.basename or filename
-      table.insert(fullWidgetsList, { label, {
+      table.insert(entriesAll, { label, {
         failed = true, active = false, filename = filename,
         basename = f.basename, fromZip = f.fromZip,
-      } })
+      }, CATEGORY_FAILED })
       Measure(label)
     end
   end
 
-  table.sort(fullWidgetsList, SortWidgetListFunc)
+  table.sort(entriesAll, SortWidgetListFunc)
+  BuildDisplayList()
 
   UpdateListScroll()
   UpdateGeometry()
@@ -607,6 +770,9 @@ function widget:DrawScreen()
   for _,namedata in ipairs(widgetsList) do
     local name = namedata[1]
     local data = namedata[2]
+    if (data.header) then
+      rows[#rows + 1] = HeaderRow(data, posy)
+    else
     local order = widgetHandler.orderList[name]
     local enabled = (not data.failed) and order and (order > 0)
     local active = data.active
@@ -651,7 +817,11 @@ function widget:DrawScreen()
     if (em and errW > 0) then
       row.err = FitError(ErrorText(em, where))
     end
+    if (active and trendText[name]) then
+      row.trend, row.trendCol = trendText[name], trendCol[name]
+    end
     rows[#rows + 1] = row
+    end  -- not a header
     posy = posy - yStep
   end
 
@@ -680,7 +850,12 @@ function widget:DrawScreen()
   for i, row in ipairs(rows) do
     local y0 = row.y - fontSpace * 0.5
     local y1 = row.y + fontSize + fontSpace * 0.5
-    if (row.err) then
+    if (row.header) then
+      gl.Color(0.30, 0.42, 0.70, 0.30)
+      gl.Rect(minx, y0, maxx, y1)
+      gl.Color(1, 1, 1, 0.18)
+      gl.Rect(minx, y0, maxx, y0 + 1)
+    elseif (row.err) then
       gl.Color(0.85, 0.10, 0.10, 0.16)
       gl.Rect(minx, y0, maxx, y1)
     elseif (i % 2 == 0) then
@@ -691,7 +866,7 @@ function widget:DrawScreen()
 
   -- thin column separators
   gl.Color(1, 1, 1, 0.10)
-  local seps = { xHist - COL_GAP * 0.5, xMemR + COL_GAP * 0.5 }
+  local seps = { xHist - COL_GAP * 0.5, xMemR + COL_GAP * 0.5, xTrend + trendW + COL_GAP * 0.5 }
   if (errW > 0) then seps[#seps + 1] = xSizeR + COL_GAP end
   for _, sx in ipairs(seps) do
     gl.Rect(sx, miny, sx + 1, hdrTop)
@@ -699,6 +874,7 @@ function widget:DrawScreen()
 
   -- dotted memory histogram: filled dots run cyan -> orange, empty slots are a faint track
   for _, row in ipairs(rows) do
+   if (not row.header) then
     local y0 = row.y + fontSize * 0.5 - DOT_SZ * 0.5
     local filled = 0
     if (row.mb and row.mb > 0) then
@@ -714,6 +890,7 @@ function widget:DrawScreen()
       end
       gl.Rect(x0, y0, x0 + DOT_SZ, y0 + DOT_SZ)
     end
+   end  -- not a header
   end
 
   -- scrollbar
@@ -884,6 +1061,7 @@ function widget:DrawScreen()
   local hc = '\255\255\255\128'
   gl.Text(hc .. "WIDGET", xName,  hy, fontSize, "vo")
   gl.Text(hc .. "MEMORY", xHist,  hy, fontSize, "vo")
+  gl.Text(hc .. "OVER TIME", xTrend, hy, fontSize, "vo")
   gl.Text(hc .. "SIZE",   xSizeR, hy, fontSize, "vor")
   if (errW > 0) then
     gl.Text('\255\255\128\128' .. "ERROR", xErr, hy, fontSize, "vo")
@@ -891,9 +1069,12 @@ function widget:DrawScreen()
 
   for _, row in ipairs(rows) do
     local ty = row.y + fontSize * 0.5
-    gl.Text(row.nameText, xName, ty, fontSize, "v")
+    gl.Text(row.nameText, xName + (row.header and 0 or NAME_INDENT), ty, fontSize, "v")
     gl.Text(row.memCol .. row.memText, xMemR, ty, fontSize, "vr")
-    gl.Text('\255\200\200\200' .. row.sizeText, xSizeR, ty, fontSize, "vr")
+    if (row.trend) then
+      gl.Text(row.trendCol .. row.trend, xTrend, ty, fontSize, "v")
+    end
+    gl.Text((row.sizeCol or '\255\200\200\200') .. row.sizeText, xSizeR, ty, fontSize, "vr")
     if (row.err) then
       gl.Text('\255\255\112\112' .. row.err, xErr, ty, fontSize, "v")
     end
@@ -925,6 +1106,11 @@ function widget:DrawScreen()
   gl.Text('\255\160\160\160' .. string.format("dots: %s scale, full row = heaviest widget (%s)",
                                                  HIST_LOG and "log" or "linear", FmtBytes(totals.maxMem)),
           midx, miny - 66, fontSize * 0.85, "oc")
+  gl.Text('\255\160\160\160' .. string.format("over time: last %d samples (1 per %.1f s, only while this list is open), . low  # high per widget, orange = growing, green = shrinking",
+                                                 TREND_LEN, MEM_REFRESH),
+          midx, miny - 80, fontSize * 0.85, "oc")
+  gl.Text('\255\160\160\160' .. "click a category header to fold it   |   size = source file, memory = live Lua data",
+          midx, miny - 94, fontSize * 0.85, "oc")
 
   gl.EndText()
 
@@ -1016,13 +1202,13 @@ function widget:MouseRelease(x, y, button)
 
   if button == 1 then
     if minx < x and x < minx + 30 and miny - 20 < y and y < miny then
-      for _,namedata in ipairs(fullWidgetsList) do
+      for _,namedata in ipairs(entriesAll) do
         if (not namedata[2].failed) then widgetHandler:EnableWidget(namedata[1]) end
       end
       return -1
     end
     if maxx - 50 < x and x < maxx and miny - 20 < y and y < miny then
-      for _,namedata in ipairs(fullWidgetsList) do
+      for _,namedata in ipairs(entriesAll) do
         if (not namedata[2].failed) then
           widgetHandler:DisableWidget(namedata[1])
           widgetHandler.orderList[namedata[1]] = 0
@@ -1040,6 +1226,10 @@ function widget:MouseRelease(x, y, button)
   
   local name = namedata[1]
   local data = namedata[2]
+  if (data.header) then                -- category header: left click folds / unfolds it
+    if (button == 1) then ToggleCategory(data.category) end
+    return -1
+  end
   if (data.failed) then return -1 end  -- file never loaded: nothing to toggle
   
   if (button == 1) then
@@ -1097,6 +1287,12 @@ function widget:GetTooltip(x, y)
   local n = namedata[1]
   local d = namedata[2]
 
+  if (d.header) then
+    return CatColor(d.category) .. d.category .. '\n' ..
+           WhiteStr .. #d.members .. ' widget(s) in this category\n' ..
+           '\255\255\255\200' .. 'LMB: fold / unfold'
+  end
+
   local order = widgetHandler.orderList[n]
   local enabled = order and (order > 0)
   
@@ -1108,6 +1304,10 @@ function widget:GetTooltip(x, y)
   tt = tt..'\n'..WhiteStr..'Size: '..(d.size and FmtBytes(d.size) or '?')
   if (d.active and memBytes[n]) then
     tt = tt..'   Memory: ~'..FmtBytes(memBytes[n])
+  end
+  tt = tt..'\n'..WhiteStr..'Category: '..CatColor(d.category or CategoryOf(n, d))..(d.category or CategoryOf(n, d))
+  if (d.active and trendText[n]) then
+    tt = tt..'\n'..WhiteStr..'Over time: '..trendCol[n]..trendText[n]
   end
   if (d.fromZip) then
     tt = tt..RedStr..' (mod widget)'

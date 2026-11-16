@@ -236,12 +236,17 @@ elif not glob.glob(os.path.join(maps_dir, "voidborn_rift*")) and not glob.glob(o
 # ------------------------------------------------------------------------------------------------ 6. the engine
 head(6, "does the engine load THIS build?")
 def find_engine():
+    """The engine to check the build with.  The latest Spring release under
+    ~/.spring/engine wins, because that is the one the game is played on; the
+    system packages are only a fallback."""
     cands = []
     if args.engine: cands.append(os.path.expanduser(args.engine))
+    for pat in ("~/.spring/engine/*/spring-headless", "~/.spring/engine/*/spring"):
+        cands += sorted(glob.glob(os.path.expanduser(pat)), reverse=True)
     for n in ("spring-headless", "spring-dedicated"):
         w = shutil.which(n)
         if w: cands.append(w)
-    for pat in ("~/.spring/engine/*/spring-headless", "/usr/games/spring-headless", "/usr/bin/spring-headless", "/usr/local/bin/spring-headless"):
+    for pat in ("/usr/games/spring-headless", "/usr/bin/spring-headless", "/usr/local/bin/spring-headless"):
         cands += sorted(glob.glob(os.path.expanduser(pat)), reverse=True)
     for cnd in cands:
         if os.path.isfile(cnd) and os.access(cnd, os.X_OK): return cnd

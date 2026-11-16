@@ -72,7 +72,7 @@ jobs:
         env:
           TAG: ${{ steps.gate.outputs.tag }}
           REPO: ${{ github.repository.name }}
-          ENGINE_VERSION: "2026.09.02"
+          ENGINE_VERSION: "2026.11.02"
         run: |
           # ==========================================
           # 1. BUILD LINUX STANDALONE

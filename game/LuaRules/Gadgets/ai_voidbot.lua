@@ -15,7 +15,13 @@ local defsByFaction = {}      -- faction -> kind -> defID
 local kindOf = {}             -- defID -> kind
 local facOf = {}
 local mapX, mapZ = Game.mapSizeX, Game.mapSizeZ
-local ARMY_KINDS = { raider = true, assault = true, art = true, heavy = true }
+local ARMY_KINDS = { raider = true, assault = true, art = true, heavy = true,
+	raider2 = true, assault2 = true, art2 = true, heavy2 = true }
+local FAC_KINDS = { fac = true, fac2 = true }          -- tier 1 and tier 2 factory
+local SUPPORT_KINDS = { support = true, support2 = true }
+local CMD_UPGRADE = 34920                              -- "Upgrade T2" (gadgets/vb_factory_upgrade.lua)
+-- earliest game frame at which the bot may start the T2 upgrade, by bot_skill (1 easy .. 3 hard)
+local UPGRADE_FRAME = { [1] = 18000, [2] = 12000, [3] = 8000 }
 
 local function ScanSpots()
 	local cw, ch = floor(mapX / 16), floor(mapZ / 16)
@@ -112,6 +118,8 @@ local function Queued(bot, kind)
 	return n
 end
 local function Total(bot, kind) return Count(bot, kind) + Queued(bot, kind) end
+-- factories of either tier (a tier 1 factory that was upgraded is still a factory)
+local function FacTotal(bot) return Total(bot, "fac") + Count(bot, "fac2") end
 
 local function FreeSpot(bot, builder, maxR)
 	local mexDef = defsByFaction[bot.fac].mex
@@ -147,7 +155,7 @@ local function BuilderThink(bot, u, f, res)
 	local ux, _, uz = Spring.GetUnitPosition(u)
 	local expand = 700 + f * 0.35
 	-- 1. factory
-	if Total(bot, "fac") == 0 then
+	if FacTotal(bot) == 0 then
 		local x, y, z = FindSpot(F.fac, bot.bx + 220, bot.bz, 40, 260)
 		if VB_DEBUG and not x then Spring.Echo("[VoidBot] no factory spot found near " .. bot.bx .. "," .. bot.bz) end
 		if x then Order(bot, u, "fac", x, y, z) return end
@@ -186,18 +194,57 @@ local function BuilderThink(bot, u, f, res)
 		local x, y, z = FindSpot(F.def2, bot.bx + 300, bot.bz, 60, 420)
 		if x then Order(bot, u, "def2", x, y, z) return end
 	end
-	if Total(bot, "fac") < 2 and mexN >= 6 and metal > 600 then
+	if FacTotal(bot) < 2 and mexN >= 6 and metal > 600 then
 		local x, y, z = FindSpot(F.fac, bot.bx + 260, bot.bz + (random() < 0.5 and -1 or 1) * 200, 40, 300)
 		if x then Order(bot, u, "fac", x, y, z) return end
 	end
 	-- 5. otherwise assist the factory
 	local fac = spGetTeamUnits(bot.team)
 	for _, o in ipairs(fac) do
-		if kindOf[Spring.GetUnitDefID(o)] == "fac" then spGiveOrder(u, CMD.GUARD, { o }, {}) return end
+		if FAC_KINDS[kindOf[Spring.GetUnitDefID(o)]] then spGiveOrder(u, CMD.GUARD, { o }, {}) return end
+	end
+end
+
+-- Start the tier 1 -> tier 2 upgrade of this factory when the economy can carry it.  The upgrade is
+-- paid a little every frame over ~45 s and the factory builds nothing meanwhile, so the bot waits for
+-- a solid economy and an army first.  The command is a toggle (a second press cancels), so it is only
+-- sent while the factory is not already upgrading.
+local function MaybeUpgrade(bot, fac, f, res)
+	local F = defsByFaction[bot.fac]
+	if not F.fac2 or kindOf[Spring.GetUnitDefID(fac)] ~= "fac" then return false end
+	if Count(bot, "fac2") > 0 then return false end                       -- already have a T2 factory
+	if GG.VB_FactoryBusy and GG.VB_FactoryBusy(fac) then return true end  -- upgrading: leave it alone
+	if bot.upgradeTried and f - bot.upgradeTried < 900 then return false end
+	if f < (UPGRADE_FRAME[bot.skill] or UPGRADE_FRAME[2]) then return false end
+	if Total(bot, "mex") < 5 or Count(bot, "con") < 2 then return false end
+	local needM, needE = math.min(1500, (res.ms or 2000) * 0.8), math.min(2000, (res.es or 3000) * 0.8)
+	if res.m < needM or res.e < needE then return false end
+	bot.upgradeTried = f
+	spGiveOrder(fac, CMD_UPGRADE, {}, {})
+	Spring.Echo(string.format("[VoidBot] team %d upgrades its factory to tier 2 (frame %d)", bot.team, f))
+	return GG.VB_FactoryBusy and GG.VB_FactoryBusy(fac) or false
+end
+
+-- what a tier 2 factory builds: mostly T2 units, paid only when the metal is there so the line does not stall
+local T2_ROLL = { { "raider2", 0.20 }, { "assault2", 0.55 }, { "art2", 0.80 }, { "support2", 0.88 }, { "heavy2", 1.0 } }
+local function PickT2(bot, F, res)
+	local roll = random()
+	for _, r in ipairs(T2_ROLL) do
+		if roll <= r[2] then
+			local kind, def = r[1], F[r[1]]
+			if def then
+				if kind == "support2" and Count(bot, "support2") >= 2 then kind = "assault2"; def = F[kind] end
+				if kind == "heavy2" and Count(bot, "heavy2") >= 3 then kind = "assault2"; def = F[kind] end
+				if def and res.m >= (UnitDefs[def].metalCost or 0) * 0.6 then return def end
+			end
+			break
+		end
 	end
 end
 
 local function FactoryThink(bot, fac, f, res)
+	if GG.VB_FactoryBusy and GG.VB_FactoryBusy(fac) then return end       -- being upgraded
+	if MaybeUpgrade(bot, fac, f, res) then return end
 	local q = Spring.GetFactoryCommandCount(fac) or 0
 	if type(q) == "table" then q = #q end
 	if VB_DEBUG and Spring.GetGameFrame() % 900 < 30 then Spring.Echo("[VoidBot] factory q=" .. q .. " cons=" .. Count(bot, "con") .. " metal=" .. math.floor(res.m)) end
@@ -208,6 +255,10 @@ local function FactoryThink(bot, fac, f, res)
 	if cons + Queued(bot, "con") < math.min(wantCons, 6) and res.m > 90 then
 		spGiveOrder(fac, -F.con, {}, {}); bot.builds[#bot.builds + 1] = { kind = "con", frame = f }
 		return
+	end
+	if kindOf[Spring.GetUnitDefID(fac)] == "fac2" and random() < 0.7 then
+		local def2 = PickT2(bot, F, res)
+		if def2 then spGiveOrder(fac, -def2, {}, {}) return end
 	end
 	local roll = random()
 	local kind
@@ -243,7 +294,7 @@ local function ArmyThink(bot, f)
 	local army, home = {}, {}
 	for _, u in ipairs(spGetTeamUnits(bot.team)) do
 		local k = kindOf[Spring.GetUnitDefID(u)]
-		if ARMY_KINDS[k] or k == "support" or k == "scout" then army[#army + 1] = u end
+		if ARMY_KINDS[k] or SUPPORT_KINDS[k] or k == "scout" then army[#army + 1] = u end
 	end
 	local need = (6 + floor(f / 1500)) * (4 - bot.skill) * 0.5 + 4
 	if #army >= need and f - bot.lastAttack > 900 then
@@ -282,11 +333,11 @@ function gadget:GameFrame(f)
 				local k = kindOf[Spring.GetUnitDefID(u)]
 				if (k == "com" or k == "con") and Idle(u) and select(5, Spring.GetUnitHealth(u)) >= 1 then
 					BuilderThink(bot, u, f, res)
-				elseif k == "fac" and select(5, Spring.GetUnitHealth(u)) >= 1 then
+				elseif FAC_KINDS[k] and select(5, Spring.GetUnitHealth(u)) >= 1 then
 					FactoryThink(bot, u, f, res)
-				elseif k == "support" and Idle(u) then
+				elseif SUPPORT_KINDS[k] and Idle(u) then
 					local c = spGetTeamUnits(teamID)
-					for _, o in ipairs(c) do if kindOf[Spring.GetUnitDefID(o)] == "fac" then spGiveOrder(u, CMD.GUARD, { o }, {}) break end end
+					for _, o in ipairs(c) do if FAC_KINDS[kindOf[Spring.GetUnitDefID(o)]] then spGiveOrder(u, CMD.GUARD, { o }, {}) break end end
 				end
 			end
 			ArmyThink(bot, f)

@@ -90,6 +90,10 @@ return {
 				name = "ch_hierophant_w2",
 				def = "ch_hierophant_w2",
 			},
+			{
+				name = "ch_hierophant_w3",
+				def = "ch_hierophant_w3",
+			},
 		},
 	},
 }

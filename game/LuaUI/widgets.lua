@@ -458,6 +458,7 @@ function widgetHandler:LoadWidget(filename, fromZip)
     knownInfo.basename = widget.whInfo.basename
     knownInfo.filename = widget.whInfo.filename
     knownInfo.enabled  = widget.whInfo.enabled
+    knownInfo.category = widget.whInfo.category
     knownInfo.fromZip  = fromZip
     self.knownWidgets[name] = knownInfo
     self.knownCount = self.knownCount + 1
@@ -606,6 +607,7 @@ function widgetHandler:FinalizeWidget(widget, filename, basename)
     wi.author  = info.author  or ""
     wi.license = info.license or ""
     wi.enabled = info.enabled or false
+    wi.category = info.category   -- optional: GetInfo() may name a category for the F11 selector
   end
 
   widget.whInfo = {}  --  a proxy table

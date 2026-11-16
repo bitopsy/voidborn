@@ -1,5 +1,5 @@
 function widget:GetInfo()
-	return { name = "Voidborn Hotkeys", desc = "BAR-style hotkeys: orders (a s m f p g r e t d w), build keys (z x c v b n j u), Ctrl+B = detonate selected units",
+	return { name = "Voidborn Hotkeys", desc = "BAR-style hotkeys: orders (a s m f p g r e t d w), build keys (z x c v b n j u), Ctrl+B = detonate the selected units (five second countdown)",
 		author = "goddot info@bitopsy.com", date = "2026", license = "GPL", layer = 1, enabled = true }
 end
 
@@ -7,7 +7,9 @@ end
 -- order keys: letter -> engine command action
 local ORDER_KEYS = {
 	a = "attack", s = "stop", m = "move", f = "fight", p = "patrol", g = "guard",
-	r = "repair", e = "reclaim", t = "resurrect", d = "dgun", w = "wait", y = "capture",
+	-- d / q: the flying commander's weapons. The engine gives flying units no "manualfire" command, so
+	-- the gadget vb_manualfire.lua adds these two custom ones (d = Devour, q = Destabilisation Gun).
+	r = "repair", e = "reclaim", t = "resurrect", d = "vbdgun", q = "vbdestab", k = "vbcloak", w = "wait", y = "capture",
 }
 -- build keys, used when a BUILDER is selected: letter -> customParams.kind of the unit to build
 local BUILD_KEYS = {
@@ -28,13 +30,27 @@ local function Describe(tbl) local t = {} for k, v in pairs(tbl) do t[#t + 1] = 
 -- blast radius is proportional to each unit's health). Also available as the text command /vbexplode.
 -- It has to be defined before the functions that call it: a local that is not yet in scope
 -- would be looked up as a global at call time and come out nil.
+--
+-- The detonation is not immediate: the units get five seconds to change their mind.
+-- Ctrl+B again while the clock is running cancels it.
+local COUNTDOWN = 5          -- seconds between the order and the blast
+local pending = nil          -- the moment the countdown was started
 local function Explode()
 	local sel = Spring.GetSelectedUnits()
 	if not sel or #sel == 0 or Spring.GetSpectatingState() then return false end
+	local now = Spring.GetLastUpdateSeconds()
+	if pending and (now - pending) < COUNTDOWN then
+		-- the clock is already running: this press cancels it
+		Spring.SendLuaRulesMsg("vbexplode:cancel")
+		pending = nil
+		Spring.Echo("[VB] Detonation cancelled")
+		return true
+	end
 	for i = 1, #sel, 100 do      -- chunks of 100 ids keep every message small
 		Spring.SendLuaRulesMsg("vbexplode:" .. table.concat(sel, ",", i, math.min(i + 99, #sel)))
 	end
-	Spring.Echo("[VB] Detonating " .. #sel .. " unit(s)")
+	pending = now
+	Spring.Echo("[VB] Detonation in " .. COUNTDOWN .. " seconds - Ctrl+B again to cancel")
 	return true
 end
 
@@ -44,6 +60,30 @@ function widget:Initialize()
 end
 function widget:TextCommand(cmd)
 	if cmd == "vbexplode" then Explode() return true end
+	if cmd == "vbcmds" then
+		-- diagnostic: the first selected unit's weapons as the engine resolved them, and its commands
+		local sel = Spring.GetSelectedUnits()
+		local u = sel and sel[1]
+		if not u then Spring.Echo("[VB] vbcmds: select a unit first") return true end
+		local ud = UnitDefs[Spring.GetUnitDefID(u)]
+		Spring.Echo("[VB] unit " .. tostring(ud and ud.name) .. " - weapons as the engine sees them:")
+		local n = 0
+		for i, w in pairs(ud and ud.weapons or {}) do
+			n = n + 1
+			local wd = w.weaponDef and WeaponDefs[w.weaponDef]
+			Spring.Echo(string.format("  weapon%s -> %s  type=%s  manualFire=%s  paralyzer=%s  range=%s",
+				tostring(i), tostring(wd and wd.name), tostring(wd and wd.type), tostring(wd and wd.manualFire),
+				tostring(wd and wd.paralyzer), tostring(wd and wd.range)))
+		end
+		if n == 0 then Spring.Echo("  (no weapons resolved)") end
+		local cmds, list = Spring.GetActiveCmdDescs() or {}, {}
+		for i = 1, #cmds do
+			local c = cmds[i]
+			if type(c) == "table" then list[#list + 1] = tostring(c.action) .. "(" .. tostring(c.id) .. ")" end
+		end
+		Spring.Echo("[VB] commands: " .. table.concat(list, " "))
+		return true
+	end
 	if cmd == "vbkeys" then
 		Spring.Echo("Orders: " .. Describe(ORDER_KEYS)); Spring.Echo("Builders: " .. Describe(BUILD_KEYS))
 		Spring.Echo("Factories: " .. Describe(FACTORY_KEYS)) return true
@@ -62,6 +102,13 @@ local function Activate(action, matchFn)
 			if ok2 then return true end
 		end
 	end
+	return false
+end
+
+-- does this command description belong to that action?  The D-gun is matched by its command id
+-- as well, so it is found whatever the engine calls it ("manualfire" or the old "dgun").
+local function IsAction(c, action)
+	if c.action == action then return true end
 	return false
 end
 
@@ -107,11 +154,13 @@ function widget:KeyPress(key, mods, isRepeat)
 		-- only grab the key if some selected unit actually has that command (so e.g. 'r' stays free otherwise)
 		local cmds = Spring.GetActiveCmdDescs() or {}
 		local has = false
-		for i = 1, #cmds do local c = cmds[i]; if type(c) == "table" and c.action == action then has = true break end end
+		for i = 1, #cmds do local c = cmds[i]; if type(c) == "table" and IsAction(c, action) then has = true break end end
 		if has or action == "stop" or action == "wait" then
 			if action == "stop" then Spring.GiveOrder(CMD.STOP, {}, {}) return true end
 			if action == "wait" then Spring.GiveOrder(CMD.WAIT, {}, {}) return true end
-			return Activate(action, function(c) return c.action == action end)
+			return Activate(action, function(c) return IsAction(c, action) end)
+		elseif action == "vbdgun" or action == "vbdestab" or action == "vbcloak" then
+			Spring.Echo("[VB] " .. ch:upper() .. ": the selection has no " .. action .. " command (is vb_manualfire.lua loaded? is the unit flying with manualFire weapons?)")
 		end
 	end
 	return false

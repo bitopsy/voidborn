@@ -25,6 +25,10 @@ end
 function script.AimFromWeapon2() return head end
 function script.QueryWeapon2() return muzzle end
 function script.FireWeapon2() end
+function script.AimWeapon3(heading, pitch) return true end
+function script.AimFromWeapon3() return head end
+function script.QueryWeapon3() return muzzle end
+function script.FireWeapon3() end
 local INBUILDSTANCE = (COB and COB.INBUILDSTANCE) or 5
 function script.StartBuilding(heading, pitch) SetUnitValue(INBUILDSTANCE, 1) end
 function script.StopBuilding() SetUnitValue(INBUILDSTANCE, 0) end

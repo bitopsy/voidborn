@@ -23,7 +23,10 @@ floating asteroids in deep space, and the player can design their own units
 while the game is running — new numbers, a brand new 3D body, a picture mapped
 onto it, all of it priced and queued like any other unit.
 
-**Website:** https://f33.fr/vb/  ·  **Video:** https://www.youtube.com/watch?v=TtKTK60Kb-I  ·  **Source:** https://github.com/bitopsy/voidborn
+**Website:** https://f33.fr/vb/  ·  **Hub page:** https://hub.coilbox.org/games/VB  ·  **Video:** https://www.youtube.com/watch?v=TtKTK60Kb-I  ·  **Source:** https://github.com/bitopsy/voidborn
+
+The hub page is where the game is listed for the community: it carries the game, the map, the faction art, a unit
+encyclopedia and the running servers, so it is the page a player or a curator will actually land on.
 
 ### What it is
 

@@ -39,6 +39,10 @@ wherever you find it:
 
 Voidborn is its own game (not a BAR mod), so you start it with an engine binary and a start script, not from the BAR lobby.
 
+**The easiest way in — [the Voidborn page on the Coilbox hub](https://hub.coilbox.org/games/VB)** — for both single player
+and multiplayer: it carries the game, the map, the faction art and the links, and it is where the running servers are
+listed. Everything below is what to do if you would rather set it up yourself.
+
 ### How to run it directly from Spring
 
 If you have the Spring engine installed (not BAR), you can launch Voidborn directly:
@@ -236,6 +240,7 @@ Known simplifications: no sounds; unit icons use the engine default; the bot is 
 ## Multiplayer & Community
 
 * **SkyLobby**: https://github.com/skynet-gh/skylobby/releases/latest — the lobby client for Spring engine games (it is the successor to SpringLobby). Download the installer for your platform there, then use it to find and join multiplayer games of Voidborn. The manual is at https://github.com/skynet-gh/skylobby/wiki/User-Guide. Host your own server to keep a persistent 24/7 Voidborn world running.
+* **Coilbox hub**: https://hub.coilbox.org/games/VB — The game's page on the hub: the game itself, the two factions with their art, the unit encyclopedia and the running servers. **Start here, for single player and for multiplayer alike** — it is the shortest path to a match.
 * **Discord**: https://discord.com/channels/1481771055063502925 — Join the Voidborn community to find games, discuss strategies, and coordinate with other players.
 * **Website**: https://f33.fr/vb/ — Official Voidborn website with downloads, changelog, and community posts. It has a page per subject: [Play](https://f33.fr/vb/play.html), [Maps](https://f33.fr/vb/maps.html), the [Unit Forge](https://f33.fr/vb/forge.html) (how a custom unit is designed, what it costs and how it grows and splits) and the [Roadmap](https://f33.fr/vb/roadmap.html).
 

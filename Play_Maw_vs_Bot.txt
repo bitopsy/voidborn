@@ -30,7 +30,7 @@
 		AllyTeam=0;
 		Side=Maw;
 		RGBColor=1.0 0.5 0.1;
-		StartPosX=790;
+		StartPosX=4330;
 		StartPosZ=2230;
 	}
 	[TEAM1]
@@ -39,14 +39,8 @@
 		AllyTeam=1;
 		Side=Choir;
 		RGBColor=0.35 0.7 1.0;
-		StartPosX=4330;
+		StartPosX=790;
 		StartPosZ=2230;
-	}
-	{
-		Name=VoidBot;
-		ShortName=VoidBot;
-		Team=1;
-		Host=0;
 	}
 	[ALLYTEAM0] { NumAllies=0; }
 	[ALLYTEAM1] { NumAllies=0; }

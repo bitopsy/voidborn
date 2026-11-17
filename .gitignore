@@ -8,3 +8,6 @@ out/mapmeta.json
 out/skybox_preview.png
 __pycache__/
 *.pyc
+
+# test files (compiled/verified during build, not tracked in repo)
+tools/test_site.py

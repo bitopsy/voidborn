@@ -1,0 +1,290 @@
+﻿[t=00:00:00.006153] Detected AMD CPU.
+[t=00:00:00.006154] Found logical processors (mask 0x0000ffff) using L3 cache (sized 16KB) 
+[t=00:00:00.006155] Run: thread affinity ffff
+[t=00:00:00.006155] [DataDirLocater::FindWriteableDataDir] using writeable data-directory "/home/al/voidborn/.spring/"
+[t=00:00:00.006155] Using writeable configuration source: "/home/al/voidborn/.spring/springsettings.cfg"
+[t=00:00:00.006155] Using additional read-only configuration source: "/home/al/.spring/engine/2026.11.02/springsettings.cfg"
+[t=00:00:00.006156] Using additional read-only configuration source: "/home/al/.config/spring/springsettings.cfg"
+[t=00:00:00.006156] Using additional read-only configuration source: "/home/al/.config/spring/springrc"
+[t=00:00:00.006156] LogOutput initialized. Logging to /home/al/voidborn/.spring/infolog.txt
+[t=00:00:00.006196] ============== <Log Sections ([A]vailable, [E]nabled)> ==============
+[t=00:00:00.006200]   
+    [A] ArchiveScanner
+    [A] AutohostInterface
+    [A] BumpWater
+    [A] CSMFGroundTextures
+    [A] CrashHandler
+    [A] CregSerializer
+    [A] DynWater
+    [A] Font
+    [A] GameServer
+    [A] GroundMoveType
+    [A] KeyBindings
+    [A] LuaSocket
+    [A] Model
+    [A] Net
+    [A] Path
+    [A] Piece
+    [A] RoamMeshDrawer
+    [A] Shader
+    [A] SkyBox
+    [A] Sound
+    [A] Texture
+    [A] VFS
+    [E] Sound (Notice)
+    [E] VFS (Info)
+[t=00:00:00.006203]   
+[t=00:00:00.006205]   Enable or disable log sections using the LogSections configuration key
+[t=00:00:00.006208]   or the SPRING_LOG_SECTIONS environment variable (both comma separated).
+[t=00:00:00.006211]   Use "none" to disable the default log sections.
+[t=00:00:00.006214] ============== </Log Sections> ==============
+
+[t=00:00:00.006218] ============== <User Config> ==============
+[t=00:00:00.006261]   InputTextGeo = 0.26 0.73 0.02 0.028
+[t=00:00:00.006264]   LastSelectedMap = Voidborn Rift 1.0
+[t=00:00:00.006266]   LastSelectedMod = Voidborn 1.4
+[t=00:00:00.006269]   LastSelectedScript = Player vs. AI: BARb stable
+[t=00:00:00.006272]   ScreenshotCounter = 2
+[t=00:00:00.006275]   VSync = 0;
+[t=00:00:00.006279] ============== </User Config> ==============
+
+[t=00:00:00.006281] ============== <User System> ==============
+[t=00:00:00.006284]   Spring Engine Version: 2026.11.02 (Headless)
+[t=00:00:00.006288]       Build Environment: gcc libstdc++ version 20230711
+[t=00:00:00.006290]        Compiler Version: gcc-13.1.0
+[t=00:00:00.006299]        Operating System: Linux 7.3.0-10-generic #10-Ubuntu SMP PREEMPT_DYNAMIC Thu Oct 22 07:35:54 UTC 2026 (x86_64)
+[t=00:00:00.006371]         Hardware Config: AMD Ryzen 7 255 w/ Radeon 780M Graphics; 11240MB RAM
+[t=00:00:00.006374]        Binary Word Size: 64-bit (native)
+[t=00:00:00.006376]           Process Clock: std::chrono::high_resolution_clock
+[t=00:00:00.006379]      Physical CPU Cores: 8
+[t=00:00:00.006381]       Logical CPU Cores: 16
+[t=00:00:00.006384] ============== </User System> ==============
+
+[t=00:00:00.006388] Run: thread affinity ffff
+[t=00:00:00.006400] [good_fpu_init][STREFLOP_SSE]
+[t=00:00:00.006403] 	SSE 1.0 : 1,  SSE 2.0 : 1
+[t=00:00:00.006405] 	SSE 3.0 : 1, SSSE 3.0 : 1
+[t=00:00:00.006407] 	SSE 4.1 : 1,  SSE 4.2 : 1
+[t=00:00:00.006410] 	SSE 4.0A: 1,  SSE 5.0A: 0
+[t=00:00:00.059743] [WatchDog::Install] installed (hang-timeout: 60s)
+[t=00:00:00.059790] [WatchDog::RegisterThread] registering controls for thread [main]
+[t=00:00:00.059824] [GL::CheckAvailableVideoModes] desktop={640x480x24bpp@100Hz} current={640x480x24bpp@100Hz}
+[t=00:00:00.059844] [GR::CreateSDLWindow] using 0x anti-aliasing and 24-bit depth-buffer (PF="") for main window
+[t=00:00:00.059853] [GR::SetWindowAttributes][1] cfgFullScreen=0 numDisplays=0 winPos=<0,32> newRes=<8,8>
+[t=00:00:00.059856] [GR::SetWindowAttributes][2] cfgFullScreen=0 numDisplays=0 winPos=<0,32> newRes=<400,400>
+[t=00:00:00.059903] [GR::LogVersionInfo]
+[t=00:00:00.059906] 	SDL version : 0.0.0 (linked) / 2.0.8 (compiled)
+[t=00:00:00.059909] 	GL version  : 
+[t=00:00:00.059911] 	GL vendor   : 
+[t=00:00:00.059914] 	GL renderer : 
+[t=00:00:00.059916] 	GLSL version: 
+[t=00:00:00.059984] 	GLAD version: headless stub
+[t=00:00:00.059986] 	GPU memory  : unknown
+[t=00:00:00.059989] 	SDL swap-int: 0
+[t=00:00:00.059992] 	SDL driver  : headless stub
+[t=00:00:00.060003] 	
+[t=00:00:00.060007] 	Initialized OpenGL Context: 0.0 (Compat)
+[t=00:00:00.060010] 	GLSL shader support       : 1
+[t=00:00:00.060012] 	GL4 support               : 0
+[t=00:00:00.060015] 	FBO extension support     : 0
+[t=00:00:00.060017] 	NVX GPU mem-info support  : 0
+[t=00:00:00.060020] 	ATI GPU mem-info support  : 0
+[t=00:00:00.060022] 	Texture clamping to edge  : 0
+[t=00:00:00.060025] 	S3TC/DXT1 texture support : 0/0
+[t=00:00:00.060028] 	texture query-LOD support : 0 (0)
+[t=00:00:00.060030] 	MSAA frame-buffer support : 0 (0)
+[t=00:00:00.060033] 	Z-buffer depth            : 16 (-)
+[t=00:00:00.060036] 	primitive-restart support : 0 (0)
+[t=00:00:00.060039] 	clip-space control support: 0 (0)
+[t=00:00:00.060041] 	seamless cube-map support : 0 (0)
+[t=00:00:00.060044] 	frag-depth layout support : 0 (0)
+[t=00:00:00.060047] 	persistent maps support   : 0 (0)
+[t=00:00:00.060049] 	explicit attribs location : 0 (0)
+[t=00:00:00.060053] 	multi draw indirect       : 0 (-)
+[t=00:00:00.060055] 	array textures            : 0 (-)
+[t=00:00:00.060058] 	buffer copy support       : 0 (-)
+[t=00:00:00.060060] 	indirect draw             : 0 (-)
+[t=00:00:00.060063] 	base instance             : 0 (-)
+[t=00:00:00.060065] 	
+[t=00:00:00.060068] 	max. FBO samples              : 1
+[t=00:00:00.060071] 	max. texture slots            : 2
+[t=00:00:00.060073] 	max. FS/program texture slots : 8/8
+[t=00:00:00.060075] 	max. texture size             : 2048
+[t=00:00:00.060078] 	max. texture anisotropy level : 0.000000
+[t=00:00:00.060081] 	max. vec4 varyings/attributes : 0/0
+[t=00:00:00.060083] 	max. draw-buffers             : 0
+[t=00:00:00.060086] 	max. rec. indices/vertices    : 0/0
+[t=00:00:00.060088] 	max. uniform buffer-bindings  : 0
+[t=00:00:00.060091] 	max. uniform block-size       : 0KB
+[t=00:00:00.060093] 	max. storage buffer-bindings  : 0
+[t=00:00:00.060096] 	max. storage block-size       : 0MB
+[t=00:00:00.060098] 	
+[t=00:00:00.060101] 	enable AMD-hacks : 0
+[t=00:00:00.060103] 	compress MIP-maps: 0
+[t=00:00:00.060118] 	Number of compressed texture formats: 0
+[t=00:00:00.060122] 	Compressed texture formats: 
+[t=00:00:00.060263] [GR::UpdateGLConfigs]
+[t=00:00:00.060278] [GR::UpdateGLGeometry][1] winSize=<1,1>
+[t=00:00:00.060283] [GR::UpdateScreenMatrices] vpx=0.000000, vpy=0.000000, vsx=8.000000, vsy=8.000000, ssx=8.000000, ssy=8.000000, screenPosX=0, screenPosY=0
+[t=00:00:00.060288] [GR::UpdateGLGeometry][2] winSize=<8,8>
+[t=00:00:00.060291] [GR::InitGLState]
+[t=00:00:00.060295] [GR::LogDisplayMode] display-mode set to 8x8x24bpp@100Hz (windowed::decorated)
+[t=00:00:00.321651] [TexMemPool::Resize] poolSize=536870912u allocSize=0u texCount=0u
+[t=00:00:00.322546] [WatchDog::RegisterThread] registering controls for thread [vfsi]
+[t=00:00:00.322944] [DataDirLocater::FindWriteableDataDir] using writeable data-directory "/home/al/voidborn/.spring/"
+[t=00:00:00.322996] [DataDirLocater::Check] Portable Mode!
+[t=00:00:00.323026] [DataDirLocater::FilterUsableDataDirs] using read-write data directory: /home/al/voidborn/.spring/
+[t=00:00:00.323040] [DataDirLocater::FilterUsableDataDirs] using read-only data directory: /home/al/.spring/engine/2026.11.02/
+[t=00:00:00.323054] [DataDirLocater::FilterUsableDataDirs] using read-only data directory: /home/al/.config/spring/
+[t=00:00:00.323067] [DataDirLocater::FilterUsableDataDirs] using read-only data directory: /home/al/.spring/
+[t=00:00:00.323417] [AS::ReadCacheData] ArchiveCache cache/ArchiveCache21.lua doesn't exist
+[t=00:00:00.323433] [AS::ReadCacheData] ArchiveCache cache/ArchiveCache20.lua doesn't exist
+[t=00:00:00.323447] [AS::ReadCacheData] ArchiveCache cache/ArchiveCache19.lua doesn't exist
+[t=00:00:00.323457] [AS::ReadCacheData] ArchiveCache cache/ArchiveCache22.lua doesn't exist
+[t=00:00:00.323492] Scanning: /home/al/.spring/maps
+[t=00:00:00.323635] Scanning: /home/al/.spring/games
+[t=00:00:00.323701] Scanning: /home/al/.spring/engine/2026.11.02/base
+[t=00:00:00.323893] Scanning: /home/al/.spring/engine/2026.11.02/maps
+[t=00:00:00.323935] Scanning: /home/al/.spring/engine/2026.11.02/games
+[t=00:00:00.393303] [~CBufferedArchive][name=/home/al/.spring/engine/2026.11.02/base/spring/bitmaps.sdz] 0 bytes cached in 0 files, 0 bytes cached in 133 files
+[t=00:00:00.393695] [~CBufferedArchive][name=/home/al/.spring/engine/2026.11.02/base/maphelper.sdz] 0 bytes cached in 0 files, 0 bytes cached in 9 files
+[t=00:00:00.394603] [~CBufferedArchive][name=/home/al/.spring/engine/2026.11.02/base/cursors.sdz] 0 bytes cached in 0 files, 0 bytes cached in 111 files
+[t=00:00:00.395603] [~CBufferedArchive][name=/home/al/.spring/engine/2026.11.02/base/springcontent.sdz] 0 bytes cached in 0 files, 0 bytes cached in 203 files
+[t=00:00:00.397087] [~CBufferedArchive][name=/home/al/.spring/games/voidborn.sdz] 0 bytes cached in 0 files, 0 bytes cached in 333 files
+[t=00:00:00.397551] [~CBufferedArchive][name=/home/al/.spring/maps/bora-bora.sd7] 0 bytes cached in 0 files, 0 bytes cached in 0 files
+[t=00:00:00.398218] Warning: [ArchiveData] version "2" included in name "Avatar v2"
+[t=00:00:00.398238] Warning: [AS::ScanArchive] set the 'mapfile' key in mapinfo.lua of archive "/home/al/.spring/maps/avatar_v2.sd7" for faster loading!
+[t=00:00:00.398248] [~CBufferedArchive][name=/home/al/.spring/maps/avatar_v2.sd7] 0 bytes cached in 0 files, 0 bytes cached in 12 files
+[t=00:00:00.427788] [~CBufferedArchive][name=/home/al/.spring/maps/nebula_prime.sd7] 0 bytes cached in 0 files, 0 bytes cached in 4 files
+[t=00:00:00.428085] [~CBufferedArchive][name=/home/al/.spring/maps/voidborn_rift.sd7] 0 bytes cached in 0 files, 0 bytes cached in 4 files
+[t=00:00:00.428380] [~ScopedOnceTimer][CArchiveScanner::ScanAllDirs] 104ms
+[t=00:00:00.428392] [VFS] [SpringVFS::ReserveArchives<this=0x71e71f570080>]
+[t=00:00:00.428414] [VFS] [SpringVFS::AddArchive<this=0x71e71f570080>(arName="Spring content v1", overwrite=false)] section=2 cached=0
+[t=00:00:00.429353] [VFS] [VFSHandler::SetGlobalInstanceRaw] handler=0x71e71f570080 (SpringVFS) global=(nil) (null)
+[t=00:00:00.429357] [WatchDog::DeregisterThread] deregistering controls for thread [vfsi]
+[t=00:00:00.429434] [Threading] Optimal thread count is 8
+[t=00:00:00.429442] [ThreadPool::SetThreadCount][1] wanted=8 current=1 maximum=16 (init=1)
+[t=00:00:00.430719] [ThreadPool::SetThreadCount][2] workers=7
+[t=00:00:00.430724] CPU Affinity Mask Details detected:
+[t=00:00:00.430727] -- Performance Core Mask:      0x0000ffff
+[t=00:00:00.430730] -- Efficiency  Core Mask:      0x00000000
+[t=00:00:00.430732] -- Hyper Thread/SMT Low Mask:  0x000000ff
+[t=00:00:00.430735] -- Hyper Thread/SMT High Mask: 0x0000ff00
+[t=00:00:00.430737] -- Optimal Cache Mask:         0x0000ffff
+[t=00:00:00.430751] [ThreadPool] Main thread affinity requested as 0x00000000
+[t=00:00:00.430779] [Threading] Worker 3 thread CPU affinity mask set: 0xffff
+[t=00:00:00.430779] [Threading] Worker 4 thread CPU affinity mask set: 0xffff
+[t=00:00:00.430783] [Threading] Worker 6 thread CPU affinity mask set: 0xffff
+[t=00:00:00.430790] [Threading] Worker 2 thread CPU affinity mask set: 0xffff
+[t=00:00:00.430791] [Threading] Worker 1 thread CPU affinity mask set: 0xffff
+[t=00:00:00.430816] [Threading] Worker 7 thread CPU affinity mask set: 0xffff
+[t=00:00:00.430840] [Threading] Worker 5 thread CPU affinity mask set: 0xffff
+[t=00:00:00.430924] [Threading] Main thread CPU affinity mask set: 0xffff
+[t=00:00:00.431645][f=-000001] [StartScript] Loading StartScript from: /home/al/voidborn/Watch_Bot_vs_Bot.txt
+[t=00:00:00.432112][f=-000001] Error: [ClientSetup::LoadFromStartScript] GAME-section missing from setup-script "[GAME]
+{
+	GameType=Voidborn 1.4;
+	MapName=Voidborn Rift 1.0;
+	IsHost=1;
+	HostIP=127.0.0.1;
+	HostPort=8452;
+	MyPlayerName=Spectator;
+	StartPosType=0;
+	NumPlayers=1;
+	NumUsers=1;
+	NumTeams=2;
+	NumAllyTeams=2;
+	[MODOPTIONS]
+	{
+		commander_ends=1;
+		startmetal=1000;
+		startenergy=1000;
+		bot_skill=2;
+	}
+	[PLAYER0]
+	{
+		Name=Spectator;
+		Spectator=1;
+		Team=0;
+	}
+	[TEAM0]
+	{
+		TeamLeader=0;
+		AllyTeam=0;
+		Side=Choir;
+		RGBColor=0.35 0.7 1.0;
+		StartPosX=790;
+		StartPosZ=2230;
+	}
+	[TEAM1]
+	{
+		TeamLeader=0;
+		AllyTeam=1;
+		Side=Maw;
+		RGBColor=1.0 0.5 0.1;
+		StartPosX=4330;
+		StartPosZ=2230;
+	}
+	{
+	{
+	[ALLYTEAM0] { NumAllies=0; }
+	[ALLYTEAM1] { NumAllies=0; }
+}
+"
+[t=00:00:00.432171][f=-000001] Fatal: [ExitSpringProcess] errorMsg="Invalid script file
+setup-script error" msgCaption="Spring: caught content_error: " mainThread=1
+[t=00:00:00.432236][f=-000001] [SpringApp::Kill][1] fromRun=0
+[t=00:00:00.432240][f=-000001] [ThreadPool::SetThreadCount][1] wanted=0 current=8 maximum=16 (init=0)
+[t=00:00:00.432519][f=-000001] 	[async=0] threads=8 tasks=7 {sum,avg}{exec,wait}time={{0.605, 0.086}, {0.126, 0.018}}ms
+[t=00:00:00.432524][f=-000001] 		thread=1 tasks=1 {sum,min,max,avg}{exec,wait}time={{0.111, 0.111, 0.111, 0.111}, {0.012, 0.012, 0.012, 0.012}}ms
+[t=00:00:00.432528][f=-000001] 		thread=2 tasks=1 {sum,min,max,avg}{exec,wait}time={{0.123, 0.123, 0.123, 0.123}, {0.018, 0.018, 0.018, 0.018}}ms
+[t=00:00:00.432532][f=-000001] 		thread=3 tasks=1 {sum,min,max,avg}{exec,wait}time={{0.032, 0.032, 0.032, 0.032}, {0.004, 0.004, 0.004, 0.004}}ms
+[t=00:00:00.432535][f=-000001] 		thread=4 tasks=1 {sum,min,max,avg}{exec,wait}time={{0.072, 0.072, 0.072, 0.072}, {0.003, 0.003, 0.003, 0.003}}ms
+[t=00:00:00.432539][f=-000001] 		thread=5 tasks=1 {sum,min,max,avg}{exec,wait}time={{0.038, 0.038, 0.038, 0.038}, {0.049, 0.049, 0.049, 0.049}}ms
+[t=00:00:00.432542][f=-000001] 		thread=6 tasks=1 {sum,min,max,avg}{exec,wait}time={{0.145, 0.145, 0.145, 0.145}, {0.002, 0.002, 0.002, 0.002}}ms
+[t=00:00:00.432546][f=-000001] 		thread=7 tasks=1 {sum,min,max,avg}{exec,wait}time={{0.084, 0.084, 0.084, 0.084}, {0.039, 0.039, 0.039, 0.039}}ms
+[t=00:00:00.432549][f=-000001] 	[async=1] threads=8 tasks=0 {sum,avg}{exec,wait}time={{0.000, 0.000}, {0.000, 0.000}}ms
+[t=00:00:00.432552][f=-000001] [ThreadPool::SetThreadCount][2] workers=0
+[t=00:00:00.432555][f=-000001] [SpringApp::Kill][2]
+[t=00:00:00.449516][f=-000001] [SpringApp::Kill][3]
+[t=00:00:00.449537][f=-000001] [SpringApp::Kill][4] font=0x71e71d7d5040
+[t=00:00:00.449575][f=-000001] [SpringApp::Kill][5]
+[t=00:00:00.449618][f=-000001] [SpringApp::Kill][6]
+[t=00:00:00.449622] [SpringApp::Kill][7]
+[t=00:00:00.449633] [RenderBuffer::KillStatic] Type = VA_TYPE_0 max size/init. capacity/curr. capacity: VBO = {0, 65536, 65536}, EBO = {0, 131072, 131072}
+[t=00:00:00.449636] [RenderBuffer::KillStatic] Type = VA_TYPE_C max size/init. capacity/curr. capacity: VBO = {0, 1048576, 1048576}, EBO = {0, 2097152, 2097152}
+[t=00:00:00.449639] [RenderBuffer::KillStatic] Type = VA_TYPE_N max size/init. capacity/curr. capacity: VBO = {0, 1024, 1024}, EBO = {0, 2048, 2048}
+[t=00:00:00.449642] [RenderBuffer::KillStatic] Type = VA_TYPE_T max size/init. capacity/curr. capacity: VBO = {0, 1048576, 1048576}, EBO = {0, 2097152, 2097152}
+[t=00:00:00.449645] [RenderBuffer::KillStatic] Type = VA_TYPE_T4 max size/init. capacity/curr. capacity: VBO = {0, 65536, 65536}, EBO = {0, 262144, 262144}
+[t=00:00:00.449647] [RenderBuffer::KillStatic] Type = VA_TYPE_TN max size/init. capacity/curr. capacity: VBO = {0, 65536, 65536}, EBO = {0, 131072, 131072}
+[t=00:00:00.449650] [RenderBuffer::KillStatic] Type = VA_TYPE_TC max size/init. capacity/curr. capacity: VBO = {0, 1048576, 1048576}, EBO = {0, 2097152, 2097152}
+[t=00:00:00.449653] [RenderBuffer::KillStatic] Type = VA_TYPE_TC3 max size/init. capacity/curr. capacity: VBO = {0, 1024, 1024}, EBO = {0, 2048, 2048}
+[t=00:00:00.449663] [RenderBuffer::KillStatic] Type = VA_TYPE_PROJ max size/init. capacity/curr. capacity: VBO = {0, 1048576, 1048576}, EBO = {0, 2097152, 2097152}
+[t=00:00:00.449666] [RenderBuffer::KillStatic] Type = VA_TYPE_TNT max size/init. capacity/curr. capacity: VBO = {0, 0, 0}, EBO = {0, 0, 0}
+[t=00:00:00.449669] [RenderBuffer::KillStatic] Type = VA_TYPE_2D0 max size/init. capacity/curr. capacity: VBO = {0, 65536, 65536}, EBO = {0, 131072, 131072}
+[t=00:00:00.449671] [RenderBuffer::KillStatic] Type = VA_TYPE_2DC max size/init. capacity/curr. capacity: VBO = {0, 65536, 65536}, EBO = {0, 131072, 131072}
+[t=00:00:00.449674] [RenderBuffer::KillStatic] Type = VA_TYPE_2DT max size/init. capacity/curr. capacity: VBO = {0, 1048576, 1048576}, EBO = {0, 2097152, 2097152}
+[t=00:00:00.449676] [RenderBuffer::KillStatic] Type = VA_TYPE_2DTC max size/init. capacity/curr. capacity: VBO = {0, 65536, 65536}, EBO = {0, 131072, 131072}
+[t=00:00:00.449679] [RenderBuffer::KillStatic] Type = VA_TYPE_2DTC3 max size/init. capacity/curr. capacity: VBO = {0, 1024, 1024}, EBO = {0, 2048, 2048}
+[t=00:00:00.449724] [LuaSocket] [~CLuaSocketRestrictions] dumping luasocket rules:
+[t=00:00:00.449728] [LuaSocket] TCP_CONNECT ALLOW * -1
+[t=00:00:00.449730] [LuaSocket] TCP_LISTEN  ALLOW * -1
+[t=00:00:00.449733] [LuaSocket] UDP_LISTEN  ALLOW * -1
+[t=00:00:00.449764] [VFS] [SpringVFS::DeleteArchives<this=0x71e71f570080>]
+[t=00:00:00.449768] [VFS] [SpringVFS::DeleteArchives<this=0x71e71f570080>(section=0)] #archives[section]=0 #files[section]=0
+[t=00:00:00.449771] [VFS] [SpringVFS::DeleteArchives<this=0x71e71f570080>(section=1)] #archives[section]=0 #files[section]=0
+[t=00:00:00.449774] [VFS] [SpringVFS::DeleteArchives<this=0x71e71f570080>(section=2)] #archives[section]=1 #files[section]=203
+[t=00:00:00.449777] [VFS] 	archive=/home/al/.spring/engine/2026.11.02/base/springcontent.sdz (0x71e71f4605c0)
+[t=00:00:00.449804] [~CBufferedArchive][name=/home/al/.spring/engine/2026.11.02/base/springcontent.sdz] 0 bytes cached in 0 files, 0 bytes cached in 203 files
+[t=00:00:00.449829] [VFS] [SpringVFS::DeleteArchives<this=0x71e71f570080>(section=3)] #archives[section]=0 #files[section]=0
+[t=00:00:00.449832] [VFS] [SpringVFS::DeleteArchives<this=0x71e71f570080>(section=4)] #archives[section]=0 #files[section]=203
+[t=00:00:00.449836] [VFS] [SpringVFS::DeleteArchives<this=0x71e71f570080>(section=5)] #archives[section]=0 #files[section]=0
+[t=00:00:00.449839] [VFS] [SpringVFS::DeleteArchives<this=0x71e71f570080>(section=6)] #archives[section]=0 #files[section]=0
+[t=00:00:00.449842] [VFS] [SpringVFS::DeleteArchives<this=0x71e71f570080>(section=7)] #archives[section]=0 #files[section]=0
+[t=00:00:00.449845] [VFS] [SpringVFS::DeleteArchives<this=0x71e71f570080>(section=8)] #archives[section]=0 #files[section]=0
+[t=00:00:00.449862] [SpringApp::Kill][8]
+[t=00:00:00.449865] [WatchDog::DeregisterThread] deregistering controls for thread [main]
+[t=00:00:00.449868] [WatchDog::Uninstall][1] hangDetectorThread=0x5732c5105c30 (joinable=1)
+[t=00:00:00.449871] [WatchDog::Uninstall][2]
+[t=00:00:01.059985] [WatchDog::Uninstall][3]
+[t=00:00:01.060007] [SpringApp::Kill][9]

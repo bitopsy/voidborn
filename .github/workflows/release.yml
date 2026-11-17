@@ -81,12 +81,9 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ steps.gate.outputs.tag }}
         run: |
-          REPO_NAME="${{ github.repository || 'voidborn' }}"
-          REPO_SHORT="${REPO_NAME##*/}"
-          RELEASE_NAME="${REPO_SHORT}-${TAG}"
-          cp dist/voidborn.sdz      "${RELEASE_NAME}.sd7"
-          cp dist/voidborn_rift.sd7 "${RELEASE_NAME}-map.sd7"
-          gh release upload "$TAG" "${RELEASE_NAME}.sd7" "${RELEASE_NAME}-map.sd7" --clobber
+          cp dist/voidborn.sdz      "voidborn-${TAG}.sd7"
+          cp dist/voidborn_rift.sd7 "voidborn-rift-${TAG}.sd7"
+          gh release upload "$TAG" "voidborn-${TAG}.sd7" "voidborn-rift-${TAG}.sd7" --clobber
 
       # Package Linux and Windows Standalones - DISABLED for now
       # to focus on sdz/sd7 archive compilation only

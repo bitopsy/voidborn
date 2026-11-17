@@ -1,0 +1,13 @@
+# the generated height map of Voidborn Rift (tools/build_map.py makes it)
+map/maps/
+map/height_preview.png
+map/minimap_preview.png
+
+# generated helper files
+out/mapmeta.json
+out/skybox_preview.png
+__pycache__/
+*.pyc
+
+# test files (compiled/verified during build, not tracked in repo)
+tools/test_site.py

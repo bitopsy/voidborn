@@ -10,10 +10,23 @@ if not okF or type(VBFont) ~= "table" then
 		Text = function(str, x, y, size, opts, r, g, b, a) gl.Color(r or 1, g or 1, b or 1, a or 1); gl.Text(str, x, y, size, opts or "o") end }
 end
 
--- the unit forge, so that the [+] tile at the end of the build row can open it
-local okG, Forge = pcall(VFS.Include, "LuaUI/Headers/vb_forge.h.lua")
-if not okG or type(Forge) ~= "table" then
-	Forge = { RequestOpen = function() end, IsForgeReady = function() return false end }
+-- the unit forge: the [+] tile at the end of the build row opens it, and the designs saved in it
+-- show up as tiles in this panel (for this game only).
+local okG, Forge0 = pcall(VFS.Include, "LuaUI/Headers/vb_forge.h.lua")
+if not okG or type(Forge0) ~= "table" then
+	Spring.Echo("[VB] build panel: could not load LuaUI/Headers/vb_forge.h.lua: " .. tostring(Forge0))
+	Forge0 = nil
+end
+local NOFORGE = { RequestOpen = function() end, IsForgeReady = function() return false end, templates = {},
+	TemplateIds = function() return {} end, ReadQueue = function() return {}, {} end, Price = function() return nil end,
+	QueueReady = function() return false end, QueueAdd = function() end, QueueRemove = function() end,
+	QueueHold = function() end, EditTemplate = function() end, DeleteTemplate = function() end, PngPath = function() end }
+-- The forge widget publishes its own table in WG.VBForge; prefer it when it is ready, so that the two
+-- widgets always talk about the same templates even if the header got loaded twice.
+local function ForgeRef()
+	local w = WG and WG.VBForge
+	if w and w.IsForgeReady and w.IsForgeReady() then return w end
+	return Forge0 or NOFORGE
 end
 
 local function Snd(name, vol) Spring.PlaySoundFile("sounds/" .. name .. ".wav", vol or 0.7, "ui") end
@@ -29,6 +42,7 @@ local vsx, vsy = Spring.GetViewGeometry()
 local drag, scaling = nil, nil
 local builds, toggles, orders = {}, {}, {}
 local rects, panelBox, hover, hoverRect, lastH, frame = {}, nil, nil, nil, 120, 0
+local hoverTpl, hoverTplRect = nil, nil   -- saved design under the mouse
 
 local function Refresh()
 	local cmds = Spring.GetActiveCmdDescs() or {}
@@ -82,6 +96,47 @@ local function Box(x1, y1, x2, y2, r, g, b, a) gl.Color(r, g, b, a); gl.Rect(x1,
 local function Frame(x1, y1, x2, y2, r, g, b, a)
 	gl.Color(r, g, b, a)
 	gl.Rect(x1, y1, x2, y1 + 1); gl.Rect(x1, y2 - 1, x2, y2); gl.Rect(x1, y1, x1 + 1, y2); gl.Rect(x2 - 1, y1, x2, y2)
+end
+
+-- pie chart of the production progress of a saved design.
+--   state: "b" building (green)   "s" stalled, not enough resources (red)   "w" waiting in the queue (blue)
+--          "h" on hold (yellow, with a pause sign)
+local function PieVerts(cx, cy, r, frac)
+	local v = { { v = { cx, cy } } }
+	local steps = math.max(2, math.ceil(48 * frac))
+	for i = 0, steps do
+		local a = math.rad(90 - 360 * frac * i / steps)          -- starts at 12 o'clock, runs clockwise
+		v[#v + 1] = { v = { cx + r * math.cos(a), cy + r * math.sin(a) } }
+	end
+	return v
+end
+local PIE_COL = { b = { 0.3, 1.0, 0.45 }, s = { 1.0, 0.4, 0.25 }, w = { 0.5, 0.65, 1.0 }, h = { 1.0, 0.85, 0.2 } }
+local function DrawPie(cx, cy, r, prog, st, s)
+	prog = math.max(0, math.min(1, prog or 0))
+	local col = PIE_COL[st] or PIE_COL.w
+	gl.Color(0, 0, 0, 0.62); gl.Shape(GL.TRIANGLE_FAN, PieVerts(cx, cy, r + 2 * s, 1))
+	if prog > 0.004 then
+		gl.Color(col[1], col[2], col[3], st == "h" and 0.55 or 0.9)
+		gl.Shape(GL.TRIANGLE_FAN, PieVerts(cx, cy, r, math.min(prog, 0.9999)))
+	end
+	gl.LineWidth(1.5); gl.Color(col[1], col[2], col[3], 1); gl.Shape(GL.LINE_LOOP, (function()
+		local v = {}
+		for i = 0, 31 do local a = math.pi * 2 * i / 32; v[#v + 1] = { v = { cx + (r + 2 * s) * math.cos(a), cy + (r + 2 * s) * math.sin(a) } } end
+		return v
+	end)())
+	gl.LineWidth(1)
+	if st == "h" then                                            -- pause sign
+		gl.Color(0, 0, 0, 0.85)
+		gl.Rect(cx - r * 0.32, cy - r * 0.45, cx - r * 0.1, cy + r * 0.45)
+		gl.Rect(cx + r * 0.1, cy - r * 0.45, cx + r * 0.32, cy + r * 0.45)
+	elseif st == "s" then
+		VBFont.Text("!", cx - 3 * s, cy - 6 * s, 14 * s, "o", 1, 1, 1, 1)
+	elseif st == "w" and prog <= 0.004 then
+		VBFont.Text("...", cx - 7 * s, cy - 4 * s, 10 * s, "o", 1, 1, 1, 1)
+	else
+		local txt = math.floor(prog * 100 + 0.5) .. "%"
+		VBFont.Text(txt, cx - VBFont.Width(txt, 9 * s) / 2, cy - 3 * s, 9 * s, "o", 0, 0, 0, 1)
+	end
 end
 
 -- hexagonal unit stats HUD ------------------------------------------------------------------------------
@@ -285,17 +340,19 @@ end
 
 function widget:DrawScreen()
 	rects = {}
-	if closed then
-		if #builds + #toggles + #orders == 0 then panelBox = nil return end
-		DrawClosedTab() return
-	end
-	if #builds + #toggles + #orders == 0 then panelBox = nil return end
+	if closed then DrawClosedTab() return end
+	-- NB: the panel is ALWAYS shown (even with nothing selected): it holds the [+] tile that opens the forge
+	-- and the tiles of the designs saved in it.
+	local F = ForgeRef()
+	local tplIds = F.TemplateIds()
+	local queue = F.ReadQueue()
 
 	local s = scale
 	local icon, gap, pad, title = ICON * s, GAP * s, PAD * s, math.max(16, TITLE * s)
 	local fs = math.max(9, 10 * s)
 	local gridW = COLS * (icon + gap) - gap
-	local brows = math.ceil((#builds + 1) / COLS)   -- one extra cell for the [+] tile
+	local nTiles = #builds + #tplIds + 1            -- engine build icons, saved designs, and the [+] tile
+	local brows = math.ceil(nTiles / COLS)
 	local tcols, ocols = 2, 3
 	local trows, orows = math.ceil(#toggles / tcols), math.ceil(#orders / ocols)
 	local tbW, tbH = (gridW - (tcols - 1) * gap) / tcols, 20 * s
@@ -344,9 +401,39 @@ function widget:DrawScreen()
 		local cnt = b.c.params and b.c.params[1]
 		if cnt and tonumber(cnt) and tonumber(cnt) > 0 then VBFont.Text(cnt, ix + icon - 4 * s, iy + 3 * s, 12 * s, "or", 1, 1, 1, 1) end
 	end
+	-- saved designs of the forge: one tile each, with a pie chart for the production progress
+	hoverTpl, hoverTplRect = nil, nil
+	for k, tid in ipairs(tplIds) do
+		local n = #builds + k
+		local col, row = (n - 1) % COLS, math.floor((n - 1) / COLS)
+		local ix, iy = x1 + pad + col * (icon + gap), top - (row + 1) * (icon + gap) + gap
+		local r = { ix, iy, ix + icon, iy + icon, tpl = tid }
+		rects[#rects + 1] = r
+		local over = Inside(mx, my, r)
+		if over then hoverTpl, hoverTplRect = tid, r end
+		local t = F.templates[tid] or {}
+		local q = queue[tid]
+		Box(ix, iy, ix + icon, iy + icon, 0.07, 0.1, 0.14, 1)
+		local tex
+		if t.png and t.png ~= "" and F.PngPath and F.PngPath(t.png) then tex = F.PngPath(t.png)
+		elseif t.base and UnitDefNames[t.base] then tex = "#" .. UnitDefNames[t.base].id end
+		if tex then
+			gl.Color(1, 1, 1, (q and q.st == "h") and 0.45 or 1)
+			gl.Texture(tex); gl.TexRect(ix, iy, ix + icon, iy + icon); gl.Texture(false)
+		end
+		if over then Frame(ix, iy, ix + icon, iy + icon, 1, 1, 1, 0.9)
+		else Frame(ix, iy, ix + icon, iy + icon, 0.35, 0.9, 1, 0.9) end
+		-- name strip, so that custom units can be told apart
+		Box(ix + 1, iy + 1, ix + icon - 1, iy + 11 * s, 0, 0, 0, 0.6)
+		VBFont.Text(string.sub(tid, 1, 9), ix + 3 * s, iy + 2 * s, 8 * s, "o", 0.6, 0.95, 1, 1)
+		if q then
+			DrawPie(ix + icon / 2, iy + icon / 2 + 3 * s, icon * 0.34, q.prog, q.st, s)
+			VBFont.Text("x" .. q.n, ix + icon - 4 * s, iy + 13 * s, 12 * s, "or", 1, 1, 1, 1)
+		end
+	end
 	-- the [+] tile at the end of the build row: it opens the unit forge
 	do
-		local n = #builds + 1
+		local n = #builds + #tplIds + 1
 		local col, row = (n - 1) % COLS, math.floor((n - 1) / COLS)
 		local ix, iy = x1 + pad + col * (icon + gap), top - (row + 1) * (icon + gap) + gap
 		local r = { ix, iy, ix + icon, iy + icon, plus = true }
@@ -429,7 +516,7 @@ function widget:DrawScreen()
 	-- Play the hover tick ONCE per button. Refresh() rebuilds the builds/orders/toggles
 	-- tables every 6 frames, so comparing the table identity fired again and again while
 	-- the mouse rested on a button. Compare the command id instead and rate-limit it.
-	local hoverID = hover and hover.c and hover.c.id or nil
+	local hoverID = hover and hover.c and hover.c.id or (hoverTpl and ("t:" .. hoverTpl)) or nil
 	if hoverID ~= lastHoverID then
 		lastHoverID = hoverID
 		if hoverID ~= nil then
@@ -439,8 +526,23 @@ function widget:DrawScreen()
 			end
 		end
 	end
-	-- hover info: hexagonal stats HUD for build icons, one-line tooltip above the panel for orders/toggles
-	if hover then
+	-- hover info for a saved design: price, state of its production and the mouse controls
+	if hoverTpl then
+		local t = F.templates[hoverTpl] or {}
+		local pr = F.Price and F.Price(t)
+		local q = queue[hoverTpl]
+		local l1 = hoverTpl .. "   (base: " .. tostring(t.base) .. ")"
+		local l2 = pr and string.format("metal %d   energy %d   time %ds", math.floor(pr.metal + 0.5), math.floor(pr.energy + 0.5), math.floor(pr.build + 0.5)) or "price unknown"
+		local st = q and ({ b = "building", s = "STALLED: not enough metal/energy", w = "waiting", h = "ON HOLD" })[q.st] or nil
+		if q then l2 = l2 .. "   |   " .. math.floor(q.prog * 100 + 0.5) .. "%  " .. (st or "") end
+		local l3 = "click +1 (shift +5)   right-click -1   middle: hold   ctrl+click: edit   ctrl+right: delete"
+		local tw = math.max(w, VBFont.Width(l3, 9) + 14, VBFont.Width(l2, 10) + 14, VBFont.Width(l1, 11) + 14)
+		Box(x1, y2 + 2, x1 + tw, y2 + 46, 0.06, 0.06, 0.09, 0.94)
+		Frame(x1, y2 + 2, x1 + tw, y2 + 46, 0.35, 0.9, 1, 0.8)
+		VBFont.Text(l1, x1 + 6, y2 + 32, 11, "o", 0.6, 0.95, 1, 1)
+		VBFont.Text(l2, x1 + 6, y2 + 19, 10, "o", 1, 0.9, 0.6, 1)
+		VBFont.Text(l3, x1 + 6, y2 + 7, 9, "o", 0.6, 0.65, 0.75, 1)
+	elseif hover then
 		local c = hover.c
 		if c.id < 0 and UnitDefs[-c.id] and hoverRect then
 			DrawHexPanel(UnitDefs[-c.id], hoverRect)
@@ -487,12 +589,27 @@ function widget:MousePress(x, y, button)
 			if r.scale then scaling = { x0 = x, y0 = y, s0 = scale, top = py + (panelBox and panelBox.h or 0) } return true end
 			if r.drag then drag = { x - px, y - py } return true end
 			if r.plus then
-				-- open the unit forge
-				if Forge.IsForgeReady and Forge.IsForgeReady() then
-					Forge.RequestOpen()
-					Snd("ui_open")
-				else
-					Spring.Echo("[VB] the unit forge widget is disabled - enable 'Voidborn Unit Forge' in the widget selector (F11)")
+				-- open the unit forge; if its widget is not running yet, switch it on first
+				local F = ForgeRef()
+				if not (F.IsForgeReady and F.IsForgeReady()) and widgetHandler and widgetHandler.EnableWidget then
+					pcall(widgetHandler.EnableWidget, widgetHandler, "Voidborn Unit Forge")
+					F = ForgeRef()
+				end
+				if Forge0 then Forge0.openRequest = true end      -- picked up by the forge as soon as it is running
+				if F.RequestOpen then F.RequestOpen() end
+				Snd("ui_open")
+				return true
+			end
+			if r.tpl then
+				local F = ForgeRef()
+				local alt, ctrl, meta, shift = Spring.GetModKeyState()
+				if button == 1 then
+					if ctrl then F.EditTemplate(r.tpl)
+					else F.QueueAdd(r.tpl, shift and 5 or 1) end
+					Snd("ui_select")
+				elseif button == 2 then F.QueueHold(r.tpl); Snd("ui_click")
+				elseif button == 3 then
+					if ctrl then F.DeleteTemplate(r.tpl) else F.QueueRemove(r.tpl, shift and 5 or 1) end
 					Snd("ui_close", 0.5)
 				end
 				return true

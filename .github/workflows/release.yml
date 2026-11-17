@@ -1,0 +1,104 @@
+name: Build release artifacts
+
+# A tag or a release builds the two archives and attaches them:
+#   dist/voidborn.sdz      the game
+#   dist/voidborn_rift.sd7 the map
+#
+# The build is the same one that runs locally: python3 build_sdz.py compiles
+# every Lua file, runs the smoke tests, builds the archive and compares it with
+# the sources file by file.  Only the install and the engine check are skipped
+# (there is no engine and no games folder on a runner).
+
+on:
+  release:
+    types: [created]
+  push:
+    tags: ["v*", "[0-9]*"]
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write          # needed to attach the archives to the release
+    steps:
+      - name: Check out the tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name || github.ref }}
+
+      - name: Set up python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install what the build needs
+        run: |
+          python -m pip install --upgrade pip
+          pip install lupa numpy pillow
+          sudo apt-get update
+          sudo apt-get install -y p7zip-full
+
+      - name: Only build version-shaped tags (e.g. 1.0 or 1.0.0)
+        id: gate
+        shell: bash
+        env:
+          TAG: ${{ github.event.release.tag_name || github.ref_name }}
+        run: |
+          TAG="${TAG#v}"
+          if [[ "$TAG" =~ ^[0-9]+\.[0-9]+(\.[0-9]+)?$ ]]; then
+            echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+            echo "match=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::Tag '$TAG' is not a version - no archives built."
+            echo "match=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build the game archive
+        if: steps.gate.outputs.match == 'true'
+        run: python3 build_sdz.py --no-install --no-engine-check
+
+      - name: Build the map archive
+        if: steps.gate.outputs.match == 'true'
+        run: |
+          python3 tools/build_map.py
+          python3 tools/gen_skybox.py
+          cd map
+          # -ms=off: every file keeps its own stream, so the components of the
+          # archive can be read one by one
+          7z a -t7z -mx=9 -ms=off ../dist/voidborn_rift.sd7 mapinfo.lua maps > /dev/null
+
+      - name: Make the release if the tag came without one
+        if: steps.gate.outputs.match == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.gate.outputs.tag }}
+        run: |
+          if ! gh release view "$TAG" > /dev/null 2>&1; then
+            gh release create "$TAG" --title "Voidborn $TAG" --generate-notes --notes-start-tag "$(git tag --sort=-v:refname | sed -n 2p)" || true
+          fi
+          gh release view "$TAG"
+
+      - name: Attach the archives to the release
+        if: steps.gate.outputs.match == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.gate.outputs.tag }}
+        run: |
+          mkdir -p release-artifacts
+          cp dist/voidborn.sdz release-artifacts/voidborn.sdz
+          cp dist/voidborn_rift.sd7 release-artifacts/voidborn_rift.sd7
+          gh release upload "$TAG" release-artifacts/voidborn.sdz release-artifacts/voidborn_rift.sd7 --clobber
+          rm -rf release-artifacts
+          gh release view "$TAG"
+
+      # Package Linux and Windows Standalones - DISABLED for now
+      # to focus on sdz/sd7 archive compilation only
+      #
+      # - name: Package Linux and Windows Standalones
+      #   if: steps.gate.outputs.match == 'true'
+      #   env:
+      #     TAG: ${{ steps.gate.outputs.tag }}
+      #     REPO: ${{ github.repository.name }}
+      #     ENGINE_VERSION: "2026.11.02"
+      #   run: |
+      #   ...

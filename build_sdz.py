@@ -11,7 +11,10 @@ Copy the result to your games/ folder as voidborn.sdz.
 """
 import os, sys, zipfile
 
-repo = os.path.abspath(sys.argv[1] if len(sys.argv) > 1 else ".")
+args = [a for a in sys.argv[1:] if not a.startswith("--")]
+unknown = [a for a in sys.argv[1:] if a.startswith("--") and a not in ("--no-install", "--no-engine-check")]
+if unknown: sys.exit(f"ERROR: unknown option(s): {' '.join(unknown)}")
+repo = os.path.abspath(args[0] if args else ".")
 game = os.path.join(repo, "game")
 if not os.path.isfile(os.path.join(game, "modinfo.lua")):
     sys.exit(f"ERROR: {game}/modinfo.lua not found - run this from the folder that contains game/")

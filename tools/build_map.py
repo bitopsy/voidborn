@@ -7,7 +7,7 @@ from PIL import Image
 N = 10                         # map size in 512-elmo units
 MAPX = N * 64                  # heightmap squares
 SZ = MAPX * 8                  # elmos
-OUT = '/home/claude/vb/map'
+OUT = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'map')
 SHORT = 'voidrift'
 MINH, MAXH = -300.0, 700.0
 METAL_VALUE = int(sys.argv[1]) if len(sys.argv) > 1 else 255
@@ -232,6 +232,7 @@ with open(f'{OUT}/maps/{SHORT}.smf', 'wb') as f:
                         off_h, off_type, off_tiles, off_mini, off_metal, off_feat, 0))
     f.write(h16.tobytes()); f.write(type_map.tobytes()); f.write(tiles_section); f.write(mini_dxt); f.write(MM.tobytes()); f.write(feat_section)
 print('smf size', os.path.getsize(f'{OUT}/maps/{SHORT}.smf'))
-json.dump(dict(spots=spots, starts=STARTS, size=SZ), open('/home/claude/vb/out/mapmeta.json', 'w'))
+_out = os.path.join(os.path.dirname(OUT), 'out'); os.makedirs(_out, exist_ok=True)
+json.dump(dict(spots=spots, starts=STARTS, size=SZ), open(_out + '/mapmeta.json', 'w'))
 Image.fromarray(((np.clip(H, -50, 300) + 50) / 350 * 255).astype(np.uint8)).save(OUT + '/height_preview.png')
 print('spots', len(spots))

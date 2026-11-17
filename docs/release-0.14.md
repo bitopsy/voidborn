@@ -1,4 +1,4 @@
-# voidborn 1.4
+# voidborn 0.14
 
 ## 🎉 What's New
 
@@ -9,7 +9,7 @@
 * **Mex snapping** — Tight CELL=16 snapping with SNAP_MARGIN=8 and CLUSTER_CELLS=4 for connected metal cells.
 * **Website** — New `/story.html` page documents all units, mechanics, options, and keys. Navigation links added to all pages.
 * **AI fix** — Removed `[AI0]`/`[AI1]` blocks from startscripts. VoidBot gadget now handles AI. `bot_skill` set to 2 (Medium).
-* **Version 1.4** — `game/modinfo.lua` updated, `ENGINE_VERSION: "2026.11.02"`.
+* **Version 0.14** — `game/modinfo.lua` updated, `ENGINE_VERSION: "2026.11.02"`.
 
 ### Bug Fixes
 
@@ -55,7 +55,7 @@
 * `game/LuaUI/Widgets/vb_stats_draw.h.lua`
 * `game/LuaUI/Widgets/vb_resbar.lua`
 * `vb/story.html`
-* `game/modinfo.lua` (version 1.4)
+* `game/modinfo.lua` (version 0.14)
 * `Play_Choir_vs_Bot.txt`, `Play_Maw_vs_Bot.txt`, `Watch_Bot_vs_Bot.txt`
 - `tools/test_t2.py`, `tools/test_site.py`, `tools/test_stats.py`
 

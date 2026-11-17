@@ -1,4 +1,4 @@
-# Voidborn 1.0 — the first release
+# Voidborn 0.1 — the first release
 
 What is in the first public version of Voidborn, in one list.
 
@@ -84,7 +84,7 @@ What is in the first public version of Voidborn, in one list.
 * **A website** with a page per subject — home, play & download, maps, the unit
   forge and the roadmap — and nothing loaded from the network.
 
-## Known limitations of 1.0
+## Known limitations of 0.1
 
 * The balance is a first pass, and the Choir is slightly stronger than the bot.
 * The bot is simple.

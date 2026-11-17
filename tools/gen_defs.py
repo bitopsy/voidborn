@@ -28,6 +28,20 @@ def laser(fac, rng, reload, dmg, rgb, thick=2.0, aoe=8, vel=900, core=0.6, flare
                 collideFeature=False, intensity=0.9, texture1='largebeam', texture2='laserend', texture3='flare',
                 texture4='flare', burst=burst, burstRate=burstrate, sprayAngle=200, edgeEffectiveness=0.3, impulseFactor=0.2,
                 size=thick)
+def beam(fac, rng, dps, rgb, thick=4.5, aoe=12, beamtime=0.85, reload=1.0, name='Gaze'):
+    # persistent beam: on its target for most of each cycle; damage is ~per second while the beam is on
+    return dict(name=name, weaponType='BeamLaser', range=rng, reloadTime=reload, beamTime=beamtime, beamBurst=False, sweepFire=False,
+                damage={'default': dps}, areaOfEffect=aoe, rgbColor=rgb, thickness=thick, coreThickness=0.55, laserFlareSize=8,
+                largeBeamLaser=True, tileLength=240, scrollSpeed=6, pulseSpeed=1.2, beamDecay=0.9, targetMoveError=0.05,
+                explosionGenerator='custom:' + CEG[fac], tolerance=8000, turret=True, avoidFriendly=False, collideFriendly=False,
+                collideFeature=False, intensity=0.9, texture1='largebeam', texture2='laserend', texture3='flare', texture4='flare',
+                edgeEffectiveness=0.3, impulseFactor=0.0, size=thick)
+def glob(fac, rng, reload, dmg, rgb, vel=280, aoe=44, size=7, name='Acid Spit'):
+    # slow, long-range, nearly straight glob (low myGravity): hits hard and splashes, but takes seconds to arrive
+    return dict(name=name, weaponType='Cannon', range=rng, reloadTime=reload, weaponVelocity=vel, myGravity=0.02, damage={'default': dmg},
+                areaOfEffect=aoe, edgeEffectiveness=0.4, rgbColor=rgb, size=size, sizeDecay=0.0, alphaDecay=1.0, intensity=0.9, stages=6,
+                separation=0.7, noGap=False, texture1='circularthingy', texture2='flare', explosionGenerator='custom:' + CEG[fac],
+                tolerance=8000, turret=True, avoidFriendly=False, collideFriendly=False, collideFeature=False, sprayAngle=100, impulseFactor=0.3)
 def missile(fac, rng, reload, dmg, burst=1, aoe=40, vel=320, color='0.7 1 0.2', name='Spores'):
     return dict(name=name, weaponType='MissileLauncher', range=rng, reloadTime=reload, damage={'default': dmg}, areaOfEffect=aoe,
                 weaponVelocity=vel, startVelocity=140, weaponAcceleration=160, flightTime=5, tracks=True, turnRate=9000, smokeTrail=True,
@@ -66,7 +80,7 @@ UNITS = [
  # ---------------- CHOIR OF THE EYE
  U('ch_hierophant', 'choir', 'Hierophant', 'Cyclopean Commander - builds, sees all, burns what it stares at', 'com', 2500, 4200, speed=1.9, alt=45, sight=620,
    build=['ch_womb'] + CB('ch_')[:0] + ['ch_siphon', 'ch_sunpetal', 'ch_heart', 'ch_vault', 'ch_watcher', 'ch_stare', 'ch_pillar'], bp=95, bd=190,
-   weapons=[laser('choir', 430, 0.55, 43, '0.55 0.95 1.0', 3.0, 10, name='Gaze'), dgun('choir', 'Cataract Stare', '0.5 0.8 1.0')], hover=True),
+   weapons=[beam('choir', 470, 80, '0.2 0.55 1.0', name='Gaze'), dgun('choir', 'Cataract Stare', '0.5 0.8 1.0')], hover=True),
  U('ch_seer', 'choir', 'Seer', 'Builder - a floating eye with tendrils that knit flesh into structures', 'con', 90, 520, speed=2.8, alt=50, sight=480,
    build=['ch_womb', 'ch_siphon', 'ch_sunpetal', 'ch_heart', 'ch_vault', 'ch_watcher', 'ch_stare', 'ch_pillar'], bp=70, bd=185),
  U('ch_gazer', 'choir', 'Gazer', 'Scout - fast flying eyeling with a pinprick laser', 'scout', 38, 230, speed=5.0, alt=95, sight=720,
@@ -94,7 +108,7 @@ UNITS = [
  # ---------------- MAW SWARM
  U('mw_matriarch', 'maw', 'Matriarch', 'Maw Commander - a gnashing hive-mother that digests its foes', 'com', 2500, 4400, speed=1.8, alt=45, sight=560,
    build=['mw_hive', 'mw_extractor', 'mw_sunbloom', 'mw_core', 'mw_cyst', 'mw_sensor', 'mw_spine', 'mw_bastion', 'mw_maw_jaw'], bp=95, bd=190,
-   weapons=[laser('maw', 420, 0.55, 48, '0.7 1 0.2', 3.4, 10, name='Acid Spit'), dgun('maw', 'Devour', '0.6 1 0.1')], hover=True, heal=3),
+   weapons=[glob('maw', 560, 1.5, 150, '0.7 1 0.2'), dgun('maw', 'Devour', '0.6 1 0.1')], hover=True, heal=3),
  U('mw_weaver', 'maw', 'Weaver', 'Builder - a spidery spinner that secretes structures from silk', 'con', 90, 560, speed=2.6, alt=50, sight=450,
    build=['mw_hive', 'mw_extractor', 'mw_sunbloom', 'mw_core', 'mw_cyst', 'mw_sensor', 'mw_spine', 'mw_bastion'], bp=70, bd=185, heal=1),
  U('mw_skitter', 'maw', 'Skitter', 'Scout - flitting clawed bug with a single big eye', 'scout', 32, 240, speed=5.2, alt=90, sight=700,
@@ -183,8 +197,10 @@ def unitdef(u):
                  reclaimSpeed=u['bp'] * 0.8, terraformSpeed=0, canResurrect=False)
         if u.get('build'): d['buildOptions'] = u['build']
     if bk == 'com':
-        d.update(metalMake=2.0, energyMake=30.0, metalStorage=500, energyStorage=800, radarDistance=0, showNanoSpray=True, power=3000, decloakDistance=0,
-                 canCloak=False, cloakCost=0, autoHeal=u.get('heal', 0), hideDamage=False, workerTime=u['bp'])
+        d.update(metalMake=2.0, energyMake=30.0, metalStorage=500, energyStorage=800, radarDistance=0, showNanoSpray=True, power=3000,
+                 autoHeal=u.get('heal', 0), hideDamage=False, workerTime=u['bp'])
+    if bk in ('com', 'con'):      # cloakable: vb_cloak.lua toggles it and charges the energy (com 250 E/s, con 100 E/s)
+        d.update(decloakDistance=0, canCloak=True, cloakCost=0, cloakCostMoving=0, cloakTimeout=30, initCloaked=False, minCloakDistance=0)
     if bk == 'fac':
         d.update(builder=True, workerTime=u['bp'], buildDistance=100, canAssist=False, canReclaim=False, canMove=True, maxVelocity=0, buildOptions=u['build'],
                  yardMap='o' * (u['fp'] ** 2), onoffable=True, activateWhenBuilt=True, canAttack=False, maxSlope=60)

@@ -150,6 +150,21 @@ function widget:KeyPress(key, mods, isRepeat)
 	end
 
 	local action = ORDER_KEYS[ch]
+	if action == "vbcloak" then
+		-- K: toggle the cloak of every selected unit that has one (all go the same way, by the first)
+		local want, any
+		for _, u in ipairs(sel) do
+			local i = Spring.FindUnitCmdDesc(u, 35002)
+			if i then
+				local cd = Spring.GetUnitCmdDescs(u, i, i)
+				local cur = cd and cd[1] and cd[1].params and tonumber(cd[1].params[1]) or 0
+				if want == nil then want = (cur == 0) and 1 or 0 end
+				Spring.GiveOrderToUnit(u, 35002, { want }, {})
+				any = true
+			end
+		end
+		if any then return true end
+	end
 	if action then
 		-- only grab the key if some selected unit actually has that command (so e.g. 'r' stays free otherwise)
 		local cmds = Spring.GetActiveCmdDescs() or {}

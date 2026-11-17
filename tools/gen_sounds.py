@@ -225,8 +225,121 @@ def ambient():
         print("ffmpeg/libvorbis unavailable (%s): leaving ambient_void.wav" % e)
 
 
+# ------------------------------------------------------------------ commander weapons (beam, glob, D-gun, Q-gun)
+# NB: these draw from the shared rng, so they run AFTER every older recipe (see __main__): that keeps the
+# older sounds byte-identical when the whole script is rerun.
+def swell(n, p=1.0): return np.sin(np.linspace(0, np.pi, n)) ** p
+def rise(n, p=2.0): return np.linspace(0, 1, n) ** p
+def gate(dur, rate, duty=0.5, smooth=700): return lp((np.sin(2 * np.pi * rate * t_(dur)) > (1 - 2 * duty)).astype(float), smooth)
+
+def cmd_weapons():
+    # --- Hierophant "Gaze": a persistent blue beam. Pulled-in crackle, then a sustained singing hum with vibrato.
+    d = 1.1; n = int(d * SR); t = t_(d)
+    env = np.minimum(1, t / 0.09) * np.minimum(1, (d - t) / 0.28)
+    hum = sat(sine(165, d) + 0.6 * sine(330, d) + 0.3 * fm(660, 1320, 1.2, d), 1.5)
+    sing = fm(1560, 6, 2.4, d) * 0.9 + 0.5 * fm(2340, 7, 1.6, d)
+    hiss = bp(noise(d), 3500, 9000)
+    zap = sweep(3600, 700, 0.12) * env_exp(int(0.12 * SR), 0.04)
+    save("beam_choir", mix(env * (1 + 0.15 * sine(19, d)) * (0.8 * hum + 0.32 * sing + 0.12 * hiss), 0.7 * zap), 0.8)
+    d = 0.3; n = int(d * SR)
+    crackle = hp(noise(d), 3000) * lp((noise(d) > 0.45).astype(float), 3000) * env_exp(n, 0.09)
+    save("hit_beam", mix(crackle, 0.5 * sweep(1500, 380, d) * env_exp(n, 0.05), 0.3 * sine(90, d) * env_exp(n, 0.06)), 0.6)
+
+    # --- Matriarch "Acid Spit": a slow heavy glob. Wet thump, rising gurgle, slimy tail; and a splat on impact.
+    d = 0.8; n = int(d * SR)
+    thump = sat(sweep(150, 52, 0.28), 2) * env_exp(int(0.28 * SR), 0.09)
+    gurgle = sweep(170, 560, d) * np.clip(sine(23, d), 0, 1) * env_exp(n, 0.25)
+    spit = bp(noise(d), 900, 4500) * env_exp(n, 0.09)
+    slime = lp(noise(d), 700) * np.clip(sine(11, d) + 0.4, 0, 1) * env_exp(n, 0.3)
+    save("acid_glob", mix(thump, 0.7 * gurgle, 0.6 * spit, 0.35 * slime), 0.85)
+    d = 0.75; n = int(d * SR)
+    splat = lp(noise(d), 1900) * env_exp(n, 0.07)
+    sizzle = bp(noise(d), 2500, 9000) * np.clip(sine(47, d) + 0.5, 0, 1) * env_exp(n, 0.25)
+    save("hit_glob", mix(splat, 0.8 * sizzle, 0.8 * sat(sweep(210, 55, 0.3), 2) * env_exp(int(0.3 * SR), 0.1)), 0.8)
+
+    # --- D-gun, Choir ("Cataract Stare"): glassy rising chord, then a deep clean blast with ringing overtones.
+    ch, bl = 0.9, 1.4; nc, nb = int(ch * SR), int(bl * SR)
+    charge = sum(sweep(f * 0.5, f, ch) * (0.8 + 0.2 * sine(7 + i, ch)) for i, f in enumerate((440, 660, 880, 1320))) * rise(nc, 2.2)
+    charge = charge + 0.4 * bp(noise(ch), 3000, 10000) * rise(nc, 3)
+    boom = sat(sweep(160, 30, bl) + 0.6 * sine(38, bl), 3) * env_exp(nb, 0.45)
+    ring = (bell(1760, bl, 0.55, 1.4, 2.0) + 0.7 * bell(2640, bl, 0.45, 1.2, 2.0) + 0.5 * bell(880, bl, 0.7, 1.2, 2.0)) * 0.5
+    air = hp(noise(bl), 2500) * env_exp(nb, 0.12) * 0.4
+    save("dgun_choir", mix(charge * 0.7, at(echo(mix(boom, ring, air), 0.09, 0.4, 3), ch)), 0.95)
+
+    # --- D-gun, Maw ("Devour"): wet inhale and gurgle, then a guttural roar with chittering and a crunch.
+    ch, bl = 0.9, 1.4; nc, nb = int(ch * SR), int(bl * SR)
+    inhale = bp(noise(ch), 400, 2600) * rise(nc, 1.6) * (1 + 0.6 * sine(17, ch))
+    gur = sat(sweep(48, 120, ch) * (1 + 0.8 * sine(13, ch)), 2.5) * rise(nc, 1.4)
+    roar = sat(sweep(95, 38, bl) + 0.7 * sine(57, bl) * (1 + 0.8 * sine(31, bl)) + 0.4 * sweep(190, 76, bl), 4) * env_exp(nb, 0.5)
+    chit = bp(noise(bl), 1500, 6500) * gate(bl, 30, 0.35) * env_exp(nb, 0.35)
+    crunch = lp(noise(0.12), 1100) * env_exp(int(0.12 * SR), 0.03)
+    save("dgun_maw", mix(0.7 * inhale, 0.9 * gur, at(mix(roar, 0.55 * chit, 0.8 * crunch), ch - 0.02)), 0.95)
+
+    # --- Q-gun (Destabilisation Gun), Choir: a ring-modulated warbling climb, then an expanding shimmering pulse.
+    ch, pl = 0.7, 1.0; nc, np_ = int(ch * SR), int(pl * SR)
+    climb = sweep(300, 2400, ch) * (0.5 + 0.5 * sine(70, ch)) + 0.4 * sweep(150, 1200, ch)
+    pulse = sweep(1800, 200, pl) * env_exp(np_, 0.35) + 0.6 * sum(sine(f, pl) for f in (1000, 1013, 987)) / 3 * env_exp(np_, 0.4)
+    pulse = pulse + 0.3 * bp(noise(pl), 1500, 7000) * env_exp(np_, 0.15)
+    save("qgun_choir", mix(climb * rise(nc, 1.8) * 0.8, at(echo(pulse, 0.11, 0.45, 3), ch)), 0.9)
+    # --- Q-gun, Maw: same idea, but lower, wetter and sicker (tremolo + bubbling).
+    ch, pl = 0.7, 1.0; nc, np_ = int(ch * SR), int(pl * SR)
+    climb = sat(sweep(110, 900, ch), 2.5) * (0.5 + 0.5 * sine(22, ch)) + 0.5 * lp(noise(ch), 900) * np.clip(sine(14, ch) + 0.3, 0, 1)
+    pulse = sat(sweep(700, 90, pl), 3) * (0.6 + 0.4 * sine(40, pl)) * env_exp(np_, 0.35) + 0.5 * lp(noise(pl), 1200) * env_exp(np_, 0.2)
+    save("qgun_maw", mix(climb * rise(nc, 1.6) * 0.8, at(echo(pulse, 0.12, 0.4, 3), ch)), 0.9)
+    # --- stun wave impact: electric crackle over a falling detuned buzz
+    d = 1.3; n = int(d * SR)
+    crack = hp(noise(d), 2500) * lp((noise(d) > 0.55).astype(float), 2500) * env_exp(n, 0.5)
+    buzz = sat(sweep(900, 80, d), 8) * (0.6 + 0.4 * sine(50, d)) * env_exp(n, 0.3)
+    save("stun_wave", mix(0.9 * crack, 0.5 * buzz, 0.7 * sat(sweep(120, 40, 0.3), 2) * env_exp(int(0.3 * SR), 0.1)), 0.85)
+    # --- gun ready (a long-reload gun is loaded again) / gun denied (reloading, no energy, out of range)
+    save("gun_ready", mix(bell(1175, 0.35, 0.12, 1.5), at(bell(1760, 0.45, 0.16, 1.5), 0.09), 0.3 * hp(noise(0.02), 3000)), 0.7)
+    d = 0.22; n = int(d * SR)
+    two = np.concatenate([pad(sat(np.sign(sine(110, 0.08)) * 0.6 + sine(110, 0.08), 2), int(0.11 * SR)), sat(np.sign(sine(95, 0.09)) * 0.6 + sine(95, 0.09), 2)])
+    save("gun_denied", lp(two, 900), 0.6)
+
+
+# ------------------------------------------------------------------ announcements (jingles; no voice samples, no licensing)
+def brass(f, dur, tau=0.4):
+    n = int(dur * SR)
+    return sat(fm(f, f, 1.6, dur) + 0.5 * fm(f * 2, f * 2, 1.0, dur), 2) * env_exp(n, tau) * np.minimum(1, np.arange(n) / (0.03 * SR))
+
+def announcements():
+    # cloak on: a shimmer that falls away and fades out; cloak off: it snaps back, brightening, with a pop
+    d = 0.9; n = int(d * SR)
+    save("cloak_on", mix((sweep(1900, 220, d) + 0.5 * fm(900, 1800, 1.5, d)) * env_exp(n, 0.28) * (1 + 0.4 * sine(11, d)), 0.25 * bp(noise(d), 1000, 6000) * env_exp(n, 0.25)), 0.7)
+    d = 0.5; n = int(d * SR)
+    pop = (noise(0.05) * 0.7 + sine(900, 0.05)) * env_exp(int(0.05 * SR), 0.015)
+    save("cloak_off", mix(sweep(200, 1700, 0.4) * swell(int(0.4 * SR), 0.8), at(pop, 0.36)), 0.7)
+    # own commander lost: three slow tolling bells falling, a sub drop, a dark pad
+    d = 3.2; n = int(d * SR)
+    tolls = mix(bell(220, 2.6, 0.9, 2.5, 2.76), at(bell(196, 2.4, 0.9, 2.5, 2.76), 0.85), at(bell(164.8, 2.4, 1.0, 2.5, 2.76), 1.7))
+    save("commander_lost", mix(tolls, 0.8 * sat(sweep(70, 26, d), 2) * env_exp(n, 1.1), 0.25 * lp(noise(d), 300) * swell(n, 0.8)), 0.9)
+    # enemy commander destroyed: a short rising fanfare ending on a boom
+    d = 2.0
+    fan = mix(brass(392, 0.5, 0.25), at(brass(523, 0.5, 0.25), 0.18), at(brass(659, 0.5, 0.25), 0.36), at(brass(784, 1.3, 0.55), 0.54), at(brass(1047, 1.2, 0.5), 0.54))
+    save("enemy_commander_down", mix(fan, at(boom(1.0, 170, 45, 0.22, 1800, 0.26, sub=0.5), 0.54)), 0.9)
+    # victory: a bright four-note climb into a full, ringing chord
+    chord = lambda dur: mix(*[brass(f, dur, 0.9) for f in (262, 330, 392, 523)], *[0.5 * bell(f, dur, 0.8, 1.5) for f in (523, 784, 1047)])
+    notes = mix(brass(262, 0.3, 0.2), at(brass(330, 0.3, 0.2), 0.22), at(brass(392, 0.3, 0.2), 0.44), at(brass(523, 0.5, 0.3), 0.66))
+    save("victory", mix(notes, at(chord(2.2), 0.95)), 0.9)
+    # defeat: three slow falling minor notes over a sub fall
+    low = lambda f, dur: lp(sat(fm(f, f, 1.2, dur) + 0.4 * sine(f / 2, dur), 2), 1800) * env_exp(int(dur * SR), 0.7)
+    save("defeat", mix(low(196, 1.2), at(low(155.6, 1.2), 0.9), at(low(130.8, 2.0), 1.8), at(0.8 * sat(sweep(80, 28, 1.6), 2) * env_exp(int(1.6 * SR), 0.7), 1.8)), 0.85)
+    # energy low: two falling urgent beeps then a power-down slide; metal low: two metallic clanks
+    beep = lambda f0, f1: sat(sweep(f0, f1, 0.18), 3) * swell(int(0.18 * SR), 0.5)
+    d = 0.5
+    save("energy_low", mix(beep(560, 430), at(beep(560, 430), 0.26), at((sweep(600, 90, d) + 0.4 * sweep(1200, 180, d)) * env_exp(int(d * SR), 0.2) * 0.8, 0.56)), 0.8)
+    clank = lambda f, dur: fm(f, f * 1.41, 4.0, dur) * env_exp(int(dur * SR), 0.1) + 0.4 * bp(noise(dur), 2500, 8000) * env_exp(int(dur * SR), 0.012)
+    save("metal_low", mix(clank(310, 0.5), at(clank(250, 0.6), 0.3)), 0.8)
+    # tier 2 online: a swelling chord, a rising bell arpeggio, one long final bell and a sub thump
+    d = 2.6; n = int(d * SR)
+    pad_ = mix(*[0.6 * fm(f, f * 2.01, 0.8, d) for f in (131, 196, 262, 330)]) * swell(n, 1.2)
+    arp = mix(*[at(bell(f, 1.4, 0.4, 1.8), 0.1 + 0.11 * i) for i, f in enumerate((523, 659, 784, 1047, 1319))])
+    save("tier2_ready", mix(0.6 * pad_, arp, at(bell(1568, 1.6, 0.6, 1.4), 0.7), 0.7 * sine(60, 0.35) * env_exp(int(0.35 * SR), 0.1)), 0.9)
+
+
 if __name__ == "__main__":
-    for fn in (ui, alerts, voices, weapons, impacts, economy, evolve, ambient):
+    for fn in (ui, alerts, voices, weapons, impacts, economy, evolve, ambient, cmd_weapons, announcements):
         fn()
     files = sorted(os.listdir(OUT))
     print("wrote %d files to %s" % (len(files), os.path.abspath(OUT)))

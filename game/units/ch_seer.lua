@@ -70,5 +70,12 @@ return {
 		terraformSpeed = 0,
 		canResurrect = false,
 		buildOptions = { "ch_womb", "ch_siphon", "ch_sunpetal", "ch_heart", "ch_vault", "ch_watcher", "ch_stare", "ch_pillar" },
+		decloakDistance = 0,
+		canCloak = true,
+		cloakCost = 0,             -- no engine upkeep: vb_cloak.lua charges the energy itself
+		cloakCostMoving = 0,
+		cloakTimeout = 30,
+		initCloaked = false,
+		minCloakDistance = 0,
 	},
 }

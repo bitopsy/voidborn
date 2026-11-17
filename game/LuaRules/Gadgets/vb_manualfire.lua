@@ -20,7 +20,18 @@ function gadget:GetInfo()
 	}
 end
 
-if not gadgetHandler:IsSyncedCode() then return end
+if not gadgetHandler:IsSyncedCode() then
+	-- UNSYNCED: two UI sounds, played only for the team that owns the commander
+	local function Mine(teamID) return teamID == Spring.GetLocalTeamID() end
+	function gadget:Initialize()
+		gadgetHandler:AddSyncAction("vbGunDenied", function(_, teamID) if Mine(teamID) then Spring.PlaySoundFile("sounds/gun_denied.wav", 0.6, "ui") end end)
+		gadgetHandler:AddSyncAction("vbGunReady",  function(_, teamID) if Mine(teamID) then Spring.PlaySoundFile("sounds/gun_ready.wav", 0.7, "ui") end end)
+	end
+	function gadget:Shutdown()
+		gadgetHandler:RemoveSyncAction("vbGunDenied"); gadgetHandler:RemoveSyncAction("vbGunReady")
+	end
+	return
+end
 
 local FPS = 30
 local CMD_BASE = 35000   -- slot 1 -> 35000, slot 2 -> 35001
@@ -32,6 +43,8 @@ local SLOTS = {
 local unitSlots = {}   -- unitDefID -> { [slot] = weaponNumber }
 local cmdSlot = {}     -- cmdID -> slot
 local nextFire = {}    -- unitID -> { [slot] = frame }
+local notify = {}      -- unitID -> { [slot] = teamID }  long-reload guns that chime when loaded again
+local READY_MIN = 4    -- seconds of reload that earn a "ready" chime (the D-gun reloads too fast for one; the Q-gun does not)
 
 local function Say(teamID, msg) Spring.SendMessageToTeam(teamID, "[VB] " .. msg) end
 
@@ -64,7 +77,9 @@ function gadget:UnitCreated(uid, defID)
 	end
 end
 
-function gadget:UnitDestroyed(uid) nextFire[uid] = nil end
+function gadget:UnitDestroyed(uid) nextFire[uid] = nil; notify[uid] = nil end
+
+local function Denied(teamID) SendToUnsynced("vbGunDenied", teamID) end
 
 local function Fire(uid, defID, teamID, slot, tx, ty, tz)
 	local wn = unitSlots[defID][slot]
@@ -72,10 +87,11 @@ local function Fire(uid, defID, teamID, slot, tx, ty, tz)
 	local wd = WeaponDefs[wdID]
 	local frame = Spring.GetGameFrame()
 
-	if select(2, Spring.GetUnitIsStunned(uid)) then return end
+	if select(2, Spring.GetUnitIsStunned(uid)) then Denied(teamID) return end
 	local nf = nextFire[uid]
 	if nf and nf[slot] and frame < nf[slot] then
 		Say(teamID, SLOTS[slot].name .. " is reloading (" .. string.format("%.1f", (nf[slot] - frame) / FPS) .. "s)")
+		Denied(teamID)
 		return
 	end
 
@@ -91,6 +107,7 @@ local function Fire(uid, defID, teamID, slot, tx, ty, tz)
 	local ux, _, uz = Spring.GetUnitPosition(uid)
 	if math.sqrt((tx - ux) ^ 2 + (tz - uz) ^ 2) > range then
 		Say(teamID, SLOTS[slot].name .. ": target out of range (" .. math.floor(range) .. ")")
+		Denied(teamID)
 		return
 	end
 	if dist < 1 then return end
@@ -101,6 +118,7 @@ local function Fire(uid, defID, teamID, slot, tx, ty, tz)
 		local cur = Spring.GetTeamResources(teamID, "energy")
 		if not cur or cur < cost or not Spring.UseTeamResource(teamID, "energy", cost) then
 			Say(teamID, SLOTS[slot].name .. ": not enough energy (" .. cost .. ")")
+			Denied(teamID)
 			return
 		end
 	end
@@ -117,6 +135,8 @@ local function Fire(uid, defID, teamID, slot, tx, ty, tz)
 	})
 	nextFire[uid] = nextFire[uid] or {}
 	nextFire[uid][slot] = frame + math.floor((wd.reload or 1) * FPS)
+	notify[uid] = notify[uid] or {}
+	notify[uid][slot] = (wd.reload or 1) >= READY_MIN and teamID or nil
 	Spring.PlaySoundFile(wd.soundStart or "", 1.0, px, py, pz)
 end
 
@@ -127,4 +147,18 @@ function gadget:AllowCommand(uid, defID, teamID, cmdID, params, opts, tag, fromS
 		Fire(uid, defID, teamID, slot, params[1], params[2], params[3])
 	end
 	return false   -- never queued: the shot has been fired (or refused) right now
+end
+
+-- a long-reload gun (the Q-gun) chimes for its owner when it is loaded again
+function gadget:GameFrame(frame)
+	if frame % 5 ~= 0 then return end
+	for uid, slots in pairs(nextFire) do
+		for slot, f in pairs(slots) do
+			if frame >= f then
+				slots[slot] = nil
+				local nt = notify[uid]
+				if nt and nt[slot] then SendToUnsynced("vbGunReady", nt[slot]); nt[slot] = nil end
+			end
+		end
+	end
 end

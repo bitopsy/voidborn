@@ -79,7 +79,7 @@ return {
 		power = 3000,
 		decloakDistance = 0,
 		canCloak = true,
-		cloakCost = 0,             -- no engine upkeep: vb_cloak.lua charges 300 E/s itself
+		cloakCost = 0,             -- no engine upkeep: vb_cloak.lua charges the energy itself
 		cloakCostMoving = 0,
 		cloakTimeout = 30,
 		initCloaked = false,

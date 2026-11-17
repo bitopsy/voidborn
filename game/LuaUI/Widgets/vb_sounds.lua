@@ -1,5 +1,5 @@
 function widget:GetInfo()
-	return { name = "Voidborn Sounds", desc = "Game-event sounds: start jingle, construction, unit ready, commander alarm, ambience (/vbsound)",
+	return { name = "Voidborn Sounds", desc = "Game-event sounds and announcements: start, construction, unit ready, commander alarm / lost, cloak, tier 2, low resources, victory / defeat, ambience (/vbsound)",
 		author = "goddot info@bitopsy.com", date = "2026", license = "GPL", layer = 0, enabled = true }
 end
 
@@ -32,7 +32,65 @@ end
 function widget:UnitFinished(unitID, unitDefID, unitTeam)
 	if not Mine(unitTeam) then return end
 	if Spring.GetGameFrame() < 5 then return end   -- starting units
+	local cp = UnitDefs[unitDefID] and UnitDefs[unitDefID].customParams
+	if cp and cp.kind == "fac2" then Play("tier2_ready", 0.9) return end   -- the factory upgrade is done
 	Play(Mobile(UnitDefs[unitDefID]) and "unit_ready" or "struct_done", 0.75)
+end
+
+-- ---------------------------------------------------------------------------------------------
+-- announcements
+local lastLost, lastCloak = -1e9, -1e9
+local lastEnergy, lastMetal, nextResCheck = -1e9, -1e9, 0
+local RES_COOLDOWN = 25 * 30                 -- frames between two low-resource warnings of one kind
+
+local function IsCommander(unitDefID)
+	local cp = UnitDefs[unitDefID] and UnitDefs[unitDefID].customParams
+	return cp and cp.iscommander == "true"
+end
+
+local function Spectating() return select(1, Spring.GetSpectatingState()) end
+
+-- cloak on / off for my own units (commanders and constructors can cloak)
+function widget:UnitCloaked(unitID, unitDefID, unitTeam)
+	if not Mine(unitTeam) then return end
+	local f = Spring.GetGameFrame()
+	if f - lastCloak > 20 then lastCloak = f; Play("cloak_on", 0.6) end
+end
+function widget:UnitDecloaked(unitID, unitDefID, unitTeam)
+	if not Mine(unitTeam) then return end
+	local f = Spring.GetGameFrame()
+	if f - lastCloak > 20 then lastCloak = f; Play("cloak_off", 0.6) end
+end
+
+-- my commander died / an enemy commander died
+function widget:UnitDestroyed(unitID, unitDefID, unitTeam)
+	if not IsCommander(unitDefID) or Spectating() then return end
+	if Mine(unitTeam) then
+		lastLost = Spring.GetGameFrame(); Play("commander_lost", 1.0)
+	elseif not Spring.AreTeamsAllied(unitTeam, Spring.GetMyTeamID()) then
+		Play("enemy_commander_down", 0.9)
+	end
+end
+
+-- the game is over: fanfare or dirge (no dirge on top of the bell toll of a commander that has just died)
+function widget:GameOver(winners)
+	if Spectating() then return end
+	local mine, won = Spring.GetMyAllyTeamID(), false
+	for _, a in ipairs(winners or {}) do if a == mine then won = true end end
+	if won then Play("victory", 1.0)
+	elseif Spring.GetGameFrame() - lastLost > 10 * 30 then Play("defeat", 1.0) end
+end
+
+-- energy / metal nearly out (storage below 3% once the game is under way)
+local function CheckResources()
+	local f = Spring.GetGameFrame()
+	if f < 900 or f < nextResCheck or Spectating() then return end
+	nextResCheck = f + 30
+	local team = Spring.GetMyTeamID()
+	local e, es = Spring.GetTeamResources(team, "energy")
+	local m, ms = Spring.GetTeamResources(team, "metal")
+	if e and es and es > 0 and e < es * 0.03 and f - lastEnergy > RES_COOLDOWN then lastEnergy = f; Play("energy_low", 0.8)
+	elseif m and ms and ms > 0 and m < ms * 0.03 and f - lastMetal > RES_COOLDOWN then lastMetal = f; Play("metal_low", 0.8) end
 end
 
 function widget:UnitDamaged(unitID, unitDefID, unitTeam, damage)
@@ -47,6 +105,7 @@ end
 
 -- ambience: PlaySoundStream does not loop on its own, so start it again when it finishes
 function widget:Update()
+	if enabled then CheckResources() end
 	if not (enabled and ambientOn) then return end
 	local now = Spring.GetTimer and Spring.GetTimer()
 	local t = Spring.DiffTimers and now and Spring.DiffTimers(now, widget.t0 or now) or 0

@@ -61,75 +61,204 @@ def glow(draw_target, shape, colour, blur, alpha=170):
     draw_target.alpha_composite(layer)
 
 
+SS = 2                                   # supersampling for the emblems (drawn at 1024, saved at 512)
+
+
+def _canvas():
+    return Image.new("RGBA", (S * SS, S * SS), (0, 0, 0, 0))
+
+
+def _bg(top, bottom, glow_rgb, glow_at, glow_r, stars, seed):
+    """Void background: vertical gradient, a soft nebula glow and a few stars."""
+    import random
+    rnd = random.Random(seed)
+    N = S * SS
+    img = gradient((N, N), top, bottom, diagonal=False).convert("RGBA")
+    g = Image.new("RGBA", (N, N), (0, 0, 0, 0))
+    gx, gy = glow_at
+    ImageDraw.Draw(g).ellipse([(gx - glow_r) * SS, (gy - glow_r) * SS, (gx + glow_r) * SS, (gy + glow_r) * SS],
+                              fill=glow_rgb + (120,))
+    img.alpha_composite(g.filter(ImageFilter.GaussianBlur(70 * SS // 2)))
+    d = ImageDraw.Draw(img)
+    for _ in range(stars):
+        x, y, r = rnd.randint(0, N), rnd.randint(0, N), rnd.choice((1, 1, 2, 3)) * SS // 2
+        a = rnd.randint(90, 220)
+        d.ellipse([x - r, y - r, x + r, y + r], fill=(235, 240, 255, a))
+    return img
+
+
+def _bloom(img, shape_fn, colour, blur, alpha):
+    """Draw with shape_fn on a layer, blur it and add it: a glow behind crisp art."""
+    layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
+    shape_fn(ImageDraw.Draw(layer), colour + (alpha,))
+    img.alpha_composite(layer.filter(ImageFilter.GaussianBlur(blur * SS)))
+
+
+def _frame(img, colour, inner):
+    """Bevelled double frame, same family for both factions."""
+    d = ImageDraw.Draw(img)
+    N = S * SS
+    d.rounded_rectangle([8 * SS, 8 * SS, N - 9 * SS, N - 9 * SS], radius=54 * SS, outline=colour + (235,), width=7 * SS)
+    d.rounded_rectangle([22 * SS, 22 * SS, N - 23 * SS, N - 23 * SS], radius=42 * SS, outline=inner + (120,), width=2 * SS)
+    # corner studs
+    for cx, cy in ((46, 46), (S - 46, 46), (46, S - 46), (S - 46, S - 46)):
+        r = 5 * SS
+        d.ellipse([cx * SS - r, cy * SS - r, cx * SS + r, cy * SS + r], fill=colour + (230,))
+
+
+def _finish(img):
+    out = img.resize((S, S), Image.LANCZOS)
+    mask = Image.new("L", (S, S), 0)
+    ImageDraw.Draw(mask).rounded_rectangle([0, 0, S - 1, S - 1], radius=58, fill=255)
+    res = Image.new("RGBA", (S, S), (0, 0, 0, 0))
+    res.paste(out, (0, 0), mask)
+    return res
+
+
+def _tilted_ring(img, cx, cy, rx, ry, tilt, width, colour, front_only=None):
+    """An ellipse ring tilted by `tilt` degrees; front_only 'top'/'bottom' draws just half of it."""
+    pts = []
+    for i in range(0, 361, 2):
+        a = math.radians(i)
+        x, y = rx * math.cos(a), ry * math.sin(a)
+        t = math.radians(tilt)
+        pts.append(((cx + x * math.cos(t) - y * math.sin(t)) * SS, (cy + x * math.sin(t) + y * math.cos(t)) * SS, i))
+    d = ImageDraw.Draw(img)
+    for (x1, y1, a1), (x2, y2, a2) in zip(pts, pts[1:]):
+        half = math.sin(math.radians(a1))
+        if front_only == "top" and half > 0: continue
+        if front_only == "bottom" and half <= 0: continue
+        d.line([(x1, y1), (x2, y2)], fill=colour, width=int(width * SS))
+
+
 def choir():
-    """The Choir of the Eye: a pale one-eyed cyclops with a halo."""
-    img = gradient((S, S), (74, 44, 160), (18, 12, 44)).convert("RGBA")
+    """The Choir of the Eye: a single open eye inside a tilted halo, light spilling down as tendrils."""
+    N = S * SS
+    img = _bg((10, 22, 58), (4, 7, 22), (60, 140, 255), (256, 230), 230, 46, 7)
+    cx, cy = 256, 236
+    c = lambda v: int(v * SS)
+
+    # halo, back half first (behind the head), front half after
+    _bloom(img, lambda d, col: d.ellipse([c(cx - 190), c(cy - 70), c(cx + 190), c(cy + 70)], outline=col, width=c(16)),
+           (90, 190, 255), 10, 200)
+    _tilted_ring(img, cx, cy - 6, 186, 56, -14, 11, (150, 225, 255, 255), "top")
+    _tilted_ring(img, cx, cy - 6, 160, 44, -14, 4, (210, 245, 255, 220), "top")
+
+    # tendrils: curved strands that fade out downwards
     d = ImageDraw.Draw(img)
+    for i, x0 in enumerate((-150, -100, -52, 0, 52, 100, 150)):
+        pts = []
+        for t in range(0, 41):
+            u = t / 40
+            x = cx + x0 * (0.55 + 0.45 * u) + math.sin(u * 5 + i) * 14 * u
+            y = cy + 120 + u * (150 - abs(x0) * 0.25)
+            pts.append((x * SS, y * SS))
+        for k in range(len(pts) - 1):
+            u = k / len(pts)
+            a = int(235 * (1 - u) ** 1.2)
+            d.line([pts[k], pts[k + 1]], fill=(170, 215, 255, a), width=max(2, int((9 - 6 * u) * SS)))
+    _bloom(img, lambda dd, col: [dd.line([(cx * SS + x0 * SS * 0.8, (cy + 130) * SS), (cx * SS + x0 * SS, (cy + 260) * SS)], fill=col, width=c(6))
+                                  for x0 in (-120, -60, 0, 60, 120)], (90, 190, 255), 8, 120)
 
-    # the halo rings around the head
-    d.ellipse([88, 66, 424, 214], outline=(196, 202, 220, 235), width=13)
-    d.ellipse([118, 84, 394, 196], outline=(150, 158, 186, 150), width=5)
-
-    # the head: a pale metallic dome
-    d.ellipse([126, 150, 386, 410], fill=(196, 200, 214, 255), outline=(96, 100, 120, 255), width=4)
-    # shading under the dome
-    shade = Image.new("RGBA", (S, S), (0, 0, 0, 0))
-    sd = ImageDraw.Draw(shade)
-    sd.ellipse([126, 250, 386, 410], fill=(70, 74, 96, 110))
-    shade = shade.filter(ImageFilter.GaussianBlur(14))
-    img.alpha_composite(shade)
-
-    # the eye
-    glow(img, [178, 196, 334, 372], (120, 90, 255), 26)
+    # the head: pale shell with a rim light
+    _bloom(img, lambda dd, col: dd.ellipse([c(cx - 140), c(cy - 130), c(cx + 140), c(cy + 140)], fill=col), (80, 170, 255), 22, 150)
     d = ImageDraw.Draw(img)
-    d.ellipse([186, 204, 326, 344], fill=(236, 240, 250, 255), outline=(70, 74, 96, 255), width=3)
-    d.ellipse([206, 224, 306, 324], fill=(96, 74, 220, 255))
-    d.ellipse([226, 244, 286, 304], fill=(24, 16, 58, 255))
-    d.ellipse([236, 254, 262, 280], fill=(250, 250, 255, 235))
-    d.ellipse([266, 288, 280, 302], fill=(170, 150, 255, 200))
+    d.ellipse([c(cx - 128), c(cy - 120), c(cx + 128), c(cy + 128)], fill=(214, 224, 244, 255), outline=(110, 130, 175, 255), width=c(4))
+    shade = Image.new("RGBA", (N, N), (0, 0, 0, 0))
+    ImageDraw.Draw(shade).ellipse([c(cx - 128), c(cy - 10), c(cx + 128), c(cy + 160)], fill=(40, 60, 130, 120))
+    img.alpha_composite(shade.filter(ImageFilter.GaussianBlur(16 * SS)))
+    rim = Image.new("RGBA", (N, N), (0, 0, 0, 0))
+    ImageDraw.Draw(rim).arc([c(cx - 118), c(cy - 110), c(cx + 118), c(cy + 118)], 200, 290, fill=(255, 255, 255, 230), width=c(6))
+    img.alpha_composite(rim.filter(ImageFilter.GaussianBlur(2 * SS)))
 
-    # the thin legs at the bottom
-    for i, x in enumerate((176, 214, 252, 290, 328)):
-        d.line([(x, 386), (x + (i - 2) * 16, 452)], fill=(168, 174, 196, 220), width=7)
-    d.line([(152, 452), (352, 452)], fill=(120, 126, 150, 190), width=6)
+    # the eye: sclera, radial iris, pupil, catchlights
+    ex, ey, er = cx, cy + 4, 92
+    _bloom(img, lambda dd, col: dd.ellipse([c(ex - er), c(ey - er), c(ex + er), c(ey + er)], fill=col), (60, 170, 255), 18, 210)
+    d = ImageDraw.Draw(img)
+    d.ellipse([c(ex - er), c(ey - er), c(ex + er), c(ey + er)], fill=(240, 246, 255, 255), outline=(60, 80, 130, 255), width=c(4))
+    ir = 64
+    for i in range(72):                       # iris rays
+        a = math.radians(i * 5)
+        col = (40 + (i * 7) % 60, 130 + (i * 11) % 70, 255, 255)
+        d.line([(ex * SS, ey * SS), ((ex + ir * math.cos(a)) * SS, (ey + ir * math.sin(a)) * SS)], fill=col, width=c(5))
+    d.ellipse([c(ex - ir), c(ey - ir), c(ex + ir), c(ey + ir)], outline=(20, 60, 160, 255), width=c(5))
+    d.ellipse([c(ex - 30), c(ey - 30), c(ex + 30), c(ey + 30)], fill=(6, 12, 40, 255))
+    d.ellipse([c(ex - 30), c(ey - 30), c(ex + 30), c(ey + 30)], outline=(150, 220, 255, 255), width=c(3))
+    d.ellipse([c(ex - 22), c(ey - 24), c(ex - 4), c(ey - 6)], fill=(255, 255, 255, 245))
+    d.ellipse([c(ex + 12), c(ey + 8), c(ex + 22), c(ey + 18)], fill=(150, 210, 255, 220))
 
-    # the metallic frame of the logo
-    d.rounded_rectangle([10, 10, S - 11, S - 11], radius=54, outline=(198, 204, 222, 210), width=8)
-    return rounded(img, 54)
+    # halo front half passes over the head
+    _tilted_ring(img, cx, cy - 6, 186, 56, -14, 11, (150, 225, 255, 255), "bottom")
+    _tilted_ring(img, cx, cy - 6, 160, 44, -14, 4, (210, 245, 255, 220), "bottom")
+
+    _frame(img, (130, 205, 255), (200, 235, 255))
+    return _finish(img)
 
 
 def maw():
-    """The Maw Swarm: a chitinous head with a glowing amber eye and teeth."""
-    img = gradient((S, S), (120, 34, 20), (26, 8, 8)).convert("RGBA")
+    """The Maw Swarm: a ringed lamprey mouth seen head-on, carapace spikes above, acid glow in the throat."""
+    N = S * SS
+    img = _bg((58, 14, 10), (12, 3, 4), (255, 120, 30), (256, 290), 240, 34, 11)
+    cx, cy = 256, 292
+    c = lambda v: int(v * SS)
     d = ImageDraw.Draw(img)
 
-    # the carapace: a wide, low dome with spikes
-    d.polygon([(96, 356), (140, 214), (256, 158), (372, 214), (416, 356)], fill=(112, 34, 24, 255))
-    d.polygon([(96, 356), (140, 214), (256, 158), (372, 214), (416, 356)],
-              outline=(168, 62, 34, 255), width=4)
-    for x, h in ((150, 70), (196, 96), (256, 118), (316, 96), (362, 70)):
-        d.polygon([(x - 20, 250), (x, 250 - h), (x + 20, 250)], fill=(58, 18, 14, 255),
-                  outline=(150, 58, 30, 255))
+    # carapace crest: spikes fanning out behind the mouth
+    spikes = []
+    for i, ang in enumerate(range(-72, 73, 24)):
+        a = math.radians(ang - 90)
+        h = 104 - abs(ang) * 0.42
+        base = 134
+        tip = (cx + (base + h) * math.cos(a), cy + (base + h) * math.sin(a))
+        l = (cx + base * math.cos(a - 0.17), cy + base * math.sin(a - 0.17))
+        r = (cx + base * math.cos(a + 0.17), cy + base * math.sin(a + 0.17))
+        spikes.append((tip, l, r))
+    for tip, l, r in spikes:
+        poly = [(p[0] * SS, p[1] * SS) for p in (l, tip, r)]
+        d.polygon(poly, fill=(48, 14, 12, 255), outline=(190, 80, 36, 255))
+        d.line([poly[0], poly[1]], fill=(230, 110, 50, 255), width=c(2.5))
 
-    # the eye
-    glow(img, [176, 214, 336, 350], (255, 176, 32), 30, 200)
+    # the maw: dark flesh disc with a bevelled rim
+    _bloom(img, lambda dd, col: dd.ellipse([c(cx - 150), c(cy - 150), c(cx + 150), c(cy + 150)], fill=col), (255, 110, 20), 22, 190)
     d = ImageDraw.Draw(img)
-    d.ellipse([184, 222, 328, 342], fill=(232, 150, 40, 255), outline=(70, 26, 12, 255), width=4)
-    d.ellipse([212, 246, 300, 320], fill=(26, 12, 8, 255))
-    d.ellipse([232, 262, 268, 292], fill=(255, 236, 180, 240))
+    d.ellipse([c(cx - 142), c(cy - 142), c(cx + 142), c(cy + 142)], fill=(86, 24, 18, 255), outline=(220, 100, 44, 255), width=c(5))
+    d.ellipse([c(cx - 124), c(cy - 124), c(cx + 124), c(cy + 124)], fill=(52, 12, 12, 255))
 
-    # the teeth along the bottom
-    d.polygon([(126, 352), (386, 352), (352, 400), (160, 400)], fill=(58, 18, 14, 255))
-    for i in range(9):
-        x = 140 + i * 30
-        d.polygon([(x, 352), (x + 22, 352), (x + 11, 392)], fill=(238, 228, 206, 255))
+    # three rings of teeth pointing inward, each ring offset from the last
+    rings = [(124, 78, 22, 20), (94, 54, 17, 16), (66, 36, 13, 12)]      # outer r, tip r, count-base, offset
+    for k, (ro, rt, n, _) in enumerate(rings):
+        count = (24, 18, 12)[k]
+        for i in range(count):
+            a0 = 2 * math.pi * (i + 0.5 * (k % 2)) / count
+            half = math.pi / count * 0.82
+            p1 = (cx + ro * math.cos(a0 - half), cy + ro * math.sin(a0 - half))
+            p2 = (cx + ro * math.cos(a0 + half), cy + ro * math.sin(a0 + half))
+            tip = (cx + rt * math.cos(a0), cy + rt * math.sin(a0))
+            shade = 245 - k * 22
+            d.polygon([(p1[0] * SS, p1[1] * SS), (tip[0] * SS, tip[1] * SS), (p2[0] * SS, p2[1] * SS)],
+                      fill=(shade, shade - 14, shade - 52, 255), outline=(120, 70, 40, 255))
 
-    # the legs
-    for i, x in enumerate((140, 186, 232, 280, 326, 372)):
-        d.line([(x, 396), (x + (i - 2.5) * 20, 452)], fill=(126, 44, 28, 230), width=9)
+    # glowing throat: acid-green core with an orange ring, the same two colours the Matriarch's weapons use
+    _bloom(img, lambda dd, col: dd.ellipse([c(cx - 40), c(cy - 40), c(cx + 40), c(cy + 40)], fill=col), (190, 255, 40), 16, 255)
+    d = ImageDraw.Draw(img)
+    d.ellipse([c(cx - 34), c(cy - 34), c(cx + 34), c(cy + 34)], fill=(255, 150, 30, 255))
+    d.ellipse([c(cx - 24), c(cy - 24), c(cx + 24), c(cy + 24)], fill=(190, 255, 50, 255))
+    d.ellipse([c(cx - 11), c(cy - 11), c(cx + 11), c(cy + 11)], fill=(250, 255, 200, 255))
 
-    d.rounded_rectangle([10, 10, S - 11, S - 11], radius=54, outline=(214, 118, 62, 200), width=8)
-    return rounded(img, 54)
+    # mandibles curving in from each side of the mouth
+    for sgn in (-1, 1):
+        pts = []
+        for t in range(0, 31):
+            u = t / 30
+            x = cx + sgn * (152 + 30 * math.sin(u * 1.6))
+            y = cy + 60 - u * 170 + 30 * u * u
+            pts.append((x * SS, y * SS))
+        for k in range(len(pts) - 1):
+            u = k / len(pts)
+            d.line([pts[k], pts[k + 1]], fill=(150 + int(50 * u), 50 + int(30 * u), 30, 255), width=max(2, int((16 - 12 * u) * SS)))
+
+    _frame(img, (232, 128, 60), (255, 190, 120))
+    return _finish(img)
 
 
 def loading():

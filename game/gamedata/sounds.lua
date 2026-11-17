@@ -33,4 +33,14 @@ add("boom_small", 0.8, { maxconcurrent = 8 }); add("boom_med", 0.95, { maxconcur
 add("mex_on", 0.6, { maxconcurrent = 3 }); add("radar_ping", 0.55, { maxconcurrent = 3 })
 add("power_on", 0.55, { maxconcurrent = 3 }); add("power_off", 0.5, { maxconcurrent = 3 })
 
+-- commander weapons: persistent beam, acid glob, D-gun / Q-gun per faction, stun-wave impact
+add("beam_choir", 0.8, { maxconcurrent = 3 }); add("hit_beam", 0.45, { maxconcurrent = 6 })
+add("acid_glob", 0.85, { maxconcurrent = 3 }); add("hit_glob", 0.65, { maxconcurrent = 5 })
+add("dgun_choir", 1.0, { maxconcurrent = 2 }); add("dgun_maw", 1.0, { maxconcurrent = 2 })
+add("qgun_choir", 0.95, { maxconcurrent = 2 }); add("qgun_maw", 0.95, { maxconcurrent = 2 }); add("stun_wave", 0.9, { maxconcurrent = 3 })
+add("gun_ready", 0.7, flat); add("gun_denied", 0.6, flat)
+-- announcements (played flat by the vb_sounds widget)
+for n, g in pairs({ cloak_on = 0.6, cloak_off = 0.6, commander_lost = 1.0, enemy_commander_down = 0.9, victory = 1.0,
+                    defeat = 1.0, energy_low = 0.8, metal_low = 0.8, tier2_ready = 0.9 }) do add(n, g, flat) end
+
 return { SoundItems = S }

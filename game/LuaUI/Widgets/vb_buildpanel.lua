@@ -721,7 +721,8 @@ function widget:DrawScreen()
 		if nm:find("repeat") then kind = "repeat"
 		elseif nm:find("move state") or nm:find("movestate") then kind = "move"
 		elseif nm:find("fire state") or nm:find("firestate") then kind = "fire"
-		elseif nm:find("land") then kind = "land" end
+		elseif nm:find("land") then kind = "land"
+		elseif nm:find("cloak") then kind = "cloak" end
 		-- label + colour of one state: repeat ON=green / OFF=red, move AIR=green /
 		-- LAND=blue, fire ALWAYS=red / HOLD=yellow / RETURN=cyan, land TAKEOFF=green
 		local function StateStyle(k)
@@ -738,6 +739,9 @@ function widget:DrawScreen()
 			elseif kind == "land" then
 				if k == 0 then return "LAND", 0.25, 0.50, 1.00 end
 				return "TAKEOFF", 0.15, 0.90, 0.20
+			elseif kind == "cloak" then
+				if k == 0 then return "OFF", 0.65, 0.65, 0.75 end
+				return "ON", 0.30, 0.85, 1.00
 			end
 			return tostring(k), 0.65, 0.65, 0.75
 		end

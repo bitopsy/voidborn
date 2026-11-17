@@ -48,10 +48,10 @@ listed. Everything below is what to do if you would rather set it up yourself.
 If you have the Spring engine installed (not BAR), you can launch Voidborn directly:
 
 ```
-spring Voidborn 1.0.sdz Play_Choir_vs_Bot.txt
+spring Voidborn 0.15.sdz Play_Choir_vs_Bot.txt
 ```
 
-Or from the command line with the Spring binary. The game requires the `voidborn 1.0.sdz` archive in your Spring data `games/` folder (derived from `modinfo.lua name="Voidborn"` + `version="1.0"`).
+Or from the command line with the Spring binary. The game requires the `voidborn 1.0.sdz` archive in your Spring data `games/` folder (derived from `modinfo.lua name="Voidborn"` + `version="0.15"`).
 
 For a Flatpak install of BAR the data directory is typically under `~/.var/app/info.beyondallreason.bar/` (look for the folder that already contains BAR's own `games/` and `maps/`). Copy the two archives there, then launch that install's `spring` binary with a start script (you may need to run it from a Flatpak shell).
 
@@ -102,7 +102,7 @@ description of every map: <https://f33.fr/vb/maps.html>
 
 | Unit | Role | Metal | HP | Altitude | Weapon (range) |
 |---|---|---|---|---|---|
-| Hierophant | Cyclopean Commander | 2500 | 4200 | 45 | Gaze (430), Cataract Stare (240) |
+| Hierophant | Cyclopean Commander | 2500 | 4200 | 45 | Gaze (470, persistent beam), Cataract Stare (240) |
 | Seer | Builder | 90 | 520 | 50 | — |
 | Gazer | Scout | 38 | 230 | 95 | Pinprick (270) |
 | Lashling | Raider | 55 | 330 | 65 | Lash Pulse (215) |
@@ -117,7 +117,7 @@ Structures: **Iris Womb** (factory), **Leech Eye** (metal extractor), **Sun Iris
 
 | Unit | Role | Metal | HP | Altitude | Weapon (range) |
 |---|---|---|---|---|---|
-| Matriarch | Maw Commander | 2500 | 4400 | 45 | Acid Spit (420), Devour (240) |
+| Matriarch | Maw Commander | 2500 | 4400 | 45 | Acid Spit (560, slow), Devour (240) |
 | Weaver | Builder | 90 | 560 | 50 | — |
 | Skitter | Scout | 32 | 240 | 90 | Acid Dart (235) |
 | Gnasher | Raider | 52 | 560 | 60 | Maw Breath (130) |

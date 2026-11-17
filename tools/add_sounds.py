@@ -44,7 +44,9 @@ def weapon_sounds(wtype, gen, dmg):
         return start, ("hit_laser" if choir else "hit_acid"), 0.8
     if wtype == "MissileLauncher": return "spore_launch", "hit_acid", 0.8
     if wtype == "Flame":           return "flame_breath", None, 0.6
-    if wtype == "DGun":            return "dgun_blast", "boom_med", 1.0
+    if wtype == "DGun":            return ("dgun_choir" if choir else "dgun_maw"), "boom_med", 1.0
+    if wtype == "BeamLaser":       return "beam_choir", "hit_beam", 0.8
+    if wtype == "Cannon" and not choir and gen: return "acid_glob", "hit_glob", 0.85
     return None, None, 0
 
 wp = os.path.join(G, "weapons", "vb_weapons.lua")

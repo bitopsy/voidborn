@@ -70,5 +70,12 @@ return {
 		terraformSpeed = 0,
 		canResurrect = false,
 		buildOptions = { "mw_hive", "mw_extractor", "mw_sunbloom", "mw_core", "mw_cyst", "mw_sensor", "mw_spine", "mw_bastion" },
+		decloakDistance = 0,
+		canCloak = true,
+		cloakCost = 0,             -- no engine upkeep: vb_cloak.lua charges the energy itself
+		cloakCostMoving = 0,
+		cloakTimeout = 30,
+		initCloaked = false,
+		minCloakDistance = 0,
 	},
 }

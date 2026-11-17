@@ -48,12 +48,12 @@ listed. Everything below is what to do if you would rather set it up yourself.
 If you have the Spring engine installed (not BAR), you can launch Voidborn directly:
 
 ```
-spring Voidborn 0.15.sdz Play_Choir_vs_Bot.txt
+spring Voidborn 0.16.sdz Play_Choir_vs_Bot.txt
 ```
 
-Or from the command line with the Spring binary. The game requires the `voidborn 0.15.sdz` archive in your Spring data `games/` folder (derived from `modinfo.lua name="Voidborn"` + `version="0.15"`).
+Or from the command line with the Spring binary. The game requires the `voidborn 0.16.sdz` archive in your Spring data `games/` folder (derived from `modinfo.lua name="Voidborn"` + `version="0.16"`).
 
-Versions are numbered in the 0.x series, one release at a time: the releases so far are **0.1** (the first public version, previously numbered 1.0), **0.14** (previously 1.4) and **0.15** (current). The release tags on GitHub carry the same numbers.
+Versions are numbered in the 0.x series, one release at a time: the releases so far are **0.1** (the first public version, previously numbered 1.0), **0.14** (previously 1.4), **0.15** and **0.16** (current). The release tags on GitHub carry the same numbers.
 
 For a Flatpak install of BAR the data directory is typically under `~/.var/app/info.beyondallreason.bar/` (look for the folder that already contains BAR's own `games/` and `maps/`). Copy the two archives there, then launch that install's `spring` binary with a start script (you may need to run it from a Flatpak shell).
 
@@ -262,7 +262,7 @@ box@40,30,50@0,15,0@0,0,0@0.8,0.7,0.6,1@0@0,0,1,1
 A dark dashboard of graphs and radar charts, live during the game and as the match report at the end (it replaces the engine's end screen).
 
 * **Menu bar** (top centre, always there): STATS, SETTINGS, KEYS, ABOUT buttons and the number of players (humans / bots, how many are alive). `/vbdash menu` hides or shows it.
-* **HUD** (top right, draggable, foldable): a live leaderboard (rank, score, army value, metal / energy income), a combat / economy radar (click it to switch), the player count. `OPEN` or Ctrl+Shift+D opens the full dashboard.
+* **HUD** (top right, draggable, foldable): a live leaderboard (rank, score, army value, metal / energy income), three sparklines (army, metal income, damage), the player count. The radars are panels of their own now (see *HUD layout* below). `OPEN` or Ctrl+Shift+D opens the full dashboard.
 * **Leaderboard score**: army value + defence value + economy value + 1.5 x enemy value destroyed + 0.05 x damage dealt + 0.2 x metal produced - 0.25 x value lost.
 * **Fog of war**: you see your own side exactly. A hidden enemy is scored only from the units you have actually seen (shown with `~`), and `?` means not scouted yet. Spectators, cheat mode and the end of the game show everything. The `stats_visibility` mod option (`fog` by default, or `all`) sets this. It is an interface rule: every client simulates the whole game.
 * **Pages**: OVERVIEW (scoreboard, two radars, share donuts, four graphs), GRAPHS (any statistic as one big graph with event markers), ECONOMY, COMBAT, ARMY, REPORT (victory / defeat banner, awards, final figures), and SETTINGS (menu bar, HUD, interface size, shortcuts to the game's other tools, this match's mod options), KEYS (all hotkeys, read from the live hotkey widget) and ABOUT (the game explained).
@@ -271,11 +271,30 @@ A dark dashboard of graphs and radar charts, live during the game and as the mat
 * The old *FFA Timeseries HUD* widget is now off by default (the new HUD covers it; F11 turns it back on).
 * Test without the engine: `python3 tools/test_stats.py` (part of the build) and `python3 tools/render_dashboard.py OUTDIR [teams] [minutes] [WxH]` (renders every page to PNG on a mock engine).
 
+## HUD layout: the dock (`/vbdock`)
+
+`game/LuaUI/Widgets/vb_dock.lua` snaps the HUD panels into **one column at the left edge of the screen, all the same width**. From the bottom up, by default:
+
+1. **tooltip** (`vb_tooltip.lua`, on by default now, fixed height so nothing above it jumps)
+2. **build menu** (`vb_buildpanel.lua`)
+3. **economy radar** (`vb_hud_econ.lua`)
+4. **army radar** (`vb_hud_army.lua`)
+5. **unit census** (`vb_unitstats.lua`)
+6. **minimap** (the engine's own, placed by the dock)
+
+![the docked column](docs/hud_dock.png)
+
+* **The three complementary panels** (economy radar, army radar, unit census) are self-contained: each has its own `-` (fold to the title bar) and `x` (switch off) button, and each is switched on or off in the dashboard **SETTINGS** page (*HUD panels*) or with `/vbdock econ|army|census`. The old "radar in the HUD: combat / economy" toggle is gone; the HUD keeps the leaderboard and the sparklines.
+* **Snap**: drag any panel by its title bar to another slot; the slot it will snap into is outlined, the others make room, it settles on release. The order is remembered. **RESET THE LAYOUT** in SETTINGS (or `/vbdock reset`) restores the default.
+* **It always fits**: when the column is taller than the screen it shrinks (down to 75 %), then folds the top panels (census, army radar, economy radar). `/vbdock scale 0.6..1.6` sets the overall size, `/vbdock side left|right` the edge.
+* The build menu's own scale handle is gone in the dock (the dock sets the size of the whole column); `/vbtooltip pos br` and friends still float the tooltip in a corner instead, and without the dock widget the build menu and the tooltip float as before.
+* The economy and army radars read the dashboard's statistics (`vb_dashboard.lua` must run); click a radar to open its page.
+
 ## Unit census (`/vbstats`)
 
-`game/LuaUI/Widgets/vb_unitstats.lua` widget: tracks every unit and shows totals (units, mobile / structures, health, metal value, average / max experience, splits so far), distributions (histograms) of health, speed, range, damage/s, experience and size, the unit types present, and the units closest to splitting.
+`game/LuaUI/Widgets/vb_unitstats.lua` is a docked panel for the **selected units**: totals (units, mobile / structures, health, metal value, average / max experience, splits so far) and, one page at a time, the histogram of health, speed, range, damage/s, experience or size (with average, minimum, maximum), the unit types present (TYPES), or the units closest to splitting (SPLIT). Pick the page with the small tabs. Without a selection it shrinks to its title bar.
 
-Values are the live ones. Drag the title bar; click the scope tag to cycle MINE / ALLIES / ALL VISIBLE.
+Values are the live ones. `/vbstats` (or the SETTINGS switch) turns the panel on and off.
 
 ## UI
 

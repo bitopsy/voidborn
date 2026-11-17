@@ -11,3 +11,6 @@ __pycache__/
 
 # test files (compiled/verified during build, not tracked in repo)
 tools/test_site.py
+
+# local backups
+old/

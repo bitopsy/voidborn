@@ -1,6 +1,6 @@
 function widget:GetInfo()
 	return { name = "Voidborn Tooltip", desc = "Draws the engine's hover tooltip (terrain, units, widget hints) with the Voidborn font, smaller, on a plate; can also just hide the engine tooltip",
-		author = "goddot info@bitopsy.com", date = "2026", license = "GPL", layer = 10, enabled = false }
+		author = "goddot info@bitopsy.com", date = "2026", license = "GPL", layer = 10, enabled = true }
 end
 
 -- The engine tooltip (position, elevation, terrain type, unit info, and the hints that other widgets return
@@ -11,7 +11,9 @@ end
 --   /vbtooltip draw         hide the engine tooltip and draw the Voidborn plate instead (default)
 --   /vbtooltip hide         ONLY hide the engine tooltip, draw nothing
 --   /vbtooltip off          engine tooltip back, nothing drawn by this widget
---   /vbtooltip pos br       where the plate is drawn: bl (bottom left, default), br, tl, tr
+--   /vbtooltip dock         the plate sits at the bottom of the dock column (default; needs vb_dock): same width as the build
+--                           menu, a fixed height so the panels above it do not jump around
+--   /vbtooltip pos br       free-floating plate instead of the dock, in a corner: bl, br, tl, tr
 --                           (also: topleft, topright, bottomleft, bottomright, lowerleft, lowerright)
 --   /vbtooltip scale 1.2    text size (0.6 .. 2.0, default 0.9)
 -- Everything is remembered with the other widget settings.
@@ -30,6 +32,8 @@ local mode  = "draw"   -- "draw" = own plate | "hide" = only hide the engine too
 local pos   = "bl"     -- tl | tr | bl | br   (default: bottom left)
 local scale = 0.9     -- default text size
 local engineHidden = false
+local docked = true     -- in the dock column (when the dock widget is there); /vbtooltip pos ... floats it
+local DOCK_LINES, DOCK_H, DOCK_SIZE, DOCK_PAD = 7, 104, 11, 8      -- dock units
 local lines, lastText = {}, nil
 
 local POS_ALIAS = {
@@ -68,26 +72,59 @@ local function Wrap(text, size, maxW, out)
 	if line ~= "" then out[#out + 1] = line end
 end
 
+local function Dock() return docked and WG and WG.VBDock or nil end
+
 local function Update(text)
 	lastText = text
 	lines = {}
 	if not text or text == "" then return end
-	local size, maxW = Sc(12), vsx * 0.34
+	local dock = Dock()
+	local size, maxW, maxLines = Sc(12), vsx * 0.34, 14
+	if dock then          -- dock units: one wrapping for every scale, the size is applied when drawing
+		size, maxW, maxLines = DOCK_SIZE * scale / 0.9, dock.BASE_W - 2 * DOCK_PAD, DOCK_LINES
+	end
 	for raw in Clean(text):gmatch("[^\n]+") do
 		if raw:match("%S") then Wrap(raw, size, maxW, lines) end
-		if #lines >= 14 then break end
+		if #lines >= maxLines then break end
 	end
+	if #lines > maxLines then for i = #lines, maxLines + 1, -1 do lines[i] = nil end end
 end
 
+local wasDocked = false
 function widget:Update()
 	if mode ~= "draw" then return end
+	local d = Dock() ~= nil
+	if d ~= wasDocked then wasDocked = d; lastText = nil end     -- the dock came or went: wrap the text again
 	local text = Spring.GetCurrentTooltip and Spring.GetCurrentTooltip() or ""
 	if text ~= lastText then Update(text) end
 end
 
+local function DrawDocked(dock)
+	-- a fixed-height plate at the bottom of the column, always there so that nothing above it moves when the text changes
+	dock.Report("tooltip", DOCK_H, DOCK_H)
+	local x1, y1, x2, y2, S = dock.Rect("tooltip")
+	if not x1 then return end
+	glColor(0.06, 0.06, 0.09, 0.88); glRect(x1, y1, x2, y2)
+	glColor(0.85, 0.65, 0.2, 0.9)
+	glRect(x1, y1, x2, y1 + 1); glRect(x1, y2 - 1, x2, y2); glRect(x1, y1, x1 + 1, y2); glRect(x2 - 1, y1, x2, y2)
+	local size = DOCK_SIZE * scale / 0.9 * S
+	local lh, pad = size * 1.3, DOCK_PAD * S
+	local ty = y2 - pad - size * 0.85
+	for i, l in ipairs(lines) do
+		local r, g, b, a = 0.74, 0.78, 0.86, 0.95
+		if i == 1 then r, g, b, a = 1, 1, 1, 1 end
+		if l:match("^Hardness") and l:match("Metal%s+[%d%.]*[1-9]") then r, g, b = 0.55, 0.85, 1.0 end
+		VBFont.Text(l, x1 + pad, ty, size, "o", r, g, b, a)
+		ty = ty - lh
+	end
+end
+
 function widget:DrawScreen()
-	if mode ~= "draw" or #lines == 0 then return end
 	if Spring.IsGUIHidden and Spring.IsGUIHidden() then return end
+	if mode ~= "draw" then return end
+	local dock = Dock()
+	if dock then return DrawDocked(dock) end
+	if #lines == 0 then return end
 	local size = Sc(12)
 	local lh = size * 1.32
 	local pad = Sc(8)
@@ -148,10 +185,13 @@ function widget:TextCommand(cmd)
 	if arg == "scale" then
 		scale = max(0.6, min(2.0, tonumber(val) or 1)); lastText = nil
 		Spring.Echo("[VB] tooltip scale " .. scale)
+	elseif arg == "dock" then
+		docked = true; lastText = nil
+		Spring.Echo("[VB] tooltip: docked at the bottom of the column" .. (WG.VBDock and "" or " (the dock widget is not running, so it is drawn in the corner)"))
 	elseif arg == "pos" or arg == "position" then
 		local p = POS_ALIAS[(val or ""):lower():gsub("[^%a]", "")]
 		if p then
-			pos = p
+			pos = p; docked = false; lastText = nil
 			Spring.Echo("[VB] tooltip position: " .. POS_NAME[p])
 		else
 			Spring.Echo("[VB] tooltip position: tl | tr | bl | br  (now: " .. POS_NAME[pos] .. ")")
@@ -170,12 +210,12 @@ function widget:TextCommand(cmd)
 		Apply()
 		Spring.Echo("[VB] tooltip " .. (mode == "off" and "off (engine tooltip restored)" or mode))
 	else
-		Spring.Echo("[VB] /vbtooltip [draw | hide | off | pos tl|tr|bl|br | scale 0.6..2.0]")
+		Spring.Echo("[VB] /vbtooltip [draw | hide | off | dock | pos tl|tr|bl|br | scale 0.6..2.0]")
 	end
 	return true
 end
 
-function widget:GetConfigData() return { mode = mode, pos = pos, scale = scale } end
+function widget:GetConfigData() return { mode = mode, pos = pos, scale = scale, docked = docked } end
 function widget:SetConfigData(d)
 	if type(d) ~= "table" then return end
 	if d.mode == "draw" or d.mode == "hide" or d.mode == "off" then
@@ -185,5 +225,6 @@ function widget:SetConfigData(d)
 	end
 	if mode ~= "off" then lastOnMode = mode end
 	if POS_ALIAS[d.pos or ""] then pos = POS_ALIAS[d.pos] end
+	if d.docked ~= nil then docked = d.docked and true or false end
 	if d.scale then scale = max(0.6, min(2.0, d.scale)) end
 end

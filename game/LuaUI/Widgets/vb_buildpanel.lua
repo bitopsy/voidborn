@@ -180,6 +180,8 @@ end
 -- saved settings -------------------------------------------------------------
 local px, py = 12, 250          -- bottom-left corner in screen pixels
 local scale, closed = 1.0, false
+local docked, dockDrag, dockS = false, false, 1     -- docked: sits in the dock column (WG.VBDock) instead of floating
+local function DockRef() return WG and WG.VBDock end
 local MIN_SCALE, MAX_SCALE = 0.6, 2.2
 -- base sizes (multiplied by scale) ---------------------------------------------
 local ICON, GAP, PAD, TITLE, COLS = 54, 4, 6, 18, 5
@@ -470,7 +472,7 @@ local function DrawHexPanel(ud, icon, extra)
 	if extra then st = GetStats(extra.key, ud, extra.spec, extra.price) else st = GetStats(ud.id, ud) end
 	if not st then return end
 	local rows = st.rows
-	local s = math.max(0.8, scale)
+	local s = math.max(0.8, docked and dockS or scale)
 	local rowH, W = 15 * s, 250 * s
 	local headH = 46 * s
 	local R = 52 * s                                      -- radar radius
@@ -526,48 +528,82 @@ end
 
 function widget:DrawScreen()
 	rects = {}
-	if closed then DrawClosedTab() return end
 	-- NB: the panel is ALWAYS shown (even with nothing selected): it holds the [+] tile that opens the forge
 	-- and the tiles of the designs saved in it.
 	local F = ForgeRef()
 	local tplIds = F.TemplateIds()
 	local queue = F.ReadQueue()
 
-	local s = scale
-	local icon, gap, pad, title = ICON * s, GAP * s, PAD * s, math.max(16, TITLE * s)
-	local fs = math.max(9, 10 * s)
-	local gridW = COLS * (icon + gap) - gap
 	local nTiles = #builds + #roster + #tplIds + 1            -- engine build icons, saved designs, and the [+] tile
 	local brows = math.ceil(nTiles / COLS)
 	local tcols, ocols = 2, 3
 	local trows, orows = math.ceil(#toggles / tcols), math.ceil(#orders / ocols)
+	local function Dims(sc, tt)          -- panel width and height at scale sc with a title bar tt high
+		local ic, gp, pd = ICON * sc, GAP * sc, PAD * sc
+		local gw = COLS * (ic + gp) - gp
+		return gw + pd * 2, tt + pd + brows * (ic + gp)
+			+ (orows > 0 and (orows * (18 * sc + gp) + 4 * sc) or 0)
+			+ (trows > 0 and (trows * (20 * sc + gp) + 4 * sc) or 0) + pd + 8 * sc
+	end
+
+	-- in the dock (vb_dock.lua) the panel takes the column's width and scale and sits in its slot; without it, it floats
+	local dock = DockRef()
+	local s, title
+	local dx1, dy2
+	if dock then
+		dock.SetCollapsed("build", closed)
+		local _, hOpen = Dims(1, TITLE)
+		dock.Report("build", hOpen, TITLE)
+		local rx1, _, _, ry2, ds = dock.Rect("build")
+		if not rx1 then panelBox = nil; docked = true; return end
+		s, title, dx1, dy2 = ds, TITLE * ds, rx1, ry2
+		dockS = ds
+	else
+		if closed then docked = false; DrawClosedTab() return end
+		s, title = scale, math.max(16, TITLE * scale)
+	end
+	docked = dock ~= nil
+	local icon, gap, pad = ICON * s, GAP * s, PAD * s
+	local fs = math.max(9, 10 * s)
+	local gridW = COLS * (icon + gap) - gap
 	local tbW, tbH = (gridW - (tcols - 1) * gap) / tcols, 20 * s
 	local obW, obH = (gridW - (ocols - 1) * gap) / ocols, 18 * s
-	local w = gridW + pad * 2
-	local h = title + pad + brows * (icon + gap)
-		+ (orows > 0 and (orows * (obH + gap) + 4 * s) or 0)
-		+ (trows > 0 and (trows * (tbH + gap) + 4 * s) or 0) + pad + 8 * s
-	if scaling then py = scaling.top - h end
-	Clamp(w, h)
+	local w, h = Dims(s, title)
+	if docked then
+		if closed then h = title end
+		px, py = dx1, dy2 - h
+	else
+		if scaling then py = scaling.top - h end
+		Clamp(w, h)
+	end
 	panelBox, lastH = { w = w, h = h }, h
 	local x1, y1, x2, y2 = px, py, px + w, py + h
 
 	Box(x1, y1, x2, y2, 0.06, 0.06, 0.09, 0.88); Frame(x1, y1, x2, y2, 0.85, 0.65, 0.2, 0.9)
-	-- title bar: drag handle + close button
+	-- title bar: drag handle + close button (in the dock: a minimize / expand button)
 	Box(x1, y2 - title, x2, y2, 0.14, 0.12, 0.2, 1)
 	VBFont.Text("BUILD / ORDERS  " .. BUILD_TAG, x1 + pad, y2 - title + title * 0.28, fs, "o", 0.9, 0.85, 0.7, 1)
 	rects[#rects + 1] = { x1, y2 - title, x2 - title, y2, drag = true }
 	local mx, my = Spring.GetMouseState()
-	local xr = { x2 - title, y2 - title, x2, y2, close = true }
+	local xr = { x2 - title, y2 - title, x2, y2 }
+	if docked and closed then xr.open = true else xr.close = true end
 	rects[#rects + 1] = xr
-	Box(xr[1], xr[2], xr[3], xr[4], Inside(mx, my, xr) and 0.6 or 0.3, 0.1, 0.1, 1)
-	VBFont.Text("x", xr[1] + title * 0.33, xr[2] + title * 0.25, fs + 2, "o", 1, 1, 1, 1)
-	-- scale handle (bottom-right corner)
+	if docked then
+		Box(xr[1], xr[2], xr[3], xr[4], 0.14, 0.12, 0.2, Inside(mx, my, xr) and 1 or 0.85)
+		VBFont.Text(closed and "+" or "-", xr[1] + title * 0.34, xr[2] + title * 0.22, fs + 2, "o", 1, 0.95, 0.8, 1)
+	else
+		Box(xr[1], xr[2], xr[3], xr[4], Inside(mx, my, xr) and 0.6 or 0.3, 0.1, 0.1, 1)
+		VBFont.Text("x", xr[1] + title * 0.33, xr[2] + title * 0.25, fs + 2, "o", 1, 1, 1, 1)
+	end
+	if docked and closed then return end
+	-- scale handle (bottom-right corner): the dock sets the size of the whole column instead
 	local hs = 12 * s
-	local hr = { x2 - hs, y1, x2, y1 + hs, scale = true }
-	rects[#rects + 1] = hr
-	gl.Color(0.85, 0.65, 0.2, Inside(mx, my, hr) and 1 or 0.7)
-	for k = 1, 3 do gl.Rect(x2 - 2 - k * 3 * s, y1 + 2, x2 - 2, y1 + 2 + k * 3 * s - 2 * s) end
+	if not docked then
+		local hr = { x2 - hs, y1, x2, y1 + hs, scale = true }
+		rects[#rects + 1] = hr
+		gl.Color(0.85, 0.65, 0.2, Inside(mx, my, hr) and 1 or 0.7)
+		for k = 1, 3 do gl.Rect(x2 - 2 - k * 3 * s, y1 + 2, x2 - 2, y1 + 2 + k * 3 * s - 2 * s) end
+	end
 
 	local _, activeID = Spring.GetActiveCommand()
 	hover, hoverRect = nil, nil
@@ -856,7 +892,9 @@ function widget:DrawScreen()
 end
 
 function widget:IsAbove(x, y)
-	return panelBox ~= nil and (closed and rects[1] and Inside(x, y, rects[1]) or
+	if panelBox == nil then return false end
+	if docked then return x >= px and x <= px + panelBox.w and y >= py and y <= py + panelBox.h end
+	return (closed and rects[1] and Inside(x, y, rects[1]) or
 		(not closed and x >= px and x <= px + panelBox.w and y >= py and y <= py + panelBox.h)) or false
 end
 
@@ -886,7 +924,10 @@ function widget:MousePress(x, y, button)
 			if r.open then closed = false; Snd("ui_open") return true end
 			if r.close then closed = true; Snd("ui_close") return true end
 			if r.scale then scaling = { x0 = x, y0 = y, s0 = scale, top = py + (panelBox and panelBox.h or 0) } return true end
-			if r.drag then drag = { x - px, y - py } return true end
+			if r.drag then
+				if docked and DockRef() then DockRef().BeginDrag("build", x, y); dockDrag = true else drag = { x - px, y - py } end
+				return true
+			end
 			if r.plus and T2Locked() then      -- greyed out: say what to do instead of opening anything
 				Snd("ui_error", 0.8)
 				Spring.Echo("[VB] " .. (ForgeRef().T2_HINT or "Custom units need a Tier 2 factory: upgrade your factory first"))
@@ -945,9 +986,13 @@ function widget:MousePress(x, y, button)
 end
 
 function widget:MouseMove(x, y)
-	if drag then px, py = x - drag[1], y - drag[2]
+	if dockDrag and DockRef() then DockRef().DragMove(x, y)
+	elseif drag then px, py = x - drag[1], y - drag[2]
 	elseif scaling then
 		scale = math.max(MIN_SCALE, math.min(MAX_SCALE, scaling.s0 + ((x - scaling.x0) - (y - scaling.y0)) / 350))
 	end
 end
-function widget:MouseRelease() drag, scaling = nil, nil end
+function widget:MouseRelease()
+	if dockDrag and DockRef() then DockRef().DragEnd() end
+	drag, scaling, dockDrag = nil, nil, false
+end

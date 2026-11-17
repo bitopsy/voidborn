@@ -48,7 +48,7 @@ local WINDOWS = { { 0, "ALL" }, { 20, "20 MIN" }, { 10, "10 MIN" }, { 5, "5 MIN"
 
 local st = {
 	open = false, tab = "overview", hud = true, hudCollapsed = false, hudX = nil, hudTop = nil,
-	menu = true, hudRadar = 1, focus = "av", cursor = nil, window = 0, hidden = {}, focusTeam = nil,
+	menu = true, focus = "av", cursor = nil, window = 0, hidden = {}, focusTeam = nil,
 	sort = { col = "sc", desc = true }, scale = 1.0, autoOpened = false,
 }
 
@@ -569,10 +569,18 @@ local function TabSettings(x1, y1, x2, y2, ctx)
 	D.Button(ax2 - sc(110), y, ax2 - sc(80), y + sc(20), "-", { click = function() st.scale = max(0.6, st.scale - 0.1); Snd("ui_click") end })
 	D.Mono(string.format("%d%%", st.scale * 100 + 0.5), ax2 - sc(45), y + sc(5), sc(11), "oc", C.text)
 	D.Button(ax2 - sc(30), y, ax2, y + sc(20), "+", { click = function() st.scale = min(2.0, st.scale + 0.1); Snd("ui_click") end }); y = y - sc(32)
-	D.Text("Radar in the HUD", ax1 + sc(6), y + sc(5), sc(10), "o", C.text)
-	D.Button(ax2 - sc(150), y, ax2 - sc(76), y + sc(20), "COMBAT", { size = sc(8), active = st.hudRadar == 1, click = function() st.hudRadar = 1 end })
-	D.Button(ax2 - sc(72), y, ax2, y + sc(20), "ECONOMY", { size = sc(8), active = st.hudRadar == 2, click = function() st.hudRadar = 2 end }); y = y - sc(40)
-	y = TextBlock(ax1 + sc(6), y + sc(14), ax2 - ax1 - sc(12), "Everything is saved with your other widget settings. /vbdash [open|close|hud|menu|tab <name>|scale <n>] does the same from the chat.", sc(9), C.faint)
+	y = y - sc(4)
+	D.Text("HUD PANELS", ax1 + sc(6), y + sc(8), sc(9), "o", C.accent)
+	D.Text("left column, switch each on or off", ax1 + sc(80), y + sc(8), sc(8), "o", C.faint); y = y - sc(26)
+	local Dock = WG and WG.VBDock
+	for _, p in ipairs({ { "econ", "Economy radar" }, { "army", "Army radar" }, { "census", "Unit census (selected units)" } }) do
+		local id = p[1]
+		Toggle(ax1 + sc(6), y, ax2 - ax1 - sc(12), p[2], Dock and Dock.IsOn(id) or false,
+			function() if Dock then Dock.ToggleOn(id) end; Snd("ui_click") end, "/vbdock " .. id); y = y - sc(30)
+	end
+	D.Button(ax1 + sc(6), y, ax2 - sc(6), y + sc(20), "RESET THE LAYOUT", { size = sc(8), tip = "Default order (tooltip, build menu, radars, census, minimap, bottom to top), all panels on",
+		click = function() if Dock then Dock.Reset() end; Snd("ui_click") end }); y = y - sc(24)
+	y = TextBlock(ax1 + sc(6), y + sc(10), ax2 - ax1 - sc(12), Dock and "Drag a panel by its title bar to snap it into another slot; - folds it, x switches it off. Menu: /vbdash [open|close|hud|menu|tab <name>|scale <n>]. Saved with your other widget settings." or "The HUD panels need the Voidborn Dock widget (vb_dock): switch it on in the widget list (F11).", sc(9), C.faint)
 
 	-- the game
 	local bx1, by1, bx2, by2 = D.Panel(x1 + w3 + gap, y1, x1 + 2 * w3 + gap, y2, "THE GAME")
@@ -582,7 +590,6 @@ local function TabSettings(x1, y1, x2, y2, ctx)
 	end
 	Row("UNIT GROWTH AND SPLITTING", "vbsettings", "/vbsettings: the experience at which units split, and how much they grow first")
 	Row("UNIT FORGE", "vbforge", "/vbforge: design your own units")
-	Row("UNIT CENSUS OF THE SELECTION", "vbstats", "/vbstats")
 	Row("SENSOR RANGES", "vbranges", "/vbranges")
 	Row("DEV CONSOLE", "vbconsole", "/vbconsole")
 	D.Text("Sound", bx1 + sc(6), y + sc(5), sc(10), "o", C.text)
@@ -988,38 +995,18 @@ local function DrawHud(ctx)
 	end
 	D.Region(x1, y2 - head - tableH, x2, y2 - head, { tip = "Open the dashboard", click = function() Open() end })
 
-	-- the radar and the sparklines
+	-- the sparklines (the radars are docked panels of their own now: vb_hud_econ.lua, vb_hud_army.lua)
 	local by2 = y2 - head - tableH
 	local by1 = y1 + sc(4)
-	local radarW = sc(176)
-	local def = Stats.RADARS[st.hudRadar]
-	local R = min(radarW / 2 - sc(26), (by2 - by1) / 2 - sc(14))
-	local rcx, rcy = x1 + radarW / 2 + sc(2), (by1 + by2) / 2 - sc(4)
-	local short = {}
-	for _, id in ipairs(def.axes) do local m = Stats.M[id]; short[#short + 1] = { label = def.hud[id] or m.label, fmt = function(v) return Stats.Format(m, v) end } end
-	local shownTeams = {}
-	for _, t in ipairs(list) do shownTeams[#shownTeams + 1] = t end
-	local entries = {}
-	for _, t in ipairs(shownTeams) do
-		local vals = {}
-		for k, id in ipairs(def.axes) do vals[k] = Stats.Value(t, id, ctx.idx[t.id]) end
-		entries[#entries + 1] = { name = t.name, color = Stats.ViewColor(t), vals = vals }
-	end
-	D.Radar(rcx, rcy, R, short, entries, { small = true })
-	D.Text(def.name, x1 + sc(6), by2 - sc(8), sc(8), "o", C.faint)
-	D.Region(x1, by1, x1 + radarW, by2, { tip = "Click: switch between the combat and the economy radar",
-		click = function() st.hudRadar = st.hudRadar % #Stats.RADARS + 1; Snd("ui_click") end })
-
-	local sx1 = x1 + radarW + sc(4)
 	local ids = { "av", "mi", "dd" }
-	local sh = (by2 - by1) / #ids
+	local sw = (W - sc(8)) / #ids
 	for k, id in ipairs(ids) do
-		local sy2 = by2 - (k - 1) * sh
-		local sy1 = sy2 - sh + sc(3)
+		local sx1 = x1 + sc(4) + (k - 1) * sw
+		local sx2 = sx1 + sw - sc(6)
 		local m = Stats.M[id]
-		D.Text(m.label:upper(), sx1 + sc(2), sy2 - sc(10), sc(8), "o", m.color)
-		D.LineChart(sx1, sy1, x2 - sc(6), sy2 - sc(11), { teams = ctx.all, metric = id, f0 = 0, f1 = max(ctx.last, 900), fill = true, minimal = true })
-		D.Region(sx1, sy1, x2, sy2, { tip = m.label .. ": open the graph", click = function() st.focus = id; Open("graphs") end })
+		D.Text(m.label:upper(), sx1 + sc(2), by2 - sc(10), sc(8), "o", m.color)
+		D.LineChart(sx1, by1, sx2, by2 - sc(11), { teams = ctx.all, metric = id, f0 = 0, f1 = max(ctx.last, 900), fill = true, minimal = true })
+		D.Region(sx1, by1, sx2, by2, { tip = m.label .. ": open the graph", click = function() st.focus = id; Open("graphs") end })
 	end
 end
 
@@ -1040,10 +1027,13 @@ function widget:Initialize()
 	Spring.SendLuaRulesMsg("vbstats:replay")
 	-- this dashboard takes the place of the engine's end-of-game graph
 	pcall(Spring.SendCommands, "endgraph 0")
+	-- what the docked HUD panels (radars) read: the same statistics, one model for all of them
+	WG.VBStats = { Stats = Stats, Ctx = BuildCtx, Open = Open }
 	Spring.Echo("[VB] Dashboard loaded: Ctrl+Shift+D or /vbdash opens it")
 end
 
 function widget:Shutdown()
+	WG.VBStats = nil
 	for _, n in ipairs({ "VBStats_Sample", "VBStats_Units", "VBStats_Defs", "VBStats_Event", "VBStats_Over" }) do
 		widgetHandler:DeregisterGlobal(n)
 	end
@@ -1169,7 +1159,7 @@ function widget:TextCommand(cmd)
 end
 
 function widget:GetConfigData()
-	return { menu = st.menu, hud = st.hud, hudCollapsed = st.hudCollapsed, hudX = st.hudX, hudTop = st.hudTop, scale = st.scale, hudRadar = st.hudRadar, window = st.window }
+	return { menu = st.menu, hud = st.hud, hudCollapsed = st.hudCollapsed, hudX = st.hudX, hudTop = st.hudTop, scale = st.scale, window = st.window }
 end
 function widget:SetConfigData(d)
 	if type(d) ~= "table" then return end
@@ -1178,6 +1168,5 @@ function widget:SetConfigData(d)
 	if d.hudCollapsed ~= nil then st.hudCollapsed = d.hudCollapsed end
 	st.hudX, st.hudTop = d.hudX, d.hudTop
 	if d.scale then st.scale = max(0.6, min(2.0, d.scale)) end
-	if d.hudRadar then st.hudRadar = d.hudRadar end
 	if d.window then st.window = d.window end
 end

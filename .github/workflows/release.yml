@@ -80,11 +80,11 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ steps.gate.outputs.tag }}
-          REPO: ${{ github.repository.name }}
         run: |
-          cp dist/voidborn.sdz      "$REPO-$TAG.sdz"
-          cp dist/voidborn_rift.sd7 "$REPO-map-$TAG.sd7"
-          gh release upload "$TAG" "$REPO-$TAG.sdz" "$REPO-map-$TAG.sd7" --clobber
+          RELEASE_NAME="${{ github.repository_name }}-${TAG}"
+          cp dist/voidborn.sdz      "${RELEASE_NAME}.sd7"
+          cp dist/voidborn_rift.sd7 "${RELEASE_NAME}-map.sd7"
+          gh release upload "$TAG" "${RELEASE_NAME}.sd7" "${RELEASE_NAME}-map.sd7" --clobber
 
       # Package Linux and Windows Standalones - DISABLED for now
       # to focus on sdz/sd7 archive compilation only

@@ -86,6 +86,8 @@ nav.topnav .mini{font-size:14px;padding:7px 15px}
 .badge{display:inline-block;font:600 12px Oxanium,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:var(--ember);border:1px solid #ff9a3c55;border-radius:99px;padding:2px 10px;margin-left:8px;vertical-align:middle}
 
 /* ---- the game demo (a local poster, YouTube only when the visitor asks) -- */
+.videogrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:18px;margin:22px 0 0}
+.videogrid .video{margin:0}
 .video{position:relative;margin:22px 0 0;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:#0a0718}
 .video img{width:100%;height:auto;display:block}
 .video .play{position:absolute;inset:0;display:grid;place-items:center;border:0;background:transparent;cursor:pointer;padding:0}

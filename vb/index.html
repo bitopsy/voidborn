@@ -78,12 +78,20 @@ data directory. No rebuild of the game needed.</p>
 
 <section id="demo"><div class="wrap">
 <h2>See it in a video</h2>
-<p class="lead">A recording of Voidborn 1.0 in play: the armies, the factories, the build panel and the unit forge doing their thing.</p>
-<div class="video" id="demobox">
-<img src="img/demo.webp" width="1280" height="720" loading="lazy" decoding="async" alt="Video still of Voidborn 1.0">
-<button class="play" type="button" aria-label="Play the Voidborn demo video"><span></span></button>
+<p class="lead">The armies, the factories, the build panel and the unit forge doing their thing &ndash; from the first release to the latest.</p>
+<div class="videogrid">
+<div class="video" data-video="TtKTK60Kb-I" data-title="VOIDBORN 0.1 - demo">
+<img src="img/demo.webp" width="1280" height="720" loading="lazy" decoding="async" alt="Video still of Voidborn 0.1">
+<button class="play" type="button" aria-label="Play the Voidborn 0.1 demo video"><span></span></button>
+<div class="caption"><b>Voidborn 0.1</b> &ndash; the first demo: 26 minutes of play.</div>
 </div>
-<p class="lead" style="margin-top:14px">26 minutes on <a href="https://www.youtube.com/watch?v=TtKTK60Kb-I" rel="noopener">YouTube</a>.</p>
+<div class="video" data-video="idWrij_bJeU" data-title="VOIDBORN 0.15 - cloak, Q-gun and sounds">
+<img src="img/video-015.webp" width="1280" height="720" loading="lazy" decoding="async" alt="Video still of Voidborn 0.15">
+<button class="play" type="button" aria-label="Play the Voidborn 0.15 video"><span></span></button>
+<div class="caption"><b>Voidborn 0.15</b> &ndash; cloak, the Q-gun and 20 new sounds.</div>
+</div>
+</div>
+<p class="lead" style="margin-top:14px">More on <a href="https://www.youtube.com/@beyondallrts" rel="noopener">YouTube</a>.</p>
 </div></section>
 
 <section id="play"><div class="wrap">
@@ -157,21 +165,24 @@ in the settings panel.</p></div>
 </div></footer>
 
 <script>
-// the poster is a local picture; YouTube is only asked for when the visitor
+// the posters are local pictures; YouTube is only asked for when the visitor
 // presses play, so the page itself loads nothing from the network
 (function () {
-  var box = document.getElementById('demobox');
-  if (!box) return;
-  var btn = box.querySelector('.play');
-  if (!btn) return;
-  btn.addEventListener('click', function () {
-    var f = document.createElement('iframe');
-    f.src = 'https://www.youtube-nocookie.com/embed/TtKTK60Kb-I?autoplay=1&rel=0';
-    f.title = 'VOIDBORN 1.0 - demo';
-    f.setAttribute('allow', 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture');
-    f.setAttribute('allowfullscreen', '');
-    box.innerHTML = '';
-    box.appendChild(f);
+  document.querySelectorAll('.video[data-video]').forEach(function (box) {
+    var btn = box.querySelector('.play');
+    if (!btn) return;
+    btn.addEventListener('click', function () {
+      var cap = box.querySelector('.caption');
+      var f = document.createElement('iframe');
+      f.src = 'https://www.youtube-nocookie.com/embed/' + box.dataset.video + '?autoplay=1&rel=0';
+      f.title = box.dataset.title || 'Video';
+      f.setAttribute('allow', 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture');
+      f.setAttribute('allowfullscreen', '');
+      var img = box.querySelector('img');
+      if (img) img.remove();
+      btn.remove();
+      box.insertBefore(f, cap);
+    });
   });
 })();
 </script>

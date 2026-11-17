@@ -51,7 +51,9 @@ If you have the Spring engine installed (not BAR), you can launch Voidborn direc
 spring Voidborn 0.15.sdz Play_Choir_vs_Bot.txt
 ```
 
-Or from the command line with the Spring binary. The game requires the `voidborn 1.0.sdz` archive in your Spring data `games/` folder (derived from `modinfo.lua name="Voidborn"` + `version="0.15"`).
+Or from the command line with the Spring binary. The game requires the `voidborn 0.15.sdz` archive in your Spring data `games/` folder (derived from `modinfo.lua name="Voidborn"` + `version="0.15"`).
+
+Versions are numbered in the 0.x series, one release at a time: the releases so far are **0.1** (the first public version, previously numbered 1.0), **0.14** (previously 1.4) and **0.15** (current). The release tags on GitHub carry the same numbers.
 
 For a Flatpak install of BAR the data directory is typically under `~/.var/app/info.beyondallreason.bar/` (look for the folder that already contains BAR's own `games/` and `maps/`). Copy the two archives there, then launch that install's `spring` binary with a start script (you may need to run it from a Flatpak shell).
 

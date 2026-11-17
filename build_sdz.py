@@ -72,12 +72,14 @@ stale = os.path.join(game, "LuaUI", "Widgets", "vb_fontconfig.lua")
 if os.path.exists(stale): os.remove(stale); print("  removed stale", stale)
 
 JUNK = (".DS_Store", "Thumbs.db")
+JUNK_SUFFIX = (".bak", ".orig", ".rej")
 def source_files():
     res = {}
     for root, dirs, files in os.walk(game):
         dirs.sort()
         for f in sorted(files):
             if f in JUNK: continue
+            if f.endswith(JUNK_SUFFIX): continue
             full = os.path.join(root, f)
             res[os.path.relpath(full, game).replace(os.sep, "/")] = full
     return res

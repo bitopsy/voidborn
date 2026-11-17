@@ -42,6 +42,13 @@
 		StartPosX=4330;
 		StartPosZ=2230;
 	}
+	[AI0]
+	{
+		Name=VoidBot;
+		ShortName=VoidBot;
+		Team=1;
+		Host=0;
+	}
 	[ALLYTEAM0] { NumAllies=0; }
 	[ALLYTEAM1] { NumAllies=0; }
 }

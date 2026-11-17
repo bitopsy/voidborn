@@ -81,9 +81,11 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ steps.gate.outputs.tag }}
         run: |
-          cp dist/voidborn.sdz      "voidborn.sdz"
-          cp dist/voidborn_rift.sd7 "voidborn_rift.sd7"
-          gh release upload "$TAG" "voidborn.sdz" "voidborn_rift.sd7" --clobber
+          mkdir -p release-artifacts
+          cp dist/voidborn.sdz release-artifacts/voidborn.sdz
+          cp dist/voidborn_rift.sd7 release-artifacts/voidborn_rift.sd7
+          gh release upload "$TAG" release-artifacts/voidborn.sdz release-artifacts/voidborn_rift.sd7 --clobber
+          rm -rf release-artifacts
 
       # Package Linux and Windows Standalones - DISABLED for now
       # to focus on sdz/sd7 archive compilation only

@@ -42,7 +42,6 @@
 		StartPosX=4330;
 		StartPosZ=2230;
 	}
-	[AI0]
 	{
 		Name=VoidBot;
 		ShortName=VoidBot;

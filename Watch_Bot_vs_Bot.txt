@@ -42,14 +42,12 @@
 		StartPosX=4330;
 		StartPosZ=2230;
 	}
-	[AI0]
 	{
 		Name=VoidBot Choir;
 		ShortName=VoidBot;
 		Team=0;
 		Host=0;
 	}
-	[AI1]
 	{
 		Name=VoidBot Maw;
 		ShortName=VoidBot;

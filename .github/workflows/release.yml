@@ -68,12 +68,15 @@ jobs:
           7z a -t7z -mx=9 -ms=off ../dist/voidborn_rift.sd7 mapinfo.lua maps > /dev/null
 
       - name: Make the release if the tag came without one
-        if: steps.gate.outputs.match == 'true' && github.event_name == 'push'
+        if: steps.gate.outputs.match == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ steps.gate.outputs.tag }}
         run: |
-          gh release create "$TAG" --title "Voidborn $TAG" --generate-notes --notes-start-tag "$(git tag --sort=-v:refname | sed -n 2p)" || true
+          if ! gh release view "$TAG" > /dev/null 2>&1; then
+            gh release create "$TAG" --title "Voidborn $TAG" --generate-notes --notes-start-tag "$(git tag --sort=-v:refname | sed -n 2p)" || true
+          fi
+          gh release view "$TAG"
 
       - name: Attach the archives to the release
         if: steps.gate.outputs.match == 'true'
@@ -86,6 +89,7 @@ jobs:
           cp dist/voidborn_rift.sd7 release-artifacts/voidborn_rift.sd7
           gh release upload "$TAG" release-artifacts/voidborn.sdz release-artifacts/voidborn_rift.sd7 --clobber
           rm -rf release-artifacts
+          gh release view "$TAG"
 
       # Package Linux and Windows Standalones - DISABLED for now
       # to focus on sdz/sd7 archive compilation only

@@ -81,7 +81,9 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ steps.gate.outputs.tag }}
         run: |
-          RELEASE_NAME="${{ github.repository_name }}-${TAG}"
+          REPO_NAME="${{ github.repository || 'voidborn' }}"
+          REPO_SHORT="${REPO_NAME##*/}"
+          RELEASE_NAME="${REPO_SHORT}-${TAG}"
           cp dist/voidborn.sdz      "${RELEASE_NAME}.sd7"
           cp dist/voidborn_rift.sd7 "${RELEASE_NAME}-map.sd7"
           gh release upload "$TAG" "${RELEASE_NAME}.sd7" "${RELEASE_NAME}-map.sd7" --clobber

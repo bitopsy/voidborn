@@ -7,6 +7,12 @@
 --   vbdgun   (key D)  -> the unit's FIRST  manualFire weapon  (Devour)
 --   vbdestab (key Q)  -> the unit's SECOND manualFire weapon  (Destabilisation Gun, "Q-Gun")
 --
+-- The D-gun and the Q-gun are NEVER fired by the engine: not by an attack order, not as return
+-- fire, not on hold-fire / fire-at-will, not as an automatic target.  Their weapondefs carry
+-- commandFire and noAutoTarget, and AllowWeaponTarget below vetoes every target the engine
+-- would pick for them.  The only shot they ever make is the projectile this gadget spawns when
+-- the player clicks the D-Gun / Q-Gun button or presses D / Q and then clicks a point.
+--
 -- The shot is a projectile of that weapon spawned at the unit's muzzle, flying at the clicked
 -- point.  Energy cost, reload and range are taken from the weapondef.  The commands fire
 -- immediately and are not queued.
@@ -41,6 +47,7 @@ local SLOTS = {
 }
 
 local unitSlots = {}   -- unitDefID -> { [slot] = weaponNumber }
+local noEngineFire = {}  -- unitDefID -> { [weaponNumber] = true }: the manual guns, which the engine must never aim itself
 local cmdSlot = {}     -- cmdID -> slot
 local nextFire = {}    -- unitID -> { [slot] = frame }
 local notify = {}      -- unitID -> { [slot] = teamID }  long-reload guns that chime when loaded again
@@ -59,6 +66,8 @@ function gadget:Initialize()
 					slot = slot + 1
 					unitSlots[defID] = unitSlots[defID] or {}
 					unitSlots[defID][slot] = wn
+					noEngineFire[defID] = noEngineFire[defID] or {}
+					noEngineFire[defID][wn] = true
 				end
 			end
 		end
@@ -78,6 +87,13 @@ function gadget:UnitCreated(uid, defID)
 end
 
 function gadget:UnitDestroyed(uid) nextFire[uid] = nil; notify[uid] = nil end
+
+-- no target, ever, for the engine's own aiming of a manual gun (attack order, return fire, auto-target)
+function gadget:AllowWeaponTarget(attackerID, targetID, attackerWeaponNum, attackerWeaponDefID, defPriority)
+	local b = noEngineFire[Spring.GetUnitDefID(attackerID)]
+	if b and b[attackerWeaponNum] then return false, 0 end
+	return true, defPriority
+end
 
 local function Denied(teamID) SendToUnsynced("vbGunDenied", teamID) end
 

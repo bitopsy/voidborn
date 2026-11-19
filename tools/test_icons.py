@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Checks the zoomed-out unit icons: every unit def points at an icon type that exists, the PNGs exist, a role has the SAME
-icon in both factions, and different roles have different pictures.   pip install lupa pillow"""
+icon in every faction, and different roles have different pictures.   pip install lupa pillow"""
 import glob, hashlib, os, sys
 import lupa
 try:
@@ -45,8 +45,9 @@ for f in sorted(glob.glob(os.path.join(game, "units", "*.lua"))):
         if icon != "vb_" + kind: bad.append(f"{uname}: kind '{kind}' but iconType '{icon}'")
         by_kind.setdefault(kind, {})[fac] = icon
 check("every unit def points at an existing icon type for its role", not bad, "; ".join(bad[:5]))
-shared = all(len(v) == 2 and len(set(v.values())) == 1 for v in by_kind.values())
-check("each role has a unit in both factions and they share one icon", shared, f"{len(by_kind)} roles")
+nfac = len({f for v in by_kind.values() for f in v})
+shared = all(len(v) == nfac and len(set(v.values())) == 1 for v in by_kind.values())
+check("each role has a unit in every faction and they share one icon", shared, f"{len(by_kind)} roles, {nfac} factions")
 check("every role icon is used", set("vb_" + k for k in by_kind) == set(types) - {"default"})
 print("\nALL PASSED" if fails == 0 else f"\n{fails} FAILED")
 sys.exit(1 if fails else 0)

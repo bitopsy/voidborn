@@ -13,7 +13,7 @@ return {
 		category = "VOIDBORN",
 		iconType = "vb_com",
 		capturable = false,
-		autoHeal = 0,
+		autoHeal = 1,
 		idleAutoHeal = 0,
 		idleTime = 300,
 		explodeAs = "vb_big",

@@ -28,6 +28,15 @@ local CMD_CLOAK = 35002
 -- flag, which the engine then undoes whenever the unit fires or an enemy is near.
 local CLOAK_LEVEL = 3
 
+-- 0.16: the ears of the Tympan Conclave.  A unit with customParams.hear (elmos) blows the cloak of every ENEMY cloaked
+-- unit within that distance (checked ten times a second); the cloaked unit cannot cloak again for HEARD_LOCKOUT seconds.
+-- Lobby option hear_cloak = 0 switches the hearing off.
+local HEAR_EVERY = 10
+local HEARD_LOCKOUT = 5 * FPS
+local HEAR_ON = (Spring.GetModOptions() or {}).hear_cloak ~= "0"
+local hearRange = {}      -- unitDefID -> elmos
+local maxHear = 0
+local heardUntil = {}     -- unitID -> frame until which it cannot cloak
 local cloakCost = {}      -- unitDefID -> energy per second
 local hasWeapons = {}     -- unitDefID -> true
 local cloaked = {}        -- unitID -> true
@@ -70,6 +79,8 @@ function gadget:Initialize()
 	for defID, ud in pairs(UnitDefs) do
 		local kind = ud.customParams and ud.customParams.kind
 		if COST_BY_KIND[kind] then cloakCost[defID] = COST_BY_KIND[kind] end
+		local hear = ud.customParams and tonumber(ud.customParams.hear)
+		if hear and hear > 0 then hearRange[defID] = hear; if hear > maxHear then maxHear = hear end end
 		if ud.weapons and #ud.weapons > 0 then hasWeapons[defID] = true end
 	end
 	for _, uid in ipairs(Spring.GetAllUnits()) do gadget:UnitCreated(uid, Spring.GetUnitDefID(uid)) end
@@ -92,7 +103,7 @@ function gadget:UnitCreated(uid, defID)
 	})
 end
 
-function gadget:UnitDestroyed(uid) cloaked[uid] = nil; savedFire[uid] = nil end
+function gadget:UnitDestroyed(uid) cloaked[uid] = nil; savedFire[uid] = nil; heardUntil[uid] = nil end
 function gadget:UnitTaken(uid) if cloaked[uid] then SetCloak(uid, false) end end
 
 function gadget:AllowCommand(uid, defID, teamID, cmdID, params)
@@ -104,6 +115,7 @@ function gadget:AllowCommand(uid, defID, teamID, cmdID, params)
 	local cost = cloakCost[defID]
 	if not cost or Spring.GetUnitIsBeingBuilt(uid) then return false end
 	local want = params and tonumber(params[1]) == 1
+	if want and heardUntil[uid] and Spring.GetGameFrame() < heardUntil[uid] then Say(teamID, "Cloak: an enemy ear is listening") return false end
 	if want then
 		local cur = Spring.GetTeamResources(teamID, "energy")
 		if not cur or cur < cost / FPS then Say(teamID, "Cloak: not enough energy") return false end
@@ -112,7 +124,31 @@ function gadget:AllowCommand(uid, defID, teamID, cmdID, params)
 	return false
 end
 
-function gadget:GameFrame()
+-- is an enemy ear within hearing distance of this (cloaked) unit?
+local function Heard(uid)
+	local x, y, z = Spring.GetUnitPosition(uid)
+	if not x then return false end
+	local team = Spring.GetUnitTeam(uid)
+	for _, other in ipairs(Spring.GetUnitsInSphere(x, y, z, maxHear)) do
+		local r = hearRange[Spring.GetUnitDefID(other)]
+		if r and not Spring.AreTeamsAllied(Spring.GetUnitTeam(other), team) then
+			local ox, oy, oz = Spring.GetUnitPosition(other)
+			if ox and (ox - x) ^ 2 + (oy - y) ^ 2 + (oz - z) ^ 2 <= r * r then return true end
+		end
+	end
+	return false
+end
+
+function gadget:GameFrame(frame)
+	if HEAR_ON and maxHear > 0 and frame % HEAR_EVERY == 0 then
+		for uid in pairs(cloaked) do
+			if Spring.ValidUnitID(uid) and Heard(uid) then
+				SetCloak(uid, false)
+				heardUntil[uid] = frame + HEARD_LOCKOUT
+				Say(Spring.GetUnitTeam(uid), "Cloak: heard by an enemy ear")
+			end
+		end
+	end
 	for uid in pairs(cloaked) do
 		if not Spring.ValidUnitID(uid) or Spring.GetUnitIsDead(uid) then
 			cloaked[uid] = nil; savedFire[uid] = nil

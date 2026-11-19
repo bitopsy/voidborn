@@ -3,10 +3,12 @@
 # VOIDBORN
 a 3D space RTS for the Spring/Recoil engine and openended unit creation
 
-Two factions of surreal alien monsters fight over floating asteroids in deep space.
+Four factions of surreal alien monsters, one for each sense organ, fight over floating asteroids in deep space.
 
 * **Choir of the Eye** — pale, many-eyed cyclopes. Long-range lasers, fragile at close quarters.
 * **Maw Swarm** — chitinous, toothed, many-legged. Short reach, tougher, regenerating, cheaper.
+* **Tympan Conclave** (the Ear, new in 0.16) — floating ears, horns and drums. Waves of sound with wide splash that hit harder when many of them land on one target; radar on the units, and ears that blow a cloak.
+* **Miasma Bloom** (the Nose, new in 0.16) — drifting snouts and flowers. Slow and tough; every hit poisons and scents its target, and the Censer sniffs out mushrooms faster.
 
 ▶ **In a video**: [VOIDBORN 1.0 — New RTS Game allows you to create endless OP units in-game!](https://www.youtube.com/watch?v=TtKTK60Kb-I) (26 minutes)
 
@@ -18,16 +20,20 @@ What is in the first release, in one list: [docs/release-0.1.md](docs/release-0.
 |---|---|
 | `voidborn.sdz` | the game → `games/` folder of your BAR / Spring data directory |
 | `voidborn_rift.sd7` (+ `.md5.gz`) | the map "Voidborn Rift" → `maps/` folder |
-| `Play_Choir_vs_Bot.txt`, `Play_Maw_vs_Bot.txt`, `Watch_Bot_vs_Bot.txt` | start scripts |
+| `Play_Choir_vs_Bot.txt`, `Play_Maw_vs_Bot.txt`, `Play_Tympan_vs_Bot.txt`, `Play_Miasma_vs_Bot.txt`, `Play_Choose_Faction_vs_Bot.txt`, `Watch_Bot_vs_Bot.txt`, `Watch_4Factions_FFA.txt` | start scripts |
+
+## Choosing a faction
+
+If the lobby or the start script has not chosen your faction (the team has no side), a **faction menu** appears on the screen before the game starts: four cards, Choir, Maw, Tympan and Miasma. Click one, press **1 – 4**, or type `/vbfaction tympan`; you can change your mind until the game starts, and your commander of that faction is spawned at the start. If you do nothing you get the old default (the factions in turn by team number). A faction chosen in the lobby or the start script (`Side=`) is final and no menu is shown; spectators and replays get none. The host can switch the menu off with the lobby option *Faction menu before the start* (`faction_menu`). Widget `vb_faction_menu.lua`; the choice reaches `game_spawn.lua` as the message `vbfaction:<Side>`.
 
 ## In the lobby
 
 The game carries the pictures a lobby wants, so it shows up with the right art
 wherever you find it:
 
-* `game/sidepics/choir.png` and `game/sidepics/maw.png` — the faction emblems,
-  named after the factions, so the lobby (SpringLobby, SkyLobby, the TA client)
-  and the Coilbox hub pick them up for the two sides. They are 512 × 512 PNGs:
+* `game/sidepics/choir.png`, `maw.png`, `tympan.png` and `miasma.png` — the faction emblems,
+  named after the sides, so the lobby (SpringLobby, SkyLobby, the TA client)
+  and the Coilbox hub pick them up for the four sides. They are 512 × 512 PNGs:
   the older TA client wanted a small BMP, the modern ones take anything.
 * `game/bitmaps/loadpictures/voidborn.jpg` (and the PNG beside it) — the loading
   screen. Coilbox reuses it in its game list until the hub has card art of its
@@ -48,17 +54,17 @@ listed. Everything below is what to do if you would rather set it up yourself.
 If you have the Spring engine installed (not BAR), you can launch Voidborn directly:
 
 ```
-spring Voidborn 0.15.sdz Play_Choir_vs_Bot.txt
+spring Voidborn 0.16.sdz Play_Choir_vs_Bot.txt
 ```
 
-Or from the command line with the Spring binary. The game requires the `voidborn 0.15.sdz` archive in your Spring data `games/` folder (derived from `modinfo.lua name="Voidborn"` + `version="0.15"`).
+Or from the command line with the Spring binary. The game requires the `voidborn 0.16.sdz` archive in your Spring data `games/` folder (derived from `modinfo.lua name="Voidborn"` + `version="0.16"`).
 
-Versions are numbered in the 0.x series, one release at a time: the releases so far are **0.1** (the first public version, previously numbered 1.0), **0.14** (previously 1.4) and **0.15** (current). The release tags on GitHub carry the same numbers.
+Versions are numbered in the 0.x series, one release at a time: the releases so far are **0.1** (the first public version, previously numbered 1.0), **0.14** (previously 1.4), **0.15** and **0.16** (current). The release tags on GitHub carry the same numbers.
 
 For a Flatpak install of BAR the data directory is typically under `~/.var/app/info.beyondallreason.bar/` (look for the folder that already contains BAR's own `games/` and `maps/`). Copy the two archives there, then launch that install's `spring` binary with a start script (you may need to run it from a Flatpak shell).
 
 When the game screen loads, press **Enter / the Start button** (you can also place your start spot first).
-`Watch_Bot_vs_Bot.txt` starts two bots against each other so you can spectate.
+`Watch_Bot_vs_Bot.txt` starts two bots against each other so you can spectate; `Watch_4Factions_FFA.txt` starts four, one of each faction, in a free-for-all on the four start spots of Voidborn Rift. `Play_Tympan_vs_Bot.txt` and `Play_Miasma_vs_Bot.txt` put you in the new factions against a bot of the other one. `Play_Choose_Faction_vs_Bot.txt` sets no side at all, so the **faction menu** appears (below).
 
 ## What "3D" means here
 
@@ -130,6 +136,40 @@ Structures: **Iris Womb** (factory), **Leech Eye** (metal extractor), **Sun Iris
 
 Structures: **Brood Hive** (factory), **Root Drill** (metal extractor), **Sunbloom** (energy), **Heartfire Egg** (advanced energy), **Gut Cyst** (storage), **Listening Maw** (radar), **Tooth Spire** (light defence), **Maw Bastion** (heavy defence)
 
+### Tympan Conclave (the Ear, 0.16)
+
+Sound. Their weapons are pressure waves with a wide splash and a shove, and pulses of high tones. **Resonance:** every other Tympan unit that hit the same target in the last 1.5 s adds 12% to the damage of a Tympan hit (up to four others, +48%), so a conclave that focuses fire does far more than the same units firing alone. **Hearing:** their scouts, support units, commander and radar carry **radar** (the units see little but hear far, scouts 1500, the Auricle Array 2800), and units with ears **blow the cloak** of an enemy commander or constructor that comes within hearing distance (Whisper 450, Lullaby 300, Siren 400, Auditor 350, Auricle Array 800); the cloak cannot be used again for five seconds.
+
+| Unit | Role | Metal | HP | Altitude | Weapon (range) |
+|---|---|---|---|---|---|
+| Auditor | Ear Commander | 2500 | 4300 | 45 | Crescendo (520), Perforate (240), Destabilisation Gun (700) |
+| Tuner | Builder | 90 | 540 | 50 | — |
+| Whisper | Scout | 40 | 220 | 92 | Tick (250) |
+| Tinnitus | Raider | 54 | 360 | 65 | Whine (210) |
+| Drummer | Assault | 190 | 1500 | 90 | Bass Wave (360) |
+| Trumpeter | Long range | 235 | 620 | 145 | Sonic Boom (800) |
+| Lullaby | Support | 150 | 720 | 105 | — |
+| Cacophon | Heavy | 1600 | 9800 | 225 | Shockwave (600), Lesser Voices (380) |
+
+Structures: **Echo Chamber** (factory), **Cilia Tap** (metal extractor), **Sun Pinna** (energy), **Harmonic Spiral** (advanced energy), **Wax Vault** (storage), **Auricle Array** (radar), **Tuning Fork** (light defence), **Great Gong** (heavy defence)
+
+### Miasma Bloom (the Nose, 0.16)
+
+Gas. Their weapons are shells, darts and jets of poison. **Poison:** every hit adds a poison stack worth about 8% of the weapon's damage per second (the Sneezer's jets 5%); at most five stacks per unit, they last six seconds after the last hit and are dealt as plain damage twice a second (the poisoner gets the experience). **Scent:** a unit hit by a Miasma weapon stays visible to the Bloom through the fog for ten seconds. **Foraging:** the Censer reclaims mushrooms about 37% faster than a Weeper, Nurse or Lullaby (reclaim speed 41.6 against 30.4), so a Bloom feeds on the dead sooner. They are slow and tough, with short reach on the small units and long sight on the scout (Sniffer 680).
+
+| Unit | Role | Metal | HP | Altitude | Weapon (range) |
+|---|---|---|---|---|---|
+| Rhinarch | Nose Commander | 2500 | 4700 | 45 | Noxious Breath (520), Asphyxiate (240), Destabilisation Gun (700) |
+| Pollinator | Builder | 88 | 600 | 50 | — |
+| Sniffer | Scout | 34 | 260 | 90 | Spore Dart (240) |
+| Sneezer | Raider | 52 | 620 | 60 | Gas Jet (150) |
+| Bellows | Assault | 170 | 2300 | 80 | Fume Bolt (340) |
+| Stinkhorn | Long range | 215 | 700 | 140 | Reek Canister (800) |
+| Censer | Support | 150 | 820 | 100 | — |
+| Proboscis | Heavy | 1500 | 13500 | 215 | Putrid Cannon (620), Spore Cloud (520) |
+
+Structures: **Nostril Pit** (factory), **Truffle Snout** (metal extractor), **Sunlily** (energy), **Ambergris Core** (advanced energy), **Musk Sac** (storage), **Scent Stalk** (radar), **Reek Pod** (light defence), **Stench Tower** (heavy defence)
+
 ## Dev console & custom units
 
 Open the console with the key left of `1` (``` ` ``` on QWERTY, `²` on AZERTY) or `/vbconsole`. Works in single-player games (the shipped start scripts) or with `/cheat` on.
@@ -169,7 +209,7 @@ The build panel has a **`[+]` tile at the end of the build row** (right after th
 
 ## Tier 2 (factory upgrade, T2 units, unit forge)
 
-Select your tier 1 factory (Iris Womb / Brood Hive) and press **Upgrade T2** in the build panel. The team pays **2000 metal + 2800 energy** over 45 seconds (it stalls when the resources run out; pressing the button again cancels and refunds). The factory stops producing meanwhile, then turns in place into the **Great Iris Womb / Great Brood Hive** (same spot, same health fraction, the production queue moves with it). A factory that is destroyed during the upgrade loses what was paid. The numbers live in `tools/gen_defs.py` (`UPGRADE_*`).
+Select your tier 1 factory (Iris Womb / Brood Hive / Echo Chamber / Nostril Pit) and press **Upgrade T2** in the build panel. The team pays **2000 metal + 2800 energy** over 45 seconds (it stalls when the resources run out; pressing the button again cancels and refunds). The factory stops producing meanwhile, then turns in place into the **Great Iris Womb / Great Brood Hive / Grand Echo Chamber / Great Nostril** (same spot, same health fraction, the production queue moves with it). A factory that is destroyed during the upgrade loses what was paid. The numbers live in `tools/gen_defs.py` (`UPGRADE_*`).
 
 The tier 2 factory builds everything tier 1 does **plus the T2 roster**:
 
@@ -188,6 +228,22 @@ The tier 2 factory builds everything tier 1 does **plus the T2 roster**:
 | Rupturer | Artillery | 620 | 1300 | Bile Salvo (1180) |
 | Midwife | Support (fast builder) | 360 | 2000 | - |
 | Devourer | Heavy | 3900 | 46000 | Maw Cannon (700), Brood Barrage (600) |
+
+| Tympan | Role | Metal | HP | Weapons (range) |
+|---|---|---|---|---|
+| Banshee | Raider | 140 | 640 | Shriek (290) |
+| Malleus | Assault | 520 | 4300 | Hammer Blow (430), Anvil Chorus (330) |
+| Foghorn | Artillery | 650 | 1050 | Foghorn Blast (1150) |
+| Siren | Support (fast builder) | 380 | 1800 | — |
+| Organon | Heavy | 4200 | 35000 | Requiem (780), Hundred Voices (470) |
+
+| Miasma | Role | Metal | HP | Weapons (range) |
+|---|---|---|---|---|
+| Pollenwing | Raider | 128 | 1150 | Gas Jet (160) |
+| Bloomguard | Assault | 470 | 5400 | Siege Fume (410), Spore Pod (380) |
+| Fumigator | Artillery | 610 | 1350 | Fumigation (1180) |
+| Perfumer | Support (fast builder) | 350 | 2100 | — |
+| Titan Arum | Heavy | 3800 | 48000 | Putrefaction (700), Corpse Cloud (600) |
 
 **The unit forge needs a finished T2 factory.** Until then the `[+]` tile and the saved designs are greyed out; hovering `[+]` says to upgrade to a Tier 2 factory first (and shows the upgrade progress). Losing the last T2 factory locks the forge again. It is enforced in the game rules, not only in the UI (production queue and `/vbcreate`). Cheats (`/cheat`) and the lobby option *Unit forge needs a Tier 2 factory* (`vb_forge_needs_t2`) lift the lock. T2 units use their own `customParams.kind` (`raider2`, `assault2`, `art2`, `support2`, `heavy2`, `fac2`), so the bot, which only upgrades nothing, keeps using tier 1.
 
@@ -287,18 +343,20 @@ The engine's stock build panel is hidden; the Lua widget `game/LuaUI/Widgets/vb_
 
 I ran the game in the Recoil 2026.07.04 headless engine with two bots playing 20–30 minutes of game time: asteroids loaded, commanders spawned, builders built, mexes produced metal, factories produced units, armies fought, bases died, commander death ended the game. I also fixed the bugs that run exposed (builder/factory scripts, weapon loading, mex yield).
 
+**0.16 (Tympan Conclave and Miasma Bloom):** the data and the gadgets are checked by `tools/test_factions.py` (rosters, assets, sounds, build lists, and Resonance / poison / scent / hearing against a mock engine), the bots' build orders need no change (they read the roles). **None of the 0.16 content has been run in the engine**: the new weapons, the two gadgets, the scent mark (`Spring.SetUnitLosState` / `SetUnitLosMask`) and above all the balance are untested, and the look of the new models and sounds is judged only from software renders. Whether the scent mark also shows a *cloaked* unit is unknown.
+
 **Not tested (no GPU here):** how the models, textures, skybox, explosions and UI actually *look and feel* on screen, sounds (there are none), and human-driven play. Models/textures are generated procedurally (previews in the PNGs), so expect a "first pass" look.
 
 Known simplifications: no sounds; unit icons use the engine default; the bot is simple; balance is a first pass (Choir is slightly stronger vs the bot).
 
 ## Regenerating / modding
 
-`voidborn_source.zip` has the generators (Python: models, textures, unit/weapon defs, map) and the game folder. `python3 tools/gen_assets.py && python3 tools/gen_defs.py` rebuild the models and all unit/weapon/script files.
+`voidborn_source.zip` has the generators (Python: models, textures, unit/weapon defs, map) and the game folder. `python3 tools/gen_assets.py && python3 tools/gen_defs.py && python3 tools/add_sounds.py` rebuild the models and the unit/weapon/script files **of the two 0.16 factions**; `gen_assets.py tympan miasma` does only their assets and keeps the rest. `gen_defs.py --all` also rewrites Choir and Maw, which carry hand edits since 0.15 (the Q-gun, the Gaze beam, the Acid Spit glob, the cloak flags): review the diff. `tools/preview_factions.py tympan` renders a contact sheet.
 
 ## Multiplayer & Community
 
 * **SkyLobby**: https://github.com/skynet-gh/skylobby/releases/latest — the lobby client for Spring engine games (it is the successor to SpringLobby). Download the installer for your platform there, then use it to find and join multiplayer games of Voidborn. The manual is at https://github.com/skynet-gh/skylobby/wiki/User-Guide. Host your own server to keep a persistent 24/7 Voidborn world running.
-* **Coilbox hub**: https://hub.coilbox.org/games/VB — The game's page on the hub: the game itself, the two factions with their art, the unit encyclopedia and the running servers. **Start here, for single player and for multiplayer alike** — it is the shortest path to a match.
+* **Coilbox hub**: https://hub.coilbox.org/games/VB — The game's page on the hub: the game itself, the four factions with their art, the unit encyclopedia and the running servers. **Start here, for single player and for multiplayer alike** — it is the shortest path to a match.
 * **Discord**: https://discord.com/channels/1481771055063502925 — Join the Voidborn community to find games, discuss strategies, and coordinate with other players.
 * **Website**: https://f33.fr/vb/ — Official Voidborn website with downloads, changelog, and community posts. It has a page per subject: [Play](https://f33.fr/vb/play.html), [Maps](https://f33.fr/vb/maps.html), the [Unit Forge](https://f33.fr/vb/forge.html) (how a custom unit is designed, what it costs and how it grows and splits) and the [Roadmap](https://f33.fr/vb/roadmap.html).
 
@@ -313,7 +371,7 @@ What is being worked on now (the same list is on the website: <https://f33.fr/vb
 | **Custom unit balancing and taxation** | in development | the forge prices a custom unit by what you changed; the balance pass over the whole roster is next, so a design nobody plays against is not worth making and one that beats the game is taxed hard |
 | **Factory upgrade from T1 to T2** | in development | a factory that can be upgraded into its second tier: bigger, more expensive, with a build time of its own and a production line that can be switched over |
 | **Unit experience evolution and upgrade, with proliferation control** | in development | units already grow and split; evolution takes that further into a next form, and proliferation control keeps the number of units and the metal in the map in check |
-| **A third faction** | planned | its own shape, units, economy and art, plus the balance that makes three different ways to play worth playing &ndash; the biggest single piece of work |
+| **Third and fourth faction** | shipped in 0.16 (balance open) | the **Tympan Conclave** (the Ear) and the **Miasma Bloom** (the Nose): their own shape, units, economy tricks and art. Four ways to play need a balance pass of their own, and for the tools and the AI a free-for-all of four |
 | **Hosting games and replays** | planned | a persistent world, a list of the matches running on it and a replay archive that keeps the good games |
 | **Steam** | looking for help | a bigger audience needs distributors: streamers, youtubers and curators who think a game about creating your own OP units is worth talking about. Join the [Discord](https://discord.com/channels/1481771055063502925/) and say so |
 

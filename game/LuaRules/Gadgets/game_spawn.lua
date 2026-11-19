@@ -36,13 +36,41 @@ end
 
 local modOptions = Spring.GetModOptions()
 
+-- 0.16: a human whose side was not set by the lobby or the start script picks a faction in the menu of the widget
+-- vb_faction_menu.lua before the game starts.  The widget sends  "vbfaction:<Side>"  (Choir, Maw, Tympan, Miasma);
+-- the start unit of that side is spawned when the game starts.  A team that did not choose keeps the old default
+-- (the sides in turn, by team number); a team whose side IS set cannot change it; nothing is accepted after the start.
+local SIDES = VFS.Include("gamedata/sidedata.lua") or {}
+local chosen = {}        -- teamID -> startUnit
+local started = false
+
+local function FindSide(name)
+	name = string.lower(name or "")
+	for _, sd in ipairs(SIDES) do
+		if string.lower(sd.name or "") == name then return sd end
+	end
+end
+
+function gadget:RecvLuaMsg(msg, playerID)
+	if string.sub(msg, 1, 10) ~= "vbfaction:" then return end
+	if started then return true end
+	local sd = FindSide(string.sub(msg, 11))
+	if not sd then return true end
+	local _, _, spec, teamID = Spring.GetPlayerInfo(playerID)
+	if spec or not teamID then return true end
+	if select(5, Spring.GetTeamInfo(teamID)) ~= "" then return true end     -- the side is already set: not up to the player
+	chosen[teamID] = sd.startunit
+	return true
+end
+
 
 local function GetStartUnit(teamID)
 	-- get the team startup info
 	local side = select(5, Spring.GetTeamInfo(teamID))
 	local startUnit
 	if (side == "") then
-		-- startscript didn't specify a side for this team
+		-- startscript didn't specify a side for this team: the menu's choice, else the sides in turn
+		if chosen[teamID] then return chosen[teamID] end
 		local sidedata = Spring.GetSideData()
 		if (sidedata and #sidedata > 0) then
 			startUnit = sidedata[1 + teamID % #sidedata].startUnit
@@ -95,6 +123,7 @@ end
 
 
 function gadget:GameStart()
+	started = true
 	-- only activate if engine didn't already spawn units (compatibility)
 	if (#Spring.GetAllUnits() > 0) then
 		return

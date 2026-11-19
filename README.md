@@ -373,7 +373,8 @@ What is being worked on now (the same list is on the website: <https://f33.fr/vb
 | **Hosting games and replays** | planned | a persistent world, a list of the matches running on it and a replay archive that keeps the good games |
 | **Steam** | looking for help | a bigger audience needs distributors: streamers, youtubers and curators who think a game about creating your own OP units is worth talking about. Join the [Discord](https://discord.com/channels/1481771055063502925/) and say so |
 
-The game in a video: [VOIDBORN 1.0 &ndash; New RTS Game allows you to create endless OP units in-game!](https://www.youtube.com/watch?v=TtKTK60Kb-I) (26 minutes).
+The game in a video: https://youtube.com/playlist?list=PLErmsWWFp8sk&si=LfDefAJ3bYEQkXxJ
+
 
 ## Production queue (stock units and forge designs)
 

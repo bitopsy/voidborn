@@ -1,0 +1,55 @@
+-- TEMPORARY probe: does fire-at-will fire the commander's manualFire weapons?
+function gadget:GetInfo()
+	return { name = "VB Probe", desc = "temporary", author = "probe", date = "2026", license = "GPL", layer = 1, enabled = true }
+end
+
+if not gadgetHandler:IsSyncedCode() then return end
+
+local comUID, targetUID
+local frame0, ordered
+
+local function NameOf(uid, widx)
+	local ud = UnitDefs[Spring.GetUnitDefID(uid)]
+	local w = ud and ud.weapons and ud.weapons[widx]
+	local wd = w and w.weaponDef and WeaponDefs[w.weaponDef]
+	return wd and wd.name or ("weapon" .. tostring(widx))
+end
+
+function gadget:Initialize()
+	for defID, ud in pairs(UnitDefs) do
+		if ud.name == "ch_hierophant" then comDef = defID end
+		if ud.name == "ch_gazer" then targetDef = defID end
+	end
+	Spring.Echo("PROBE comDef=" .. tostring(comDef) .. " targetDef=" .. tostring(targetDef))
+end
+
+function gadget:WeaponFire(unitID, weaponID, projectileID)
+	if unitID ~= comUID then return end
+	Spring.Echo(string.format("PROBE FIRED unit=%d weaponIndex=%d name=%s",
+		unitID, weaponID, NameOf(unitID, weaponID)))
+end
+
+function gadget:GameFrame(frame)
+	if not frame0 then frame0 = frame end
+	local df = frame - frame0
+
+	if df == 30 then
+		-- team 0 commander near the middle, team 1 target in front of it
+		local defID = UnitDefs[comDef]
+		comUID = Spring.CreateUnit(comDef, 1000, Spring.GetGroundHeight(1000, 200), 200, 0, 0)
+		targetUID = Spring.CreateUnit(targetDef, 1200, Spring.GetGroundHeight(1200, 200), 200, 0, 1)
+		Spring.Echo("PROBE spawned com=" .. tostring(comUID) .. " target=" .. tostring(targetUID))
+	end
+
+	if df == 60 and comUID and targetUID and not ordered then
+		ordered = true
+		-- fire at will, and attack the target
+		Spring.GiveOrderToUnit(comUID, CMD.FIRE_STATE, { 2 }, 0)
+		Spring.GiveOrderToUnit(comUID, CMD.ATTACK, { 1200, 0, 200 }, {})
+		Spring.Echo("PROBE ordered fire-at-will")
+	end
+
+	if df == 400 then
+		Spring.Echo("PROBE done")
+	end
+end

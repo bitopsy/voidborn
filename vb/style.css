@@ -38,6 +38,8 @@ h1{font-size:clamp(54px,13vw,148px);line-height:.95;margin:26px 0 10px;font-weig
 .ic{width:112px;height:112px;flex:none}
 .sp{background-size:400% 400%;background-repeat:no-repeat}
 .choir{background-image:url(img/choir.webp)}.maw{background-image:url(img/maw.webp)}
+.tympan{background-image:url(img/tympan.webp)}
+.miasma{background-image:url(img/miasma.webp)}
 .rd{width:112px;height:112px;flex:none;background:radial-gradient(circle,#14307055,transparent 70%);border-radius:50%}
 .u h4,.s h4{margin:8px 0 0;font-size:19px;color:#fff}
 .r{margin:0;color:var(--acc);font:600 14px Oxanium,sans-serif}

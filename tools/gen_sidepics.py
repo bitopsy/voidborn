@@ -261,6 +261,107 @@ def maw():
     return _finish(img)
 
 
+def tympan():
+    """The Tympan Conclave (0.16): one great ear with a lobe and a tragus, a drum membrane in its hollow, sound rolling in from the left."""
+    N = S * SS
+    img = _bg((40, 24, 8), (10, 6, 3), (255, 170, 40), (290, 240), 230, 40, 13)
+    c = lambda v: int(v * SS)
+    cx, cy = 300, 236
+    def tilted(rx, ry, tilt, ox=0, oy=0, a0=0, a1=360, step=3):
+        t = math.radians(tilt); out = []
+        for k in range(a0, a1 + 1, step):
+            a = math.radians(k); x, y = rx * math.cos(a), ry * math.sin(a)
+            out.append(((cx + ox + x * math.cos(t) - y * math.sin(t)) * SS, (cy + oy + x * math.sin(t) + y * math.cos(t)) * SS))
+        return out
+    # sound arriving from the left: arcs round a point beside the ear
+    d = ImageDraw.Draw(img)
+    for r, al in ((80, 250), (122, 210), (164, 165), (206, 120)):
+        box = [c(cx - 60 - r), c(cy - r), c(cx - 60 + r), c(cy + r)]
+        _bloom(img, lambda dd, col, box=box: dd.arc(box, 160, 200, fill=col, width=c(13)), (255, 170, 40), 8, al)
+        d.arc(box, 160, 200, fill=(255, 218, 130, min(255, al + 40)), width=c(5))
+    # the pinna: lobe first, then the big flap, then the rim
+    _bloom(img, lambda dd, col: dd.polygon(tilted(122, 166, -12), fill=col), (255, 150, 40), 26, 170)
+    d = ImageDraw.Draw(img)
+    d.polygon(tilted(34, 40, 0, -8, 168, 0, 360), fill=(232, 186, 156, 255), outline=(120, 70, 40, 255))
+    d.polygon(tilted(122, 166, -12), fill=(238, 196, 168, 255), outline=(120, 70, 40, 255))
+    d.line(tilted(110, 154, -12, 0, 0, 100, 300), fill=(190, 130, 104, 255), width=c(16), joint="curve")      # the curled helix
+    d.line(tilted(110, 154, -12, 0, 0, 100, 300), fill=(248, 218, 194, 255), width=c(5), joint="curve")
+    d.line(tilted(66, 100, -12, 6, 6, 120, 330), fill=(168, 112, 88, 255), width=c(11), joint="curve")        # the inner ridge
+    shade = Image.new("RGBA", (N, N), (0, 0, 0, 0))
+    ImageDraw.Draw(shade).polygon(tilted(54, 76, -12, -2, 14), fill=(70, 28, 14, 235))
+    img.alpha_composite(shade.filter(ImageFilter.GaussianBlur(10 * SS)))
+    d = ImageDraw.Draw(img)
+    d.polygon(tilted(26, 34, -20, -62, 40), fill=(226, 178, 148, 255), outline=(120, 70, 40, 255))             # the tragus
+    # the drum in the hollow
+    dx, dy = cx + 2, cy + 18
+    _bloom(img, lambda dd, col: dd.ellipse([c(dx - 50), c(dy - 50), c(dx + 50), c(dy + 50)], fill=col), (255, 190, 60), 14, 240)
+    d = ImageDraw.Draw(img)
+    for i, r in enumerate((48, 39, 30, 21, 12)):
+        d.ellipse([c(dx - r), c(dy - r), c(dx + r), c(dy + r)], fill=((236, 208, 160, 255) if i % 2 == 0 else (206, 146, 62, 255)), outline=(110, 70, 30, 255), width=c(2))
+    d.ellipse([c(dx - 5), c(dy - 5), c(dx + 5), c(dy + 5)], fill=(255, 244, 210, 255))
+    # a cochlea below the lobe
+    sx, sy = cx - 6, cy + 222; pts = []
+    for t in range(0, 101):
+        u = t / 100; a = 2 * math.pi * 2.4 * u; r = 4 + 36 * u
+        pts.append(((sx + r * math.cos(a)) * SS, (sy + r * 0.7 * math.sin(a)) * SS))
+    _bloom(img, lambda dd, col: dd.line(pts, fill=col, width=c(10), joint="curve"), (255, 170, 40), 7, 230)
+    d = ImageDraw.Draw(img)
+    for k in range(len(pts) - 1):
+        d.line([pts[k], pts[k + 1]], fill=(255, 214, 110, 255), width=max(2, int((3 + 7 * k / 100) * SS)))
+    _frame(img, (232, 170, 58), (255, 220, 140))
+    return _finish(img)
+
+
+def miasma():
+    """The Miasma Bloom (0.16): a ring of petals, a great nose with two nostrils, violet vapour curling up from them."""
+    N = S * SS
+    img = _bg((28, 12, 38), (8, 4, 14), (200, 70, 255), (256, 250), 240, 40, 17)
+    c = lambda v: int(v * SS)
+    cx, cy = 256, 252
+    d = ImageDraw.Draw(img)
+    # petals behind the nose, alternating magenta and sulphur
+    for i in range(12):
+        a = math.radians(i * 30 - 90); L, W = 215, 38
+        px, py = cx + math.cos(a) * 80, cy + math.sin(a) * 80
+        tip = (cx + math.cos(a) * L, cy + math.sin(a) * L)
+        nx, ny = -math.sin(a), math.cos(a)
+        poly = [(px * SS, py * SS), ((px + math.cos(a) * 90 + nx * W) * SS, (py + math.sin(a) * 90 + ny * W) * SS), (tip[0] * SS, tip[1] * SS),
+                ((px + math.cos(a) * 90 - nx * W) * SS, (py + math.sin(a) * 90 - ny * W) * SS)]
+        col = (226, 98, 255) if i % 2 == 0 else (240, 232, 90)
+        _bloom(img, lambda dd, cc, poly=poly: dd.polygon(poly, fill=cc), col[:3], 10, 140)
+        d = ImageDraw.Draw(img)
+        d.polygon(poly, fill=col + (235,), outline=(70, 24, 90, 255))
+    # the nose: a moss-green bulb with a bridge and two flared nostrils
+    _bloom(img, lambda dd, col: dd.ellipse([c(cx - 118), c(cy - 120), c(cx + 118), c(cy + 130)], fill=col), (170, 220, 90), 22, 150)
+    d = ImageDraw.Draw(img)
+    d.ellipse([c(cx - 108), c(cy - 112), c(cx + 108), c(cy + 122)], fill=(126, 142, 74, 255), outline=(40, 30, 50, 255), width=c(5))
+    d.ellipse([c(cx - 62), c(cy - 100), c(cx + 62), c(cy + 20)], fill=(150, 166, 92, 255))
+    shade = Image.new("RGBA", (N, N), (0, 0, 0, 0))
+    ImageDraw.Draw(shade).ellipse([c(cx - 108), c(cy + 20), c(cx + 108), c(cy + 130)], fill=(40, 30, 60, 150))
+    img.alpha_composite(shade.filter(ImageFilter.GaussianBlur(16 * SS)))
+    d = ImageDraw.Draw(img)
+    for sx in (-1, 1):                                       # nostrils: dark hole, wet pink lip
+        nxm, nym = cx + sx * 50, cy + 66
+        d.ellipse([c(nxm - 38), c(nym - 22), c(nxm + 38), c(nym + 26)], fill=(208, 98, 130, 255), outline=(60, 20, 40, 255), width=c(3))
+        d.ellipse([c(nxm - 30), c(nym - 12), c(nxm + 30), c(nym + 20)], fill=(10, 4, 14, 255))
+        d.ellipse([c(nxm - 14), c(nym - 12), c(nxm - 4), c(nym - 4)], fill=(120, 60, 90, 200))
+        for k in range(4):                                   # a few nose hairs, bristling down and out
+            ang = math.radians(60 + k * 20); d.line([((nxm + 28 * math.cos(ang)) * SS, (nym + 22 * math.sin(ang)) * SS), ((nxm + 44 * math.cos(ang) + sx * 6) * SS, (nym + 46 * math.sin(ang)) * SS)], fill=(44, 32, 54, 255), width=c(3))
+    # vapour curling up out of the nostrils
+    for sx in (-1, 1):
+        for j in range(2):
+            pts = []
+            for t in range(0, 61):
+                u = t / 60; x = cx + sx * (50 + 26 * j) + math.sin(u * 7 + j * 2 + sx) * (16 + 22 * u); y = cy + 40 - u * 280
+                pts.append((x * SS, y * SS))
+            _bloom(img, lambda dd, col, pts=pts: dd.line(pts, fill=col, width=c(14), joint="curve"), (210, 110, 255), 10, 150)
+            d = ImageDraw.Draw(img)
+            for k in range(len(pts) - 1):
+                u = k / len(pts); d.line([pts[k], pts[k + 1]], fill=(236, 190, 255, int(230 * (1 - u))), width=max(2, int((7 - 4 * u) * SS)))
+    _frame(img, (204, 90, 240), (240, 190, 255))
+    return _finish(img)
+
+
 def loading():
     """The loading screen: the Rift with the emblem over it."""
     w, h = 1280, 720
@@ -310,6 +411,11 @@ def loading():
 def main():
     os.makedirs(SIDE, exist_ok=True)
     os.makedirs(LOAD, exist_ok=True)
+    import sys
+    tympan().save(os.path.join(SIDE, "tympan.png"))
+    miasma().save(os.path.join(SIDE, "miasma.png"))
+    if "new" in sys.argv[1:]:                # python3 tools/gen_sidepics.py new  -> only the two 0.16 emblems
+        return
     choir().save(os.path.join(SIDE, "choir.png"))
     maw().save(os.path.join(SIDE, "maw.png"))
     loading().save(os.path.join(LOAD, "voidborn.jpg"), quality=88)

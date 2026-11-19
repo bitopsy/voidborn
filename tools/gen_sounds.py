@@ -338,8 +338,65 @@ def announcements():
     save("tier2_ready", mix(0.6 * pad_, arp, at(bell(1568, 1.6, 0.6, 1.4), 0.7), 0.7 * sine(60, 0.35) * env_exp(int(0.35 * SR), 0.1)), 0.9)
 
 
+# ------------------------------------------------------------------ 0.16: Tympan Conclave (the Ear) and Miasma Bloom (the Nose)
+# Drawn from the shared rng AFTER every older recipe (see __main__), so the older files stay byte-identical on a rerun.
+def new_factions():
+    # ---- voices.  TYMPAN: bells, beating pairs of tones, a distant gong.  MIASMA: sniffs, snorts, wet hiss.
+    d = 0.6; n = int(d * SR)
+    beat = (sine(880, d) + sine(886, d) + 0.5 * sine(1320, d) + 0.5 * sine(1327, d)) * env_exp(n, 0.28) * np.minimum(1, np.arange(n) / (0.02 * SR))
+    save("select_tympan", mix(beat, 0.3 * bell(1760, d, 0.2, 1.2, 2.0)), 0.7)
+    d = 0.22; n = int(d * SR); save("ok_tympan", mix(bell(1568, d, 0.08, 1.2, 2.0), 0.5 * bell(2352, d, 0.06, 1.0, 2.0)), 0.6)
+    d = 0.9; n = int(d * SR)
+    save("select_struct_tympan", mix(bell(110, d, 0.3, 2.5, 2.4), 0.5 * bell(165, d, 0.25, 2.0, 2.4), 0.15 * lp(noise(d), 500) * env_exp(n, 0.1)), 0.65)
+    def sniff(dur, lo, hi, k=1.0):
+        n = int(dur * SR); return bp(noise(dur), lo, hi) * np.sin(np.linspace(0.1, np.pi, n)) ** k * (1 + 0.5 * sine(31, dur))
+    d = 0.55
+    save("select_miasma", mix(sniff(0.2, 500, 3200), at(sniff(0.24, 700, 4200), 0.22), 0.6 * sat(sweep(120, 70, d), 2) * env_exp(int(d * SR), 0.18)), 0.75)
+    d = 0.2; save("ok_miasma", mix(sniff(d, 1000, 5200, 0.8), 0.5 * sweep(260, 420, d) * env_exp(int(d * SR), 0.07)), 0.6)
+    d = 0.9; n = int(d * SR)
+    save("select_struct_miasma", lp(sat(sweep(62, 44, d) + 0.5 * noise(d) * 0.25, 2.5), 600) * swell(n, 0.8) * (1 + 0.5 * sine(9, d)) + 0.3 * bp(noise(d), 300, 1400) * swell(n, 1.5), 0.7)
+
+    # ---- sonic weapons: a ping, a pulse, a pressure wave, a boom; the hit is a muted bronze dong
+    d = 0.2; n = int(d * SR); save("sonic_light", mix(sweep(2600, 1900, d) * env_exp(n, 0.05), 0.4 * bell(3100, d, 0.05, 1.0, 2.0)), 0.55)
+    d = 0.36; n = int(d * SR); save("sonic_pulse", mix(fm(1100, 550, 2.0, d) * env_exp(n, 0.11), 0.5 * sweep(1800, 600, d) * env_exp(n, 0.08)), 0.7)
+    d = 0.7; n = int(d * SR)
+    save("sonic_wave", mix(sat(sweep(260, 70, d) + 0.4 * sine(55, d), 2) * env_exp(n, 0.2), 0.5 * fm(420, 7, 3.0, d) * env_exp(n, 0.22), 0.25 * bp(noise(d), 300, 2000) * env_exp(n, 0.07)), 0.85)
+    d = 1.3; n = int(d * SR)
+    save("sonic_boom", mix(sat(sweep(150, 34, d) + 0.7 * sine(40, d), 3) * env_exp(n, 0.4), 0.5 * fm(220, 5, 4.0, d) * env_exp(n, 0.3), 0.4 * bp(noise(d), 200, 1800) * env_exp(n, 0.12), 0.3 * bell(330, d, 0.4, 2.0, 2.4)), 0.95)
+    d = 0.5; n = int(d * SR); save("hit_sonic", mix(bell(196, d, 0.16, 2.0, 2.2), 0.4 * hp(noise(d), 1500) * env_exp(n, 0.03), 0.5 * sat(sweep(160, 50, 0.25), 2) * env_exp(int(0.25 * SR), 0.08)), 0.7)
+
+    # ---- gas weapons: a pfft, a heavy lob, a hissing jet, a soft burst
+    d = 0.2; n = int(d * SR); save("gas_dart", mix(bp(noise(d), 2200, 7800) * env_exp(n, 0.05), 0.4 * sweep(900, 400, d) * env_exp(n, 0.04)), 0.55)
+    d = 0.8; n = int(d * SR)
+    save("gas_lob", mix(sat(sweep(130, 50, 0.3), 2) * env_exp(int(0.3 * SR), 0.1), 0.8 * lp(noise(d), 1400) * np.sin(np.linspace(0.3, np.pi, n)) ** 1.1 * env_exp(n, 0.35), 0.3 * bp(noise(d), 2200, 6000) * env_exp(n, 0.12)), 0.85)
+    d = 1.1; n = int(d * SR)
+    save("gas_heavy", mix(sat(sweep(100, 38, 0.5), 3) * env_exp(int(0.5 * SR), 0.16), 0.9 * lp(noise(d), 1000) * np.sin(np.linspace(0.2, np.pi, n)) ** 1.0 * env_exp(n, 0.5), 0.35 * bp(noise(d), 1500, 5000) * env_exp(n, 0.2)), 0.95)
+    d = 0.45; n = int(d * SR); save("gas_hiss", mix(lp(noise(d), 4200) * (1 + 0.4 * sine(23, d)) * swell(n, 0.7), 0.3 * bp(noise(d), 200, 700) * env_exp(n, 0.3)), 0.6)
+    d = 0.7; n = int(d * SR)
+    save("hit_gas", mix(lp(noise(d), 1300) * env_exp(n, 0.16), 0.5 * bp(noise(d), 2500, 8000) * np.clip(sine(41, d) + 0.5, 0, 1) * env_exp(n, 0.25), 0.6 * sat(sweep(150, 48, 0.3), 2) * env_exp(int(0.3 * SR), 0.1)), 0.75)
+
+    # ---- commander guns.  D-gun: a charge, then the blast.  Q-gun: a climbing tone, then the pulse.
+    ch, bl = 0.9, 1.4; nc, nb = int(ch * SR), int(bl * SR)
+    charge = sum(sweep(f * 0.6, f, ch) * (1 + 0.5 * sine(5 + i * 2, ch)) for i, f in enumerate((330, 332, 495, 498))) * rise(nc, 2.0) + 0.3 * bp(noise(ch), 1500, 7000) * rise(nc, 3)
+    gong = bell(98, bl, 0.7, 2.6, 2.4) + 0.6 * bell(147, bl, 0.6, 2.2, 2.4)
+    boom = sat(sweep(150, 28, bl) + 0.7 * sine(36, bl), 3) * env_exp(nb, 0.4)
+    save("dgun_tympan", mix(0.7 * charge, at(echo(mix(boom, 0.6 * gong, 0.3 * hp(noise(bl), 2000) * env_exp(nb, 0.1)), 0.12, 0.4, 3), ch)), 0.95)
+    inhale = lp(noise(ch), 2600) * rise(nc, 1.5) * (1 + 0.5 * sine(11, ch))
+    gur = sat(sweep(60, 150, ch) * (1 + 0.7 * sine(9, ch)), 2.5) * rise(nc, 1.4)
+    exhale = lp(noise(bl), 1500) * env_exp(nb, 0.5) * (1 + 0.5 * sine(7, bl))
+    roar = sat(sweep(110, 36, bl) + 0.6 * sine(48, bl) * (1 + 0.7 * sine(19, bl)), 4) * env_exp(nb, 0.5)
+    save("dgun_miasma", mix(0.6 * inhale, 0.8 * gur, at(mix(roar, 0.9 * exhale, 0.4 * bp(noise(bl), 2500, 7000) * env_exp(nb, 0.2)), ch - 0.02)), 0.95)
+    cq, pq = 1.6, 1.0; nq, npq = int(cq * SR), int(pq * SR)
+    climb = (sweep(110, 1400, cq, "exp") + 0.5 * sweep(222, 2800, cq, "exp")) * rise(nq, 1.8)
+    pulse_t = mix(sat(sweep(180, 40, pq), 3) * env_exp(npq, 0.3), 0.5 * bell(440, pq, 0.4, 2.0, 2.0))
+    save("qgun_tympan", mix(climb * 0.8, at(echo(pulse_t, 0.11, 0.45, 3), cq)), 0.9)
+    climb = (sweep(70, 520, cq, "exp") + 0.6 * lp(noise(cq), 1800) * (1 + sine(15, cq))) * rise(nq, 1.6)
+    pulse_m = mix(sat(sweep(130, 36, pq), 3) * env_exp(npq, 0.3), 0.6 * lp(noise(pq), 1200) * env_exp(npq, 0.25))
+    save("qgun_miasma", mix(climb * 0.8, at(echo(pulse_m, 0.12, 0.4, 3), cq)), 0.9)
+
+
 if __name__ == "__main__":
-    for fn in (ui, alerts, voices, weapons, impacts, economy, evolve, ambient, cmd_weapons, announcements):
+    for fn in (ui, alerts, voices, weapons, impacts, economy, evolve, ambient, cmd_weapons, announcements, new_factions):
         fn()
     files = sorted(os.listdir(OUT))
     print("wrote %d files to %s" % (len(files), os.path.abspath(OUT)))

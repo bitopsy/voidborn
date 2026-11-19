@@ -10,9 +10,7 @@ Four factions of surreal alien monsters, one for each sense organ, fight over fl
 * **Tympan Conclave** (the Ear, new in 0.16) — floating ears, horns and drums. Waves of sound with wide splash that hit harder when many of them land on one target; radar on the units, and ears that blow a cloak.
 * **Miasma Bloom** (the Nose, new in 0.16) — drifting snouts and flowers. Slow and tough; every hit poisons and scents its target, and the Censer sniffs out mushrooms faster.
 
-▶ **In a video**: [VOIDBORN 1.0 — New RTS Game allows you to create endless OP units in-game!](https://www.youtube.com/watch?v=TtKTK60Kb-I) (26 minutes)
 
-What is in the first release, in one list: [docs/release-0.1.md](docs/release-0.1.md).
 
 ## Files
 

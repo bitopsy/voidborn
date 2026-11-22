@@ -1,6 +1,6 @@
 [GAME]
 {
-	GameType=Voidborn 0.16;
+	GameType=Voidborn 0.18;
 	MapName=Voidborn Rift 1.0;
 	IsHost=1;
 	HostIP=127.0.0.1;

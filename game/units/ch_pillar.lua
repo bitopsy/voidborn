@@ -2,6 +2,7 @@
 return {
 	ch_pillar = {
 		name = "Pillar of Judgement",
+	script = "ch_pillar.lua",
 		description = "Heavy defence - a tower crowned with a colossal eye",
 		objectName = "ch_pillar.s3o",
 		buildPic = "ch_pillar.png",
@@ -46,6 +47,7 @@ return {
 		weapons = {
 			{
 				name = "ch_pillar_w1",
+	script = "ch_pillar.lua",
 				def = "ch_pillar_w1",
 			},
 		},

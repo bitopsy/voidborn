@@ -1,6 +1,6 @@
 function widget:GetInfo()
 	return { name = "Voidborn Dashboard", desc = "Live and end-of-game statistics: graphs and radar charts of damage, economy, army and defence value (Ctrl+Shift+D, /vbdash)",
-		author = "goddot info@bitopsy.com", date = "2026", license = "GPL", layer = 8, enabled = true }
+		author = "goddot info@bitopsy.com", date = "2026", license = "GPL", layer = 5, enabled = true }
 end
 
 --[[
@@ -20,6 +20,9 @@ end
 
   Keys:  Esc close   1-9 tabs   left / right step through time   Home start   End back to live   wheel zoom the time axis
   Commands:  /vbdash [open|close|hud|tab <name>|scale <n>]
+
+  SETTINGS has a GRAPHICS panel: the screen resolution (the HUD is stacked again in the default layout column) and the
+  graphics quality, lowest to ultra, which is an FPS-OPS preset (LuaUI/Widgets/vb_graphics.lua, gui_fps_ops.lua).
 
   The numbers come from LuaRules/Gadgets/vb_stats.lua. Drawing is in LuaUI/Headers/vb_stats_draw.h.lua, the data
   model in LuaUI/Headers/vb_stats_data.h.lua.
@@ -41,7 +44,7 @@ local FPS = 30
 local TABS = {
 	{ "overview", "OVERVIEW" }, { "graphs", "GRAPHS" }, { "economy", "ECONOMY" },
 	{ "combat", "COMBAT" }, { "army", "ARMY" }, { "report", "REPORT" },
-	{ "settings", "SETTINGS" }, { "keys", "KEYS" }, { "about", "ABOUT" },
+	{ "share", "SHARE" }, { "settings", "SETTINGS" }, { "keys", "KEYS" }, { "about", "ABOUT" },
 }
 local FIRST_MENU_TAB = 7      -- the tabs from here on are the menu pages, not statistics
 local WINDOWS = { { 0, "ALL" }, { 20, "20 MIN" }, { 10, "10 MIN" }, { 5, "5 MIN" } }
@@ -49,12 +52,15 @@ local WINDOWS = { { 0, "ALL" }, { 20, "20 MIN" }, { 10, "10 MIN" }, { 5, "5 MIN"
 local st = {
 	open = false, tab = "overview", hud = true, hudCollapsed = false, hudX = nil, hudTop = nil,
 	menu = true, hudRadar = 1, focus = "av", cursor = nil, window = 0, hidden = {}, focusTeam = nil,
-	sort = { col = "sc", desc = true }, scale = 1.0, autoOpened = false,
+	sort = { col = "sc", desc = true }, scale = 2.2, autoOpened = false,
+	share = { metal = 0.25, energy = 0.25 }, shareTeam = nil, resignArmed = nil,
 }
 
 local vsx, vsy = Spring.GetViewGeometry()
 local lastClock = os.clock()
 local dragging = nil
+-- the player dragged the HUD: the default layout (vb_layout.lua) lets go
+local function UserTookOver() if WG.VBLayout and WG.VBLayout.Release then WG.VBLayout.Release() end end
 local refreshTimer, intelTimer = 0, 0
 local panelRect = nil          -- the dashboard's rectangle, to tell clicks inside from clicks outside
 local hudRect = nil
@@ -81,9 +87,9 @@ end
 
 local function ValueOf(ctx, team, id) return Stats.Value(team, id, ctx.idx[team.id]) end
 
-local function SetTab(tab) st.tab = tab; Snd("ui_click") end
+local function SetTab(tab) st.tab = tab; D.dd = nil; Snd("ui_click") end
 local function Open(tab) st.open = true; if tab then st.tab = tab end; Snd("ui_open") end
-local function Close() st.open = false; Snd("ui_close") end
+local function Close() st.open = false; D.dd = nil; Snd("ui_close") end
 
 local function Grid(x1, y1, x2, y2, cols, rows, gap)
 	local w, h = (x2 - x1 - (cols - 1) * gap) / cols, (y2 - y1 - (rows - 1) * gap) / rows
@@ -557,6 +563,149 @@ end
 
 local function Command(cmd) return function() Spring.SendCommands(cmd); Close() end end
 
+--------------------------------------------------------------------------------
+-- SHARE: send metal, energy or the selected units to an ally
+--------------------------------------------------------------------------------
+local function AllyTeams()
+	local out = {}
+	local me, myAlly = Spring.GetMyTeamID(), Spring.GetMyAllyTeamID()
+	for _, id in ipairs(Spring.GetTeamList(myAlly) or {}) do
+		if id ~= me then
+			local _, _, dead = Spring.GetTeamInfo(id, false)
+			if not dead then out[#out + 1] = id end
+		end
+	end
+	return out
+end
+
+local function TeamLabel(id)
+	local t = Stats.teams and Stats.teams[id]
+	if t and t.name then return t.name end
+	local _, leader = Spring.GetTeamInfo(id, false)
+	local pname = leader and leader >= 0 and Spring.GetPlayerInfo(leader, false)
+	return (pname and pname ~= "") and pname or ("Team " .. id)
+end
+
+-- a draggable knob: the fraction of what you have in store
+local function ShareKnob(x1, y, x2, key, color)
+	local trackY = y + sc(8)
+	D.Rect(x1, trackY - sc(2), x2, trackY + sc(2), C.line, 1)
+	local f = st.share[key]
+	D.Rect(x1, trackY - sc(2), x1 + (x2 - x1) * f, trackY + sc(2), color, 0.9)
+	local kx = x1 + (x2 - x1) * f
+	D.Disc(kx, trackY, sc(7), color, 1)
+	local function Set(x) st.share[key] = max(0, min(1, (x - x1) / (x2 - x1))) end
+	D.Region(x1 - sc(8), y - sc(4), x2 + sc(8), y + sc(20), { click = function(x) Set(x) end, drag = function(x) Set(x) end, tip = "Drag the knob, or click on the bar" })
+end
+
+local function ShareResourceRow(x1, y, x2, key, label, color)
+	local me = Spring.GetMyTeamID()
+	local cur = Spring.GetTeamResources(me, key) or 0
+	local amount = floor(cur * st.share[key] + 0.5)
+	D.Text(label, x1, y + sc(26), sc(11), "o", color)
+	D.Mono(string.format("%d of %d", amount, floor(cur)), x2, y + sc(26), sc(11), "or", C.text)
+	ShareKnob(x1 + sc(4), y + sc(2), x2 - sc(4), key, color)
+	local bw = (x2 - x1 - sc(4) * 5 - sc(70)) / 4
+	local bx = x1
+	for _, p in ipairs({ 0.1, 0.25, 0.5, 1 }) do
+		D.Button(bx, y - sc(26), bx + bw, y - sc(6), p == 1 and "ALL" or (floor(p * 100) .. "%"), { size = sc(8), active = abs(st.share[key] - p) < 0.005, color = color, click = function() st.share[key] = p; Snd("ui_click") end })
+		bx = bx + bw + sc(4)
+	end
+	local target = st.shareTeam
+	D.Button(x2 - sc(70), y - sc(26), x2, y - sc(6), "SEND", { color = C.good, size = sc(9), tip = target and ("Send " .. amount .. " " .. key .. " to " .. TeamLabel(target)) or "Pick a player first",
+		click = function()
+			if not target then Spring.Echo("[VB] share: pick a player first") return end
+			if Spring.GetSpectatingState() then return end
+			local have = Spring.GetTeamResources(me, key) or 0
+			local give = min(floor(have * st.share[key] + 0.5), floor(have))
+			if give <= 0 then Spring.Echo("[VB] share: nothing to send") return end
+			Spring.ShareResources(target, key, give)
+			Spring.Echo(string.format("[VB] Sent %d %s to %s", give, key, TeamLabel(target)))
+			Snd("ui_click")
+		end })
+end
+
+local function TabShare(x1, y1, x2, y2, ctx)
+	local gap = sc(8)
+	local w3 = (x2 - x1 - gap * 2) / 3
+	local allies = AllyTeams()
+	if st.shareTeam then
+		local ok = false
+		for _, id in ipairs(allies) do if id == st.shareTeam then ok = true end end
+		if not ok then st.shareTeam = nil end
+	end
+	if not st.shareTeam and #allies > 0 then st.shareTeam = allies[1] end
+
+	-- who gets it
+	local px1, py1, px2, py2 = D.Panel(x1, y1, x1 + w3, y2, "SEND TO")
+	local y = py2 - sc(28)
+	if Spring.GetSpectatingState() then
+		TextBlock(px1 + sc(6), py2, px2 - px1 - sc(12), "Spectators have nothing to share.", sc(10), C.dim)
+	elseif #allies == 0 then
+		TextBlock(px1 + sc(6), py2, px2 - px1 - sc(12), "You have no living allies. Resources and units can only be shared inside your alliance.", sc(10), C.dim)
+	end
+	for _, id in ipairs(allies) do
+		if y < py1 then break end
+		local r, g, b = Spring.GetTeamColor(id)
+		D.Rect(px1 + sc(6), y + sc(4), px1 + sc(12), y + sc(18), { r or 1, g or 1, b or 1 }, 1)
+		D.Button(px1 + sc(16), y, px2 - sc(6), y + sc(22), TeamLabel(id), { active = st.shareTeam == id, click = function() st.shareTeam = id; Snd("ui_click") end })
+		y = y - sc(28)
+	end
+
+	-- metal and energy
+	local rx1, ry1, rx2, ry2 = D.Panel(x1 + w3 + gap, y1, x1 + 2 * w3 + gap, y2, "METAL AND ENERGY")
+	local target = st.shareTeam
+	D.Text(target and ("to  " .. TeamLabel(target)) or "to  nobody yet", rx1 + sc(6), ry2 - sc(18), sc(10), "o", C.dim)
+	ShareResourceRow(rx1 + sc(6), ry2 - sc(86), rx2 - sc(6), "metal", "METAL", C.good)
+	ShareResourceRow(rx1 + sc(6), ry2 - sc(176), rx2 - sc(6), "energy", "ENERGY", C.warn)
+
+	-- units
+	local ux1, uy1, ux2, uy2 = D.Panel(x1 + 2 * w3 + 2 * gap, y1, x2, y2, "UNITS")
+	local sel = Spring.GetSelectedUnits() or {}
+	D.Text("to  " .. (target and TeamLabel(target) or "nobody yet"), ux1 + sc(6), uy2 - sc(18), sc(10), "o", C.dim)
+	D.Mono(#sel .. " selected", ux1 + sc(6), uy2 - sc(44), sc(14), "o", C.text)
+	D.Button(ux1 + sc(6), uy2 - sc(86), ux2 - sc(6), uy2 - sc(58), "SEND SELECTED UNITS", { color = C.good, tip = "Gives the units you have selected to the chosen player",
+		click = function()
+			if not target then Spring.Echo("[VB] share: pick a player first") return end
+			if #sel == 0 then Spring.Echo("[VB] share: select some units first, then open this page") return end
+			if Spring.GetSpectatingState() then return end
+			Spring.ShareResources(target, "units")
+			Spring.Echo(string.format("[VB] Sent %d units to %s", #sel, TeamLabel(target)))
+			Snd("ui_click")
+		end })
+	TextBlock(ux1 + sc(6), uy2 - sc(96), ux2 - ux1 - sc(12), "Select the units in the game first, then click SHARE in the top menu bar. Your commander can be given away too, so be careful.", sc(9), C.faint)
+end
+
+-- GRAPHICS: resolution and quality (the logic is in vb_graphics.lua, the quality is an FPS-OPS preset)
+local function GraphicsPanel(x1, y1, x2, y2)
+	local ax1, ay1, ax2, ay2 = D.Panel(x1, y1, x2, y2, "GRAPHICS")
+	local G = WG and WG.VBGraphics
+	if not G then
+		TextBlock(ax1 + sc(6), ay2 - sc(4), ax2 - ax1 - sc(12), "The graphics widget (vb_graphics.lua) is not running.", sc(9), C.faint)
+		return
+	end
+	local bw = min(sc(200), (ax2 - ax1) * 0.5)
+	local y = ay2 - sc(30)
+
+	local labels = {}
+	for i, r in ipairs(G.Resolutions()) do labels[i] = r.label end
+	D.Text("Resolution", ax1 + sc(6), y + sc(6), sc(10), "o", C.text)
+	D.Dropdown(ax2 - bw, y, ax2, y + sc(22), { id = "resolution", options = labels, selected = G.Resolution(),
+		text = "CUSTOM", onSelect = function(i) G.SetResolution(i); Snd("ui_click") end,
+		tip = { "Resizes the window; the HUD is stacked again", "in one column at the new size" } })
+	y = y - sc(34)
+
+	local names, tips = {}, {}
+	for i, q in ipairs(G.Qualities()) do names[i] = q.label; tips[i] = q.tip end
+	D.Text("Graphics quality", ax1 + sc(6), y + sc(6), sc(10), "o", C.text)
+	D.Dropdown(ax2 - bw, y, ax2, y + sc(22), { id = "quality", options = names, tips = tips, selected = G.Quality(),
+		text = "CUSTOM (FPS-OPS)", onSelect = function(i) G.SetQuality(i); Snd("ui_click") end,
+		tip = { "Lowest to ultra: turns settings down through FPS-OPS" } })
+	y = y - sc(36)
+
+	TextBlock(ax1 + sc(6), y + sc(14), ax2 - ax1 - sc(12), "Quality is the FPS-OPS optimiser: the lower, the more it turns down (icons, draw distances, particles, shadows, water, effects). Ultra leaves your engine settings as they are. /fpsops shows its panel and benchmark.", sc(9), C.faint)
+end
+
 local function TabSettings(x1, y1, x2, y2, ctx)
 	local gap = sc(8)
 	local w3 = (x2 - x1 - gap * 2) / 3
@@ -574,8 +723,10 @@ local function TabSettings(x1, y1, x2, y2, ctx)
 	D.Button(ax2 - sc(72), y, ax2, y + sc(20), "ECONOMY", { size = sc(8), active = st.hudRadar == 2, click = function() st.hudRadar = 2 end }); y = y - sc(40)
 	y = TextBlock(ax1 + sc(6), y + sc(14), ax2 - ax1 - sc(12), "Everything is saved with your other widget settings. /vbdash [open|close|hud|menu|tab <name>|scale <n>] does the same from the chat.", sc(9), C.faint)
 
-	-- the game
-	local bx1, by1, bx2, by2 = D.Panel(x1 + w3 + gap, y1, x1 + 2 * w3 + gap, y2, "THE GAME")
+	-- graphics (top of the middle column) and the game (below it)
+	local gh = sc(178)
+	GraphicsPanel(x1 + w3 + gap, y2 - gh, x1 + 2 * w3 + gap, y2)
+	local bx1, by1, bx2, by2 = D.Panel(x1 + w3 + gap, y1, x1 + 2 * w3 + gap, y2 - gh - gap, "THE GAME")
 	y = by2 - sc(34)
 	local function Row(label, cmd, tip)
 		D.Button(bx1 + sc(6), y, bx2 - sc(6), y + sc(24), label, { click = Command(cmd), tip = tip }); y = y - sc(32)
@@ -649,7 +800,7 @@ local function TabKeys(x1, y1, x2, y2, ctx)
 	KeyList(x1 + 2 * (w4 + gap), y1, x1 + 3 * w4 + 2 * gap, y2, "FACTORY SELECTED: QUEUE", K.factory or DEFAULT_KEYS.factory, KIND_NAMES)
 	local ix1, iy1, ix2, iy2 = D.Panel(x1 + 3 * (w4 + gap), y1, x2, y2, "EVERYTHING ELSE")
 	local rows = {
-		{ "Ctrl+B", "detonate the selected units" }, { "Ctrl+Shift+D", "statistics dashboard" }, { "Esc, 1-9", "close, switch page" },
+		{ "Ctrl+D", "detonate the selected units" }, { "Tab", "select your commander" }, { "Ctrl+Shift+D", "statistics dashboard" }, { "Esc, 1-9", "close, switch page" },
 		{ "Left / Right", "step through time" }, { "Home / End", "start / back to live" }, { "Mouse wheel", "zoom the time axis" },
 		{ "Enter", "start (before the game)" }, { "/vbsettings", "unit growth and splitting" }, { "/vbforge", "unit forge" },
 		{ "/vbconsole or ~", "dev console" }, { "/vbstats", "census of the selection" }, { "/vbranges", "sensor ranges" },
@@ -664,7 +815,7 @@ local function TabKeys(x1, y1, x2, y2, ctx)
 end
 
 local ABOUT = {
-	{ "VOIDBORN", "A 3D space RTS for the Spring / Recoil engine. Four factions of surreal alien monsters, one for each sense organ, fight over floating asteroids in deep space. Every mobile unit flies, each at its own altitude: a scout at 60 elmos and a heavy at 230 are in different places, and that decides fights.\n\nChoir of the Eye: pale, many-eyed cyclopes. Long-range lasers, fragile up close.\nMaw Swarm (the mouth): chitinous, toothed, many-legged. Short reach, tougher, regenerating and cheaper.\n\nTympan Conclave (the ear): floating ears, horns and drums. Waves of sound with wide splash; the more of them hit one target, the harder each hit lands. Radar on their units, short sight, and ears that blow a cloak.\n\nMiasma Bloom (the nose): drifting snouts and flowers. Slow and tough; every hit poisons and scents its target, so the Bloom sees what it has tasted. Their Censer sniffs out mushrooms faster." },
+	{ "VOIDBORN", "A 3D space RTS for the Spring / Recoil engine. Five factions of surreal alien monsters, one for each sense organ, fight over floating asteroids in deep space. Every mobile unit flies, each at its own altitude: a scout at 60 elmos and a heavy at 230 are in different places, and that decides fights.\n\nChoir of the Eye: pale, many-eyed cyclopes. Long-range lasers, fragile up close.\nMaw Swarm (the mouth): chitinous, toothed, many-legged. Short reach, tougher, regenerating and cheaper.\n\nTympan Conclave (the ear): floating ears, horns and drums. Waves of sound with wide splash; the more of them hit one target, the harder each hit lands. Radar on their units, short sight, and ears that blow a cloak.\n\nMiasma Bloom (the nose): drifting snouts and flowers. Slow and tough; every hit poisons and scents its target, so the Bloom sees what it has tasted. Their Censer sniffs out mushrooms faster.\n\nHaptic Grasp (the hand): hands and tentacles. The shortest sight and reach of all, but a Haptic weapon hits up to 75% harder the closer the enemy is. Its raiders are kamikazes: a Clutch that touches an enemy bursts and grips it, and a gripped enemy takes more from every Haptic weapon." },
 	{ "HOW A MATCH GOES", "Start with your commander. Put metal extractors on the metal spots, add energy, build a factory and fill it with builders and fighters. Defences, radar and storage support them.\n\nLose your commander and you lose the game (the host can switch that off). Fire the commander's super weapon by hand.\n\nMobile units gain experience, grow and split in two at 0.14: a veteran army becomes two armies." },
 	{ "BUILD YOUR OWN UNITS", "The unit forge creates a new unit while the game runs: pick a base unit, change its health, speed, range, damage, reload, sight and altitude, give it a new 3D body of boxes, spheres, cylinders and cones, and map a picture onto it.\n\nEvery custom unit is priced automatically: the stronger it is, the more metal and build time it costs. Open it with the [+] tile at the end of the build row or /vbforge." },
 	{ "STATISTICS AND THE LEADERBOARD", "The SCORE sums up a team: the value of everything it has alive + 1.5 x the enemy value it destroyed + 0.05 x the damage it dealt + 0.2 x the metal it produced - 0.25 x the value it lost.\n\nFog of war applies: you see your own side's numbers in full. A hidden enemy is scored only from the units you have actually seen (marked ~), and ? means you have not met it yet. Spectators and the end of the game show everything." },
@@ -696,7 +847,7 @@ local function DrawMenu(ctx)
 	menuRect = nil
 	if not st.menu then return end
 	local h = sc(24)
-	local items = { { "STATS", "overview" }, { "SETTINGS", "settings" }, { "KEYS", "keys" }, { "ABOUT", "about" }, { "RESIGN", "resign" } }
+	local items = { { "STATS", "overview" }, { "SHARE", "share" }, { "SETTINGS", "settings" }, { "KEYS", "keys" }, { "ABOUT", "about" }, { "RESIGN", "resign" } }
 	local info = string.format("%d PLAYERS", counts[1]) .. (counts[1] ~= counts[4] and string.format("  -  %d ALIVE", counts[4]) or "")
 	local w = sc(14) * 2
 	for _, it in ipairs(items) do w = w + D.W(it[1], sc(10)) + sc(24) + sc(3) end
@@ -719,17 +870,29 @@ local function DrawMenu(ctx)
 		if it[1] == "STATS" then
 			tip = "Statistics dashboard (Ctrl+Shift+D)"
 		elseif it[1] == "RESIGN" then
-			tip = "Resign from the match"
+			tip = (st.resignArmed and os.clock() - st.resignArmed < 4) and "Click again to resign now" or "Resign from the match (asks for a second click)"
 		else
 			tip = nil
 		end
 		local click
 		if it[1] == "RESIGN" then
-			click = function() Spring.SendCommands("resign"); Close() end
+			click = function()
+				if Spring.GetSpectatingState() then Spring.Echo("[VB] you are already a spectator") return end
+				if st.resignArmed and os.clock() - st.resignArmed < 4 then
+					st.resignArmed = nil
+					-- the engine has no "resign" command: becoming a spectator is how a player resigns
+					Spring.SendCommands("spectator")
+					Close()
+				else
+					st.resignArmed = os.clock()
+					Spring.Echo("[VB] Click RESIGN again within 4 seconds to resign")
+				end
+			end
 		else
 			click = function() Open(it[2]) end
 		end
-		D.Button(x, y1 + sc(3), x + bw, y2 - sc(3), it[1], { click = click, tip = tip })
+		local armed = it[1] == "RESIGN" and st.resignArmed and os.clock() - st.resignArmed < 4
+		D.Button(x, y1 + sc(3), x + bw, y2 - sc(3), armed and "SURE?" or it[1], { click = click, tip = tip, active = armed and true or false, color = armed and C.bad or nil })
 		x = x + bw + sc(3)
 	end
 	local rank
@@ -854,7 +1017,7 @@ local function DrawDashboard(ctx)
 	for k, tab in ipairs(TABS) do
 		if k == FIRST_MENU_TAB then tx = tx + sc(14); D.VLine(tx - sc(9), P[4] - topH + sc(10), P[4] - sc(10), C.line, 1) end
 		local w = D.W(tab[2], sc(10)) + sc(24)
-		D.Button(tx, P[4] - topH + sc(8), tx + w, P[4] - sc(8), tab[2], { active = st.tab == tab[1], click = function() SetTab(tab[1]) end, tip = "Key " .. k })
+		D.Button(tx, P[4] - topH + sc(8), tx + w, P[4] - sc(8), tab[2], { active = st.tab == tab[1], click = function() SetTab(tab[1]) end, tip = k <= 9 and ("Key " .. k) or nil })
 		tx = tx + w + sc(3)
 	end
 	D.Button(P[3] - sc(40), P[4] - topH + sc(8), P[3] - sc(8), P[4] - sc(8), "X", { color = C.bad, click = Close, tip = "Close (Esc)" })
@@ -898,6 +1061,7 @@ local function DrawDashboard(ctx)
 	elseif tab == "economy" then TabEconomy(mx1, my1, mx2, my2, ctx)
 	elseif tab == "combat" then TabCombat(mx1, my1, mx2, my2, ctx)
 	elseif tab == "army" then TabArmy(mx1, my1, mx2, my2, ctx)
+	elseif tab == "share" then TabShare(mx1, my1, mx2, my2, ctx)
 	elseif tab == "settings" then TabSettings(mx1, my1, mx2, my2, ctx)
 	elseif tab == "keys" then TabKeys(mx1, my1, mx2, my2, ctx)
 	elseif tab == "about" then TabAbout(mx1, my1, mx2, my2, ctx)
@@ -944,7 +1108,7 @@ local function DrawHud(ctx)
 	D.Text("STATS", x1 + sc(12), y2 - head + sc(8), sc(10), "o", C.dim)
 	D.Mono(counts[1] .. " PLAYERS  " .. Stats.Time(ctx.last), x1 + sc(60), y2 - head + sc(7), sc(10), "o", C.faint)
 	D.Region(x1, y2 - head, x2 - sc(100), y2, { tip = "Drag to move",
-		click = function(x, y) dragging = { x - st.hudX, y - st.hudTop }; return true end,
+		click = function(x, y) UserTookOver(); dragging = { x - st.hudX, y - st.hudTop }; return true end,
 		drag = function(x, y) if dragging then st.hudX, st.hudTop = x - dragging[1], y - dragging[2] end end })
 	local bx = x2 - sc(4)
 	local function HeadButton(label, w, fn, tip, color)
@@ -1051,6 +1215,21 @@ end
 
 function widget:ViewResize(w, h) vsx, vsy = w, h end
 
+-- Default layout (vb_layout.lua): it places the HUD (bottom left corner) and picks the scale that gives it the
+-- column width. Dragging the HUD by hand hands the layout back to the player.
+WG.VBDashboardHud = {
+	Box = function()
+		if st.open or not hudRect then return nil end
+		return hudRect[1], hudRect[2], hudRect[3] - hudRect[1], hudRect[4] - hudRect[2]
+	end,
+	Place = function(x, y, w)
+		local base = max(0.7, min(1.6, vsy / 1080))                  -- D.S without the player's scale; the HUD is 380 wide
+		st.scale = max(0.6, min(2.0, w / (380 * base)))
+		local h = hudRect and (hudRect[4] - hudRect[2]) or 0
+		st.hudX, st.hudTop = x, y + h
+	end,
+}
+
 function widget:Update(dt)
 	refreshTimer = refreshTimer + dt
 	if refreshTimer > 4 then refreshTimer = 0; Stats.Refresh() end
@@ -1144,8 +1323,8 @@ function widget:KeyPress(key, mods, isRepeat)
 		return true
 	end
 	if not st.open then return false end
-	if key == 27 then Close(); return true end                                       -- Esc
-	if key >= 49 and key <= 48 + #TABS then SetTab(TABS[key - 48][1]); return true end
+	if key == 27 then if D.dd then D.dd = nil else Close() end; return true end      -- Esc (an open dropdown first)
+	if key >= 49 and key <= 48 + math.min(9, #TABS) then SetTab(TABS[key - 48][1]); return true end
 	if key == 276 or key == 1073741904 then StepCursor(-1); return true end          -- left
 	if key == 275 or key == 1073741903 then StepCursor(1); return true end           -- right
 	if key == 278 or key == 1073741898 then st.cursor = 0; return true end           -- home
@@ -1164,7 +1343,7 @@ function widget:TextCommand(cmd)
 	elseif arg == "menu" then st.menu = not st.menu
 	elseif arg == "tab" then for _, t in ipairs(TABS) do if t[1] == val:lower() then Open(t[1]) end end
 	elseif arg == "scale" then st.scale = max(0.6, min(2.0, tonumber(val) or 1))
-	else Spring.Echo("[VB] /vbdash [open|close|hud|tab overview|graphs|economy|combat|army|report|scale 1.2]") end
+	else Spring.Echo("[VB] /vbdash [open|close|hud|tab overview|graphs|economy|combat|army|report|share|settings|scale 1.2]") end
 	return true
 end
 
@@ -1180,4 +1359,36 @@ function widget:SetConfigData(d)
 	if d.scale then st.scale = max(0.6, min(2.0, d.scale)) end
 	if d.hudRadar then st.hudRadar = d.hudRadar end
 	if d.window then st.window = d.window end
+end
+
+--------------------------------------------------------------------------------
+-- Panel Snap: lets gui_panel_snap.lua dock this panel (drag it near an edge and let go)
+--------------------------------------------------------------------------------
+local panelSnapSeen
+local function PanelSnapRegister()
+	local PL = WG.PanelLayout
+	if not PL or PL == panelSnapSeen then return end
+	panelSnapSeen = PL
+	PL.Register("vb_dashboard_hud", {
+		dock = "right", order = 10, fixedSize = true,
+		getRect = function()
+			if not hudRect then return nil end
+			return hudRect[1], hudRect[2], hudRect[3] - hudRect[1], hudRect[4] - hudRect[2]
+		end,
+		setRect = function(x, y, w, h) st.hudX, st.hudTop = x, y + h end,   -- hudX = left, hudTop = top
+		isVisible = function() return st.hud and not st.open and hudRect ~= nil end,
+	})
+end
+do
+	local prevUpdate = widget.Update
+	function widget:Update(...)
+		PanelSnapRegister()
+		if prevUpdate then return prevUpdate(self, ...) end
+	end
+	local prevShutdown = widget.Shutdown
+	function widget:Shutdown(...)
+		if WG.PanelLayout then WG.PanelLayout.Unregister("vb_dashboard_hud") end
+		WG.VBDashboardHud = nil
+		if prevShutdown then return prevShutdown(self, ...) end
+	end
 end

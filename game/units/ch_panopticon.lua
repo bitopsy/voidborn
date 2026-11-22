@@ -2,6 +2,7 @@
 return {
 	ch_panopticon = {
 		name = "Panopticon",
+	script = "ch_panopticon.lua",
 		description = "T2 Heavy - the all-seeing flagship; a hundred eyes and a halo that judges",
 		objectName = "ch_panopticon.s3o",
 		buildPic = "ch_panopticon.png",
@@ -62,10 +63,12 @@ return {
 		weapons = {
 			{
 				name = "ch_panopticon_w1",
+	script = "ch_panopticon.lua",
 				def = "ch_panopticon_w1",
 			},
 			{
 				name = "ch_panopticon_w2",
+	script = "ch_panopticon.lua",
 				def = "ch_panopticon_w2",
 			},
 		},

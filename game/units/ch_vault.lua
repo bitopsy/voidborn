@@ -2,6 +2,7 @@
 return {
 	ch_vault = {
 		name = "Tear Vault",
+	script = "ch_vault.lua",
 		description = "Storage - a glistening reservoir of metal and energy",
 		objectName = "ch_vault.s3o",
 		buildPic = "ch_vault.png",

@@ -2,6 +2,7 @@
 return {
 	mw_skitter = {
 		name = "Skitter",
+	script = "mw_skitter.lua",
 		description = "Scout - flitting clawed bug with a single big eye",
 		objectName = "mw_skitter.s3o",
 		buildPic = "mw_skitter.png",
@@ -61,6 +62,7 @@ return {
 		weapons = {
 			{
 				name = "mw_skitter_w1",
+	script = "mw_skitter.lua",
 				def = "mw_skitter_w1",
 			},
 		},

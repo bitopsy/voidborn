@@ -2,6 +2,7 @@
 return {
 	ch_weeper = {
 		name = "Weeper",
+	script = "ch_weeper.lua",
 		description = "Support - a drifting jelly-eye that mends allies with its tears",
 		objectName = "ch_weeper.s3o",
 		buildPic = "ch_weeper.png",

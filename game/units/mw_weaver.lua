@@ -2,6 +2,7 @@
 return {
 	mw_weaver = {
 		name = "Weaver",
+	script = "mw_weaver.lua",
 		description = "Builder - a spidery spinner that secretes structures from silk",
 		objectName = "mw_weaver.s3o",
 		buildPic = "mw_weaver.png",

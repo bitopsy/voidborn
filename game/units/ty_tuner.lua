@@ -2,6 +2,7 @@
 return {
 	ty_tuner = {
 		name = "Tuner",
+	script = "ty_tuner.lua",
 		description = "Builder - a floating ear whose cilia tune raw matter into form",
 		objectName = "ty_tuner.s3o",
 		buildPic = "ty_tuner.png",

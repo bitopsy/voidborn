@@ -2,6 +2,7 @@
 return {
 	mw_core = {
 		name = "Heartfire Egg",
+	script = "mw_core.lua",
 		description = "Advanced energy - a caged egg that burns like a star",
 		objectName = "mw_core.s3o",
 		buildPic = "mw_core.png",

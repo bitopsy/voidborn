@@ -2,6 +2,7 @@
 return {
 	ty_auditor = {
 		name = "Auditor",
+	script = "ty_auditor.lua",
 		description = "Ear Commander - hears every whisper in the void and answers with a note that breaks stone",
 		objectName = "ty_auditor.s3o",
 		buildPic = "ty_auditor.png",
@@ -89,14 +90,17 @@ return {
 		weapons = {
 			{
 				name = "ty_auditor_w1",
+	script = "ty_auditor.lua",
 				def = "ty_auditor_w1",
 			},
 			{
 				name = "ty_auditor_w2",
+	script = "ty_auditor.lua",
 				def = "ty_auditor_w2",
 			},
 			{
 				name = "ty_auditor_w3",
+	script = "ty_auditor.lua",
 				def = "ty_auditor_w3",
 			},
 		},

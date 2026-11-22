@@ -2,6 +2,7 @@
 return {
 	ch_lance = {
 		name = "Lidless Lance",
+	script = "ch_lance.lua",
 		description = "T2 Artillery - a coiled serpent whose beam reaches across half the rift",
 		objectName = "ch_lance.s3o",
 		buildPic = "ch_lance.png",
@@ -62,6 +63,7 @@ return {
 		weapons = {
 			{
 				name = "ch_lance_w1",
+	script = "ch_lance.lua",
 				def = "ch_lance_w1",
 			},
 		},

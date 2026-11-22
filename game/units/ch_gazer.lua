@@ -2,6 +2,7 @@
 return {
 	ch_gazer = {
 		name = "Gazer",
+	script = "ch_gazer.lua",
 		description = "Scout - fast flying eyeling with a pinprick laser",
 		objectName = "ch_gazer.s3o",
 		buildPic = "ch_gazer.png",
@@ -61,6 +62,7 @@ return {
 		weapons = {
 			{
 				name = "ch_gazer_w1",
+	script = "ch_gazer.lua",
 				def = "ch_gazer_w1",
 			},
 		},

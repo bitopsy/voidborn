@@ -2,6 +2,7 @@
 return {
 	mi_sneezer = {
 		name = "Sneezer",
+	script = "mi_sneezer.lua",
 		description = "Raider - a puffed bladder with a great twitching nose; one sneeze and everything nearby is sick",
 		objectName = "mi_sneezer.s3o",
 		buildPic = "mi_sneezer.png",
@@ -61,6 +62,7 @@ return {
 		weapons = {
 			{
 				name = "mi_sneezer_w1",
+	script = "mi_sneezer.lua",
 				def = "mi_sneezer_w1",
 			},
 		},

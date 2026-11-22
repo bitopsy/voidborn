@@ -2,6 +2,7 @@
 return {
 	ch_hierophant = {
 		name = "Hierophant",
+	script = "ch_hierophant.lua",
 		description = "Cyclopean Commander - builds, sees all, burns what it stares at",
 		objectName = "ch_hierophant.s3o",
 		buildPic = "ch_hierophant.png",
@@ -88,14 +89,17 @@ return {
 		weapons = {
 			{
 				name = "ch_hierophant_w1",
+	script = "ch_hierophant.lua",
 				def = "ch_hierophant_w1",
 			},
 			{
 				name = "ch_hierophant_w2",
+	script = "ch_hierophant.lua",
 				def = "ch_hierophant_w2",
 			},
 			{
 				name = "ch_hierophant_w3",
+	script = "ch_hierophant.lua",
 				def = "ch_hierophant_w3",
 			},
 		},

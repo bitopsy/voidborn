@@ -2,6 +2,7 @@
 return {
 	mi_stinkhorn = {
 		name = "Stinkhorn",
+	script = "mi_stinkhorn.lua",
 		description = "Artillery - an upswept trunk that lobs canisters of reek; the cloud outlasts the blast",
 		objectName = "mi_stinkhorn.s3o",
 		buildPic = "mi_stinkhorn.png",
@@ -61,6 +62,7 @@ return {
 		weapons = {
 			{
 				name = "mi_stinkhorn_w1",
+	script = "mi_stinkhorn.lua",
 				def = "mi_stinkhorn_w1",
 			},
 		},

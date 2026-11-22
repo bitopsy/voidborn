@@ -2,6 +2,7 @@
 return {
 	ty_echo = {
 		name = "Echo Chamber",
+	script = "ty_echo.lua",
 		description = "Factory - a bell of living flesh; whatever is spoken into it comes out as an army",
 		objectName = "ty_echo.s3o",
 		buildPic = "ty_echo.png",

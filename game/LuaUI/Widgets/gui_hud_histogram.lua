@@ -551,3 +551,30 @@ end
 function widget:MouseRelease(mx, my, btn)
     if btn==1 then dragging=false end
 end
+
+--------------------------------------------------------------------------------
+-- Panel Snap: lets gui_panel_snap.lua dock this panel (drag it near an edge and let go)
+--------------------------------------------------------------------------------
+local panelSnapSeen
+local function PanelSnapRegister()
+	local PL = WG.PanelLayout
+	if not PL or PL == panelSnapSeen then return end
+	panelSnapSeen = PL
+	PL.Register("gui_hud_histogram", {
+		dock = "bottom", order = 10, minW = 360, minH = 200, maxW = 900, maxH = 520,
+		getRect = function() return CFG.px, CFG.py, CFG.w, CFG.h end,
+		setRect = function(x, y, w, h) CFG.px, CFG.py, CFG.w, CFG.h = x, y, w, h end,   -- bottom-left corner + size
+	})
+end
+do
+	local prevUpdate = widget.Update
+	function widget:Update(...)
+		PanelSnapRegister()
+		if prevUpdate then return prevUpdate(self, ...) end
+	end
+	local prevShutdown = widget.Shutdown
+	function widget:Shutdown(...)
+		if WG.PanelLayout then WG.PanelLayout.Unregister("gui_hud_histogram") end
+		if prevShutdown then return prevShutdown(self, ...) end
+	end
+end

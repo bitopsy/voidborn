@@ -2,6 +2,7 @@
 return {
 	ty_foghorn = {
 		name = "Foghorn",
+	script = "ty_foghorn.lua",
 		description = "T2 Artillery - the longest horn in the rift; its note arrives long after the horn has sounded",
 		objectName = "ty_foghorn.s3o",
 		buildPic = "ty_foghorn.png",
@@ -62,6 +63,7 @@ return {
 		weapons = {
 			{
 				name = "ty_foghorn_w1",
+	script = "ty_foghorn.lua",
 				def = "ty_foghorn_w1",
 			},
 		},

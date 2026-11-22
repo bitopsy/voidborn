@@ -2,6 +2,7 @@
 return {
 	ch_watcher = {
 		name = "Watcher",
+	script = "ch_watcher.lua",
 		description = "Radar - a tall stalk with a far-seeing eye",
 		objectName = "ch_watcher.s3o",
 		buildPic = "ch_watcher.png",

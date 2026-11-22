@@ -2,6 +2,7 @@
 return {
 	mi_proboscis = {
 		name = "Proboscis",
+	script = "mi_proboscis.lua",
 		description = "Heavy - a mile of trunk and a ring of nostrils; the air around it is poison",
 		objectName = "mi_proboscis.s3o",
 		buildPic = "mi_proboscis.png",
@@ -61,10 +62,12 @@ return {
 		weapons = {
 			{
 				name = "mi_proboscis_w1",
+	script = "mi_proboscis.lua",
 				def = "mi_proboscis_w1",
 			},
 			{
 				name = "mi_proboscis_w2",
+	script = "mi_proboscis.lua",
 				def = "mi_proboscis_w2",
 			},
 		},

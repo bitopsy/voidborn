@@ -20,7 +20,6 @@ function widget:GetInfo()
     name      = "WidgetSelector",
     desc      = "Widget selection widget",
     author    = "goddot info@bitopsy.com",
-    date      = "Jan 8, 2007",
     license   = "GNU GPL, v2 or later",
     layer     = -9,
     handler   = true, --  needs the real widgetHandler
@@ -96,8 +95,11 @@ local scrollbargrabpos = 0.0
 
 -------------------------------------------------------------------------------
 
+local selectorOpen = false          -- true only while the selector is loaded/active (F11 open)
+
 function widget:Initialize()
   widgetHandler.knownChanged = true
+  selectorOpen = true
   Spring.Echo("[VB] WidgetSelector loaded (categories, size, memory histogram + ASCII memory-over-time, error column)")
 end
 
@@ -240,7 +242,7 @@ end
 
 -- Draw the memory-over-time graph (dotted lines) in the bottom-right corner.
 local function DrawMemGraph()
-  if (memHistFill < 2) then return end
+  if (not selectorOpen or memHistFill < 1) then return end
   local w, h = 240, 96
   local x1 = vsx - w - 16
   local y1 = 26
@@ -722,6 +724,11 @@ local function UpdateList()
 end
 
 
+function widget:Shutdown()
+  selectorOpen = false
+end
+
+
 function widget:ViewResize(viewSizeX, viewSizeY)
   vsx = viewSizeX
   vsy = viewSizeY
@@ -732,18 +739,30 @@ end
 
 -------------------------------------------------------------------------------
 
+local KEY_ESC = Spring.GetKeyCode("esc")
+local KEY_F11 = Spring.GetKeyCode("f11")
+local KEY_PGUP = Spring.GetKeyCode("pageup")
+local KEY_PGDN = Spring.GetKeyCode("pagedown")
+
 function widget:KeyPress(key, mods, isRepeat)
-  if ((key == KEYSYMS.ESCAPE) or
-      ((key == KEYSYMS.F11) and not isRepeat and
-       not (mods.alt or mods.ctrl or mods.meta or mods.shift))) then
+  if key == KEY_ESC then
     widgetHandler:RemoveWidget(self)
     return true
   end
-  if (key == KEYSYMS.PAGEUP) then
+  if (key == KEY_F11) and not (mods.alt or mods.ctrl or mods.meta or mods.shift) then
+    -- This widget (selector table + memory graph) only exists while the selector is open.
+    -- F11 while it is open closes it; F11 while it is closed is handled by the engine
+    -- ("luaui selector"), which loads it again. Swallow repeats so holding F11 doesn't flicker.
+    if (not isRepeat) then
+      widgetHandler:RemoveWidget(self)
+    end
+    return true
+  end
+  if (key == KEY_PGUP) then
     ScrollUp(pageStep)
     return true
   end
-  if (key == KEYSYMS.PAGEDOWN) then
+  if (key == KEY_PGDN) then
     ScrollDown(pageStep)
     return true
   end
@@ -753,7 +772,7 @@ end
 
 function widget:DrawScreen()
   UpdateList()
-  RefreshMemory()
+  RefreshMemory(memHistFill == 0)
   UpdateGeometry()
 
   local mx,my,lmb,mmb,rmb = Spring.GetMouseState()

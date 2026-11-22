@@ -1,5 +1,5 @@
 function widget:GetInfo()
-	return { name = "Voidborn Sounds", desc = "Game-event sounds and announcements: start, construction, unit ready, commander alarm / lost, cloak, tier 2, low resources, victory / defeat, ambience (/vbsound)",
+	return { name = "Voidborn Sounds", desc = "Game-event sounds and announcements: start, construction, unit ready, commander alarm / lost, cloak, tier 2 / tier 3, low resources, victory / defeat, ambience (/vbsound)",
 		author = "goddot info@bitopsy.com", date = "2026", license = "GPL", layer = 0, enabled = true }
 end
 
@@ -33,7 +33,9 @@ function widget:UnitFinished(unitID, unitDefID, unitTeam)
 	if not Mine(unitTeam) then return end
 	if Spring.GetGameFrame() < 5 then return end   -- starting units
 	local cp = UnitDefs[unitDefID] and UnitDefs[unitDefID].customParams
-	if cp and cp.kind == "fac2" then Play("tier2_ready", 0.9) return end   -- the factory upgrade is done
+	if cp and cp.kind == "fac3" then Play("tier3_ready", 0.95) return end                     -- the Tier 3 upgrade is done
+	if cp and cp.kind == "fac2" then Play("tier2_ready", 0.9) return end                      -- the Tier 2 upgrade is done
+	if cp and cp.kind == "heavy3" then Play("t3_unit_ready", 0.95) return end                 -- a Tier 3 heavy is ready
 	Play(Mobile(UnitDefs[unitDefID]) and "unit_ready" or "struct_done", 0.75)
 end
 

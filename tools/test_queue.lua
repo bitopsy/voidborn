@@ -1,11 +1,14 @@
 -- Mock-engine test of LuaRules/Gadgets/vb_dev_queue.lua.  Run:  python3 tools/test_queue.py
 -- Globals GADGET and HDR (paths) are set by the runner.
 local res, created, rules, spawned, msgs = { metal = 1e6, energy = 1e6 }, {}, {}, {}, {}
-local alive = { [77] = true, [78] = true, [79] = true }
+local alive = { [77] = true, [78] = true, [79] = true, [80] = true, [81] = true }
+local defOf = { [80] = 4, [81] = 4 }          -- 80 and 81 are tier 2 labs, every other unit is the tier 1 hive
 local building = {}          -- unitID -> true while the unit is still under construction
 UnitDefs = { [1] = { id = 1, name = "mw_hive", buildOptions = { 2 }, canMove = false, isFactory = true, metalCost = 400, energyCost = 0, buildTime = 3000, health = 100 },
              [2] = { id = 2, name = "mw_gnasher", canMove = true, metalCost = 52, energyCost = 208, buildTime = 468, health = 100, losRadius = 100 },
-             [3] = { id = 3, name = "mw_leviathan", canMove = true, metalCost = 900, energyCost = 0, buildTime = 9000, health = 100 } }
+             [3] = { id = 3, name = "mw_leviathan", canMove = true, metalCost = 900, energyCost = 0, buildTime = 9000, health = 100 },
+             [4] = { id = 4, name = "mw_hive2", buildOptions = { 2, 3 }, canMove = false, isFactory = true, metalCost = 2400, energyCost = 0, buildTime = 3000, health = 100,
+                     customParams = { tier = "2" } } }
 UnitDefNames = { mw_hive = UnitDefs[1], mw_gnasher = UnitDefs[2], mw_leviathan = UnitDefs[3] }
 Game = { mapSizeX = 8192, mapSizeZ = 8192 }
 CMD = { MOVE = 10 }
@@ -18,7 +21,7 @@ Spring = {
 	UseTeamResource = function(_, r, a) res[r] = res[r] - a end, AddTeamResource = function(_, r, a) res[r] = res[r] + a end,
 	ValidUnitID = function(id) return alive[id] end, GetUnitTeam = function() return 0 end,
 	GetUnitPosition = function() return 1000, 0, 1000 end, GetUnitRadius = function() return 40 end,
-	GetUnitDefID = function() return 1 end, GetGroundHeight = function() return 0 end,
+	GetUnitDefID = function(id) return defOf[id] or 1 end, GetGroundHeight = function() return 0 end,
 	CreateUnit = function(d) created[#created + 1] = d; return #created end,
 	GiveOrderToUnit = function() end, GetTeamStartPosition = function() return 500, 0, 500 end,
 	SendMessageToPlayer = function(_, m) msgs[#msgs + 1] = m end, Echo = function() end,
@@ -84,6 +87,21 @@ check("forge design spawned", #spawned == n0 + 1)
 check("  ... in a few seconds, not minutes", frame < 30 * 80, frame / 30 .. " s total")
 check("  ... lua= removed for a normal player", sp and sp.lua == nil)
 check("  ... spawn position set (not map centre)", sp and sp.x and math.abs(sp.x - 4096) > 100, sp and sp.x)
+
+-- 6b. every lab has its own line: designs go to a TIER 2 lab and each such lab keeps its own queue; a design named
+--     for a tier 1 lab falls back to the team line; clearing a design without naming a lab clears every line
+local function lineOf(id, lab) return (rules.vbq or ""):find(id .. "|%d+|%d+|%a|" .. lab .. "[;$]") or (rules.vbq or ""):find(id .. "|%d+|%d+|%a|" .. lab .. "$") end
+add(1, '{["base"]="mw_gnasher",["fac"]=80,["id"]="dA"}')
+add(2, '{["base"]="mw_gnasher",["fac"]=81,["id"]="dA"}')
+check("a design queued at T2 lab 80 has line 80", lineOf("dA", 80) ~= nil, rules.vbq)
+check("the same design at T2 lab 81 is a separate entry with line 81", lineOf("dA", 81) ~= nil, rules.vbq)
+add(1, '{["base"]="mw_gnasher",["fac"]=77,["id"]="dB"}')
+check("a design named for a tier 1 lab uses the team line (0)", lineOf("dB", 0) ~= nil, rules.vbq)
+g:RecvLuaMsg("vbq:rem:1:dA@81", 0); run(1)
+check("removing one unit at lab 81 leaves lab 80 alone", lineOf("dA", 80) ~= nil and (rules.vbq or ""):find("dA|1|%d+|%a|81") ~= nil, rules.vbq)
+g:RecvLuaMsg("vbq:clear:1:dA", 0); run(1)
+check("clearing a design without a lab clears it on every line", (rules.vbq or ""):find("dA") == nil and (rules.vbq or ""):find("dB") ~= nil, rules.vbq)
+g:RecvLuaMsg("vbq:clear:1:dB", 0); run(1)
 
 -- 7. modoption off: forge designs refused
 forgeOn = false

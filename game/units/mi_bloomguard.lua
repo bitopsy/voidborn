@@ -2,6 +2,7 @@
 return {
 	mi_bloomguard = {
 		name = "Bloomguard",
+	script = "mi_bloomguard.lua",
 		description = "T2 Assault - an armoured flower knight; heavy fume shells and a pod of spore-missiles",
 		objectName = "mi_bloomguard.s3o",
 		buildPic = "mi_bloomguard.png",
@@ -62,10 +63,12 @@ return {
 		weapons = {
 			{
 				name = "mi_bloomguard_w1",
+	script = "mi_bloomguard.lua",
 				def = "mi_bloomguard_w1",
 			},
 			{
 				name = "mi_bloomguard_w2",
+	script = "mi_bloomguard.lua",
 				def = "mi_bloomguard_w2",
 			},
 		},

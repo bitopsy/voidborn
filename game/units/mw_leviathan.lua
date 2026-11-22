@@ -2,6 +2,7 @@
 return {
 	mw_leviathan = {
 		name = "Leviathan",
+	script = "mw_leviathan.lua",
 		description = "Heavy - a mile of teeth swimming through vacuum",
 		objectName = "mw_leviathan.s3o",
 		buildPic = "mw_leviathan.png",
@@ -61,10 +62,12 @@ return {
 		weapons = {
 			{
 				name = "mw_leviathan_w1",
+	script = "mw_leviathan.lua",
 				def = "mw_leviathan_w1",
 			},
 			{
 				name = "mw_leviathan_w2",
+	script = "mw_leviathan.lua",
 				def = "mw_leviathan_w2",
 			},
 		},

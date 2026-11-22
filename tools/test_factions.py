@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""0.16: checks the four factions (choir, maw, tympan, miasma) and the three gadgets that make the two new ones play differently.
+"""0.17: checks the five factions (choir, maw, tympan, miasma, haptic) and the gadgets that make the three newest play differently.
 
 Data:      every faction has the same 22 roles, every unit has its model / script / picture / sounds, build lists resolve and stay inside
            the faction, commanders have D-gun and Q-gun, the weapon tags that the gadgets read are where they belong, the sides exist.
@@ -33,7 +33,7 @@ def py(t):
     return {k: py(t[k]) for k in keys}
 
 # ------------------------------------------------------------------------------------------------ data
-FACS = ["choir", "maw", "tympan", "miasma"]
+FACS = ["choir", "maw", "tympan", "miasma", "haptic"]
 ROLES = {"com", "con", "scout", "raider", "assault", "art", "support", "heavy", "fac", "mex", "solar", "heart", "store", "radar", "def1", "def2",
          "fac2", "raider2", "assault2", "art2", "support2", "heavy2"}
 units = {}
@@ -47,7 +47,7 @@ by_fac = {}
 for n, d in units.items():
     by_fac.setdefault(d["customParams"]["faction"], {})[n] = d
 
-check("four factions are defined", set(by_fac) == set(FACS), ", ".join(sorted(by_fac)))
+check("five factions are defined", set(by_fac) == set(FACS), ", ".join(sorted(by_fac)))
 for fac in FACS:
     kinds = {d["customParams"]["kind"] for d in by_fac[fac].values()}
     check(f"{fac}: has all 22 roles", ROLES <= kinds, ", ".join(sorted(ROLES - kinds)))
@@ -55,9 +55,9 @@ for fac in FACS:
         n = [u for u, d in by_fac[fac].items() if d["customParams"]["kind"] == k]
         check(f"{fac}: exactly one {k}", len(n) == 1, ", ".join(n))
 
-pre = {"tympan": "ty_", "miasma": "mi_"}
+pre = {"tympan": "ty_", "miasma": "mi_", "haptic": "ha_"}
 bad = []
-for fac in ("tympan", "miasma"):
+for fac in ("tympan", "miasma", "haptic"):
     for n, d in by_fac[fac].items():
         if not n.startswith(pre[fac]): bad.append(f"{n} has the wrong prefix")
         if not os.path.isfile(os.path.join(game, "objects3d", d["objectName"])): bad.append(f"{n}: model {d['objectName']} missing")
@@ -70,7 +70,7 @@ for fac in ("tympan", "miasma"):
             if w["def"] not in weapons: bad.append(f"{n}: weapon {w['def']} undefined")
         s = d.get("sounds") or {}
         if not s.get("select"): bad.append(f"{n}: no select sound")
-check("every Tympan and Miasma unit: model, script, picture, build list and weapons resolve", not bad, "; ".join(bad[:4]))
+check("every Tympan, Miasma and Haptic unit: model, script, picture, build list and weapons resolve", not bad, "; ".join(bad[:4]))
 
 # the s3o piece names must cover every piece the script names
 def s3o_pieces(path):
@@ -84,7 +84,7 @@ def s3o_pieces(path):
     walk(root_off)
     return names
 bad = []
-for fac in ("tympan", "miasma"):
+for fac in ("tympan", "miasma", "haptic"):
     for n, d in by_fac[fac].items():
         pieces = s3o_pieces(os.path.join(game, "objects3d", d["objectName"]))
         src = open(os.path.join(game, "scripts", n + ".lua"), encoding="utf-8").read()
@@ -96,13 +96,13 @@ check("every piece a Tympan / Miasma script names exists in its model", not bad,
 # sounds referenced by the new units / weapons exist in sounds.lua and as files
 items = py(lua_table(open(os.path.join(game, "gamedata", "sounds.lua"), encoding="utf-8").read()))["SoundItems"]
 miss = []
-for fac in ("tympan", "miasma"):
+for fac in ("tympan", "miasma", "haptic"):
     for n, d in by_fac[fac].items():
         for lst in (d.get("sounds") or {}).values():
             for s in (lst if isinstance(lst, list) else [lst]):
                 if s not in items: miss.append(f"{n}:{s}")
 for k, w in weapons.items():
-    if k.startswith(("ty_", "mi_")):
+    if k.startswith(("ty_", "mi_", "ha_")):
         for f in ("soundStart", "soundHit"):
             if w.get(f) and w[f] not in items: miss.append(f"{k}:{w[f]}")
 for k, it in items.items():
@@ -110,21 +110,21 @@ for k, it in items.items():
     if f and not os.path.isfile(os.path.join(game, f)): miss.append(f"file {f}")
 check("all sounds of the new factions are defined and their files exist", not miss, "; ".join(miss[:4]))
 
-for fac, cm in (("tympan", "ty_auditor"), ("miasma", "mi_rhinarch")):
+for fac, cm in (("tympan", "ty_auditor"), ("miasma", "mi_rhinarch"), ("haptic", "ha_manus")):
     ws = [w["def"] for w in units[cm]["weapons"]]
     check(f"{cm}: three weapons (gun, D-gun, Q-gun)", [weapons[w]["weaponType"] for w in ws] == ["Cannon", "DGun", "Cannon"] and weapons[ws[2]].get("paralyzer") is True)
 sides = py(lua_table(open(os.path.join(game, "gamedata", "sidedata.lua")).read()))
-for cm in ("ch_hierophant", "mw_matriarch", "ty_auditor", "mi_rhinarch"):
+for cm in ("ch_hierophant", "mw_matriarch", "ty_auditor", "mi_rhinarch", "ha_manus"):
     ws = [weapons[w["def"]] for w in units[cm]["weapons"]]
     check(f"{cm}: D-gun and Q-gun are commandFire + noAutoTarget, the main gun is neither",
           all(w.get("commandFire") is True and w.get("noAutoTarget") is True for w in ws[1:]) and not ws[0].get("commandFire") and not ws[0].get("noAutoTarget"))
-for cm in ("ch_hierophant", "mw_matriarch", "ty_auditor", "mi_rhinarch"):
+for cm in ("ch_hierophant", "mw_matriarch", "ty_auditor", "mi_rhinarch", "ha_manus"):
     src = open(os.path.join(game, "scripts", cm + ".lua"), encoding="utf-8").read()
     def body(n):
         a = src.index(f"function script.AimWeapon{n}("); b = src.index(f"function script.AimFromWeapon{n}", a); return src[a:b]
     check(f"{cm}: the script never reports the D-gun or the Q-gun as aimed (the engine cannot fire them on an attack order)",
           "return true" in body(1) and "return false" in body(2) and "return false" in body(3) and "return true" not in body(2) + body(3) and "Turn(" not in body(2) + body(3))
-check("sidedata: four sides, start units exist", len(sides) == 4 and all(s["startunit"] in units for s in sides), ", ".join(s["name"] for s in sides))
+check("sidedata: five sides, start units exist", len(sides) == 5 and all(s["startunit"] in units for s in sides), ", ".join(s["name"] for s in sides))
 
 res = [k for k, w in weapons.items() if (w.get("customParams") or {}).get("vb_resonance")]
 poi = [k for k, w in weapons.items() if (w.get("customParams") or {}).get("vb_poison_dps")]
@@ -134,11 +134,29 @@ check("poison tags only on Miasma weapons, and on every Miasma gun except D / Q"
       all(((w.get("customParams") or {}).get("vb_poison_dps")) for k, w in weapons.items() if k.startswith("mi_") and w["weaponType"] not in ("DGun",) and not w.get("paralyzer")), f"{len(poi)} weapons")
 check("Tympan units carry radar and ears", units["ty_whisper"]["radarDistance"] >= 1000 and units["ty_whisper"]["customParams"].get("hear") and units["ty_pinnamast"]["radarDistance"] > 2300)
 check("mobile Miasma units have no radar", all(not d.get("radarDistance") for n, d in by_fac["miasma"].items() if d["customParams"]["kind"] not in ("radar",)))
+# Haptic: short sight, no radar on units, short radar structure, kamikaze raiders, touch tag on every gun but D / Q
+hp = by_fac["haptic"]
+others = [d["sightDistance"] for f in ("choir", "maw", "tympan", "miasma") for n, d in by_fac[f].items() if d["customParams"]["kind"] not in ("com",) and "weapons" in d and d["customParams"]["kind"] in ("scout", "raider", "assault", "art", "heavy")]
+mine = [d["sightDistance"] for n, d in hp.items() if d["customParams"]["kind"] in ("scout", "raider", "assault", "art", "heavy")]
+check("haptic: the mobile fighters see less far than the average of the other factions", sum(mine) / len(mine) < 0.7 * sum(others) / len(others), f"{sum(mine)/len(mine):.0f} vs {sum(others)/len(others):.0f}")
+check("haptic: no radar on any unit, and the radar structure reaches less far than the others'", all(not d.get("radarDistance") for n, d in hp.items() if d["customParams"]["kind"] != "radar") and hp["ha_vibrissa"]["radarDistance"] <= 1200)
+reach = lambda f: max(weapons[w["def"]]["range"] for n, d in by_fac[f].items() if d["customParams"]["kind"] in ("art", "art2") for w in d["weapons"])
+check("haptic: the artillery reaches less far than the other factions' artillery", reach("haptic") < min(reach(f) for f in ("choir", "maw", "tympan", "miasma")), reach("haptic"))
+tou = [k for k, w in weapons.items() if (w.get("customParams") or {}).get("vb_touch")]
+check("touch tags only on Haptic weapons, and on every Haptic gun except D / Q", tou and all(k.startswith("ha_") for k in tou) and
+      all(((w.get("customParams") or {}).get("vb_touch") == "1") for k, w in weapons.items() if k.startswith("ha_") and w["weaponType"] != "DGun" and not w.get("paralyzer")), f"{len(tou)} weapons")
+kam = {n: d for n, d in hp.items() if d["customParams"].get("vb_kami_dmg")}
+check("haptic: the T1 and T2 raiders are the kamikazes, they have a short weapon to chase with and their burst is only a picture",
+      set(kam) == {"ha_clutch", "ha_strangler"} and all(d["weapons"] and weapons[d["weapons"][0]["def"]]["range"] <= 80 and d["selfDestructAs"].startswith("vb_haptic_burst")
+      and weapons[d["selfDestructAs"]]["damage"]["default"] <= 1 and d["explodeAs"] == "vb_small" and float(d["customParams"]["vb_kami_grip"]) > 0 for d in kam.values()), ", ".join(kam))
+check("haptic: the T2 kamikaze bursts harder than the T1 one and costs under three of them",
+      float(kam["ha_strangler"]["customParams"]["vb_kami_dmg"]) > 1.5 * float(kam["ha_clutch"]["customParams"]["vb_kami_dmg"]) and kam["ha_strangler"]["metalCost"] < 3 * kam["ha_clutch"]["metalCost"])
+check("haptic: the burst explosions have sounds", all(weapons[k].get("soundHit") == "vb_kami_burst" for k in ("vb_haptic_burst", "vb_haptic_burst_big")))
 # costs stay in the same band as the older factions (same role, within +-30% of the mean of choir / maw)
 kinds = {}
 for fac in FACS:
     for n, d in by_fac[fac].items(): kinds.setdefault(d["customParams"]["kind"], {})[fac] = d["metalCost"]
-off = [f"{k}:{fac}" for k, v in kinds.items() if k not in ("combat",) for fac in ("tympan", "miasma") if fac in v and
+off = [f"{k}:{fac}" for k, v in kinds.items() if k not in ("combat",) for fac in ("tympan", "miasma", "haptic") if fac in v and
        not (0.7 <= v[fac] / ((v["choir"] + v["maw"]) / 2) <= 1.3)]
 check("metal costs sit within 30% of the older factions' average per role", not off, ", ".join(off))
 
@@ -148,7 +166,7 @@ local M = {}
 M.frame = 0
 M.teams = {}                 -- teamID -> allyTeam
 M.units = {}                 -- unitID -> { team, def, x, y, z, dead }
-M.msgs, M.losState, M.losMask, M.damage, M.params, M.cloak = {}, {}, {}, {}, {}, {}
+M.msgs, M.losState, M.losMask, M.damage, M.params, M.cloak, M.destroyed = {}, {}, {}, {}, {}, {}, {}
 Spring = {
   GetModOptions = function() return M.opts or {} end,
   GetGameFrame = function() return M.frame end,
@@ -170,6 +188,8 @@ Spring = {
     table.sort(out); return out
   end,
   GetAllUnits = function() return {} end,
+  GetUnitRadius = function(u) return M.units[u] and M.units[u].r or 0 end,
+  DestroyUnit = function(u, selfd, rec) M.units[u].dead = true; M.destroyed[#M.destroyed + 1] = { u = u, selfd = selfd } end,
   SetUnitCloak = function(u, a, b) M.cloak[u] = a end,
   GetUnitStates = function() return { firestate = 2 } end,
   GiveOrderToUnit = function() end, FindUnitCmdDesc = function() return nil end, EditUnitCmdDesc = function() end,
@@ -184,11 +204,13 @@ WeaponDefs = {
   [1] = { customParams = { vb_resonance = "1" } },
   [2] = { customParams = {} },
   [3] = { customParams = { vb_poison_dps = "4", vb_poison_secs = "6" } },
+  [4] = { customParams = { vb_touch = "1" }, range = 400 },
 }
 UnitDefs = {
   [10] = { name = "ear",  customParams = { kind = "scout", hear = "400" }, weapons = { {} } },
   [11] = { name = "com",  customParams = { kind = "com" }, weapons = { {} } },
   [12] = { name = "tank", customParams = { kind = "assault" }, weapons = { {} } },
+  [30] = { name = "clutch", customParams = { kind = "raider", vb_kami_dmg = "400", vb_kami_aoe = "70", vb_kami_grip = "6" }, weapons = { {} } },
 }
 function load(path)
   gadget = {}
@@ -206,7 +228,7 @@ def run_gadget_tests():
     L = rt.globals()
     def ctx(opts=None):
         M.frame = 0; M.units = rt.table(); M.teams = rt.table(); M.msgs = rt.table(); M.losState = rt.table(); M.losMask = rt.table()
-        M.damage = rt.table(); M.params = rt.table(); M.cloak = rt.table(); M.opts = rt.table_from(opts or {})
+        M.damage = rt.table(); M.params = rt.table(); M.cloak = rt.table(); M.destroyed = rt.table(); M.opts = rt.table_from(opts or {})
         M.teams[0] = 0; M.teams[1] = 1; M.teams[2] = 0; M.teams[3] = 2
     def G(name):
         g = L.load(os.path.join(game, "LuaRules", "Gadgets", name)); g.Initialize(g); return g
@@ -252,6 +274,47 @@ def run_gadget_tests():
     ctx(); g = G("vb_miasma.lua"); L.unit(1, 0, 12); L.unit(2, 1, 12); M.frame = 30
     g.UnitDamaged(g, 2, 12, 1, 10.0, False, 3, 0, 1, 12, 0); M.units[2].dead = True; g.UnitDestroyed(g, 2); g.GameFrame(g, 45)
     check("poison: a dead unit is forgotten without errors", len(M.damage) == 0)
+
+    # ---------------- Touch: closeness bonus, kamikaze burst, grip
+    ctx(); g = G("vb_touch.lua")
+    L.unit(101, 0, 12, 0); L.unit(102, 2, 12, 0)                                   # shooter (team 0), an ally of it (team 2)
+    L.unit(200, 1, 12, 20)                                                         # an enemy 20 elmos away
+    dm = lambda atk=101, tgt=200, wd=4, base=100.0: g.UnitPreDamaged(g, tgt, 12, M.units[tgt].team, base, False, wd, 0, atk, 12, M.units[atk].team)
+    check("touch: point-blank (20 elmos) does +75%", abs(dm() - 175) < 1e-6, dm())
+    M.units[200].x = 240; check("touch: halfway between 80 elmos and the 400 elmo range does +37.5%", abs(dm() - 137.5) < 1e-6, dm())
+    M.units[200].x = 400; check("touch: at the weapon's maximum range there is no bonus", abs(dm() - 100) < 1e-6, dm())
+    M.units[200].x = 500; check("touch: beyond it neither", abs(dm() - 100) < 1e-6)
+    M.units[200].x = 110; M.units[200].r = 30; check("touch: the distance is surface to surface (110 - 30 radius = 80: full bonus)", abs(dm() - 175) < 1e-6, dm())
+    M.units[200].x = 20; M.units[200].r = 0
+    check("touch: a weapon without the tag gets nothing", abs(dm(wd=2) - 100) < 1e-6)
+    check("touch: a unit of the target's own side gets no bonus", abs(g.UnitPreDamaged(g, 102, 12, 2, 100.0, False, 4, 0, 101, 12, 0) - 100) < 1e-6)
+    check("touch: paralysing damage gets none", abs(g.UnitPreDamaged(g, 200, 12, 1, 100.0, True, 4, 0, 101, 12, 0) - 100) < 1e-6)
+    L.unit(301, 0, 30, 0); L.unit(201, 1, 12, 0); M.units[201].z = 60; L.unit(202, 1, 12, 300)    # a Clutch of team 0: 200 at 20, 201 at 60, 202 far
+    g.UnitCreated(g, 301, 30)
+    M.frame = 30; g.GameFrame(g, 30)
+    d = {int(M.damage[i].u): M.damage[i].dmg for i in range(1, len(M.damage) + 1)}
+    check("kamikaze: touching an enemy bursts the Clutch (selfDestruct) and kills it", len(M.destroyed) == 1 and M.destroyed[1].u == 301 and M.destroyed[1].selfd is True)
+    check("kamikaze: the touched enemy takes the full burst, credited to the Clutch", abs(d.get(200, 0) - 400) < 1e-6 and M.damage[1].by == 301, d)
+    check("kamikaze: another enemy inside the burst takes a part (60% fading with distance), the far one and the ally nothing",
+          abs(d.get(201, 0) - 400 * (0.6 - 0.45 * 60 / 70)) < 1e-6 and 202 not in d and 102 not in d, d)
+    check("kamikaze: everything the burst reached is gripped", M.params["200:vb_grip"] == 1 and M.params["201:vb_grip"] == 1 and M.params["202:vb_grip"] is None)
+    check("grip: +25% on top of the closeness bonus while it lasts (175 x 1.25)", abs(dm() - 218.75) < 1e-6, dm())
+    M.frame = 30 + 6 * 30 + 30; g.GameFrame(g, M.frame)
+    check("grip: it ends after the grip time", abs(dm() - 175) < 1e-6 and M.params["200:vb_grip"] == 0, dm())
+    ctx(); g = G("vb_touch.lua"); L.unit(301, 0, 30, 0); L.unit(202, 1, 12, 300); g.UnitCreated(g, 301, 30); M.frame = 30; g.GameFrame(g, 30)
+    check("kamikaze: nothing within reach (70 elmos): no burst", len(M.destroyed) == 0 and len(M.damage) == 0)
+    L.unit(203, 3, 12, 50); g.UnitCreated(g, 301, 30); M.frame = 33; g.GameFrame(g, 33)
+    check("kamikaze: an enemy of another allyteam within reach is touched too", len(M.destroyed) == 1 and abs(M.damage[1].dmg - 400) < 1e-6)
+    ctx(); g = G("vb_touch.lua"); L.unit(301, 0, 30, 0); L.unit(102, 2, 12, 30); g.UnitCreated(g, 301, 30); M.frame = 30; g.GameFrame(g, 30)
+    check("kamikaze: an ally within reach never triggers it", len(M.destroyed) == 0)
+    ctx(); g = G("vb_touch.lua"); L.unit(301, 0, 30, 0); L.unit(200, 1, 12, 30); g.UnitCreated(g, 301, 30); M.units[301].dead = True; g.UnitDestroyed(g, 301); M.frame = 30; g.GameFrame(g, 30)
+    check("kamikaze: a dead Clutch is forgotten without errors and bursts nothing", len(M.destroyed) == 0 and len(M.damage) == 0)
+    ctx({"kami_scale": 0}); g = G("vb_touch.lua"); L.unit(301, 0, 30, 0); L.unit(200, 1, 12, 30); g.UnitCreated(g, 301, 30); M.frame = 30; g.GameFrame(g, 30)
+    check("kamikaze: kami_scale 0 in the lobby makes the burst harmless", len(M.destroyed) == 1 and len(M.damage) == 0)
+    ctx({"touch_bonus": 0, "grip_bonus": 0}); g = G("vb_touch.lua"); L.unit(101, 0, 12, 0); L.unit(200, 1, 12, 20)
+    check("touch: touch_bonus 0 in the lobby switches the closeness bonus off", abs(dm() - 100) < 1e-6)
+    ctx({"touch_bonus": 1.5, "touch_near": 200}); g = G("vb_touch.lua"); L.unit(101, 0, 12, 0); L.unit(200, 1, 12, 150)
+    check("touch: touch_bonus and touch_near can be changed in the lobby (+150% inside 200 elmos)", abs(dm() - 250) < 1e-6, dm())
 
     # ---------------- Manual guns are never aimed by the engine
     ctx(); L.WeaponDefs[10] = rt.table_from({"manualFire": True}); L.WeaponDefs[11] = rt.table_from({"manualFire": False})
@@ -310,13 +373,14 @@ def run_menu_tests():
     rt = fresh(); G = rt.globals(); W = G.widget; S = G.S
     r = W.vbRects
     cx = lambda i: ((r[i].x1 + r.__getitem__(i).x2) / 2, (r[i].y1 + r[i].y2) / 2)
-    check("menu: four cards fit on a 1920x1080 screen", len(r) == 4 and all(0 <= r[i].x1 < r[i].x2 <= 1920 and 0 <= r[i].y1 < r[i].y2 <= 1080 for i in range(1, 5)))
+    check("menu: five cards fit on a 1920x1080 screen and on a narrow one", len(r) == 5 and all(0 <= r[i].x1 < r[i].x2 <= 1920 and 0 <= r[i].y1 < r[i].y2 <= 1080 for i in range(1, 6)))
     check("menu: shown to a player without a side before the start", bool(W.IsAbove(W, *cx(1))))
     check("menu: it draws without a Lua error", W.DrawScreen(W) is None)
     x, y = cx(3); used = W.MousePress(W, x, y, 1)
     check("menu: a click on the third card sends vbfaction:Tympan and takes the click", bool(used) and list(S.msgs.values()) == ["vbfaction:Tympan"], list(S.msgs.values()))
     W.DrawScreen(W)
     check("menu: key 4 changes the choice to Miasma", bool(W.KeyPress(W, 52, 0, False)) and list(S.msgs.values())[-1] == "vbfaction:Miasma")
+    check("menu: key 5 changes the choice to Haptic", bool(W.KeyPress(W, 53, 0, False)) and list(S.msgs.values())[-1] == "vbfaction:Haptic")
     check("menu: /vbfaction choir works too", bool(W.TextCommand(W, "vbfaction choir")) and list(S.msgs.values())[-1] == "vbfaction:Choir")
     n = len(S.msgs); check("menu: a click outside the panel is left to the game", W.MousePress(W, 5, 5, 1) is False and len(S.msgs) == n)
     for what, setup in (("a side is already set (lobby or start script)", lambda: S.__setitem__("side", "Maw")),
@@ -365,6 +429,8 @@ def run_menu_tests():
     check("spawn: a team whose side is set by the lobby keeps it", c[2] == "mw_matriarch", c)
     c = spawn([("vbfaction:Tympan", 2), ("vbfaction:Miasma", 4), ("vbfaction:Nonsense", 1)], {2: "Maw"})
     check("spawn: a choice for a team with a side set, from a spectator, or for a side that does not exist is ignored", c[2] == "mw_matriarch" and c[1] == "mw_matriarch", c)
+    c = spawn([("vbfaction:Haptic", 0)], {})
+    check("spawn: the Haptic Grasp can be chosen and spawns its commander", c[0] == "ha_manus", c)
     c = spawn([], {}, [("vbfaction:Miasma", 0)])
     check("spawn: a choice that arrives after the start changes nothing", c[0] == "ch_hierophant", c)
 

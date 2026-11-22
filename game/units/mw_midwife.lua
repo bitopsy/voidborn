@@ -2,6 +2,7 @@
 return {
 	mw_midwife = {
 		name = "Midwife",
+	script = "mw_midwife.lua",
 		description = "T2 Support - brood-tender with a cluster of egg-sacs; fast builder, mends the swarm",
 		objectName = "mw_midwife.s3o",
 		buildPic = "mw_midwife.png",

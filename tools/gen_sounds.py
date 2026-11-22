@@ -395,8 +395,26 @@ def new_factions():
     save("qgun_miasma", mix(climb * 0.8, at(echo(pulse_m, 0.12, 0.4, 3), cq)), 0.9)
 
 
+# ------------------------------------------------------------------ 0.18: Tier 3 announcements
+# No rng: nothing here changes any older file when the script is rerun.
+def tier3():
+    # tier 3 online (a lab was upgraded): tier 2's swelling chord, but lower and longer, a seven-bell rising arpeggio, two long final bells,
+    # then a falling-and-rising sub sweep under a heavy thump
+    d = 3.6; n = int(d * SR)
+    pad_ = mix(*[0.6 * fm(f, f * 2.01, 0.9, d) for f in (98, 147, 196, 247, 330)]) * swell(n, 1.1)
+    arp = mix(*[at(bell(f, 1.6, 0.45, 1.8), 0.1 + 0.12 * i) for i, f in enumerate((392, 523, 659, 784, 1047, 1319, 1568))])
+    low = 0.8 * sat(sweep(120, 38, 1.0), 2) * env_exp(int(1.0 * SR), 0.3)
+    save("tier3_ready", mix(0.65 * pad_, arp, at(bell(2093, 2.2, 0.8, 1.4), 0.95), at(bell(1568, 2.2, 0.8, 1.4), 1.1),
+                            0.8 * sine(50, 0.5) * env_exp(int(0.5 * SR), 0.15), at(low, 0.9)), 0.9)
+    # a tier 3 heavy is ready: a deep gong, a two-note brass-like rise on a fifth, and a sub hit
+    d = 2.0; n = int(d * SR)
+    gong = mix(bell(98, d, 0.7, 2.2, 2.4), 0.6 * bell(147, d, 0.6, 2.0, 2.4), 0.4 * bell(233, d, 0.5, 1.8, 2.7))
+    horn = lambda f, dur: lp(sat(fm(f, f, 1.0, dur) + 0.5 * sine(f * 2, dur), 2), 2400) * np.minimum(1, t_(dur) / 0.05) * env_exp(int(dur * SR), 0.5)
+    save("t3_unit_ready", mix(gong, at(horn(196, 0.8), 0.15), at(horn(294, 1.2), 0.5), 0.9 * sat(sweep(90, 34, 0.5), 2) * env_exp(int(0.5 * SR), 0.18)), 0.9)
+
+
 if __name__ == "__main__":
-    for fn in (ui, alerts, voices, weapons, impacts, economy, evolve, ambient, cmd_weapons, announcements, new_factions):
+    for fn in (ui, alerts, voices, weapons, impacts, economy, evolve, ambient, cmd_weapons, announcements, new_factions, tier3):
         fn()
     files = sorted(os.listdir(OUT))
     print("wrote %d files to %s" % (len(files), os.path.abspath(OUT)))

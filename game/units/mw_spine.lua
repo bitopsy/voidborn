@@ -2,6 +2,7 @@
 return {
 	mw_spine = {
 		name = "Tooth Spire",
+	script = "mw_spine.lua",
 		description = "Light defence - a fanged stalk that spits acid",
 		objectName = "mw_spine.s3o",
 		buildPic = "mw_spine.png",
@@ -46,6 +47,7 @@ return {
 		weapons = {
 			{
 				name = "mw_spine_w1",
+	script = "mw_spine.lua",
 				def = "mw_spine_w1",
 			},
 		},

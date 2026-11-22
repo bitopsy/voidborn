@@ -5,7 +5,7 @@
 --                 /vbexec vb.create{ id="x", base="ch_hoplite", hp=5000 }
 function widget:GetInfo()
 	return { name = "Developer Console", desc = "Toggle with the grave/tilde key or /vbconsole",
-		author = "goddot info@bitopsy.com", date = "2026", license = "GPL", layer = 0, enabled = true }
+		author = "goddot info@bitopsy.com", date = "2026", license = "GPL", layer = 0, enabled = false }
 end
 
 -- Lua code is case sensitive, so the console keeps a normal monospace face now that the glyph font is global

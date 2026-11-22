@@ -153,9 +153,10 @@ local function Clean(spec)
 end
 
 -- queue n units of this spec.  Returns true when the queue took it (false = instant fallback).
-function F.QueueAddSpec(spec, n)
+function F.QueueAddSpec(spec, n, fac)
 	n = math.max(1, math.floor(tonumber(n) or 1))
 	local keep = Clean(spec)
+	if fac then keep.fac = fac end      -- the tier 2 lab that builds it (its own production line)
 	if F.QueueReady() then
 		keep.count = 1
 		Spring.SendLuaRulesMsg("vbq:add:" .. n .. ":" .. F.Ser(keep))
@@ -167,10 +168,10 @@ function F.QueueAddSpec(spec, n)
 end
 
 -- queue n units of a saved template
-function F.QueueAdd(tid, n)
+function F.QueueAdd(tid, n, fac)
 	local t = F.templates[tid]
 	if not t then return false end
-	return F.QueueAddSpec(t, n)
+	return F.QueueAddSpec(t, n, fac)
 end
 
 function F.QueueRemove(tid, n) Spring.SendLuaRulesMsg("vbq:rem:" .. math.max(1, n or 1) .. ":" .. tid) end

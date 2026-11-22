@@ -2,6 +2,7 @@
 return {
 	mw_nurse = {
 		name = "Nurse",
+	script = "mw_nurse.lua",
 		description = "Support - floating brood-tender that stitches wounds",
 		objectName = "mw_nurse.s3o",
 		buildPic = "mw_nurse.png",

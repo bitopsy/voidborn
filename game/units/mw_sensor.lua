@@ -2,6 +2,7 @@
 return {
 	mw_sensor = {
 		name = "Listening Maw",
+	script = "mw_sensor.lua",
 		description = "Radar - a tall maw that hears the void",
 		objectName = "mw_sensor.s3o",
 		buildPic = "mw_sensor.png",

@@ -2,6 +2,7 @@
 return {
 	mw_bastion = {
 		name = "Maw Bastion",
+	script = "mw_bastion.lua",
 		description = "Heavy defence - a titanic maw crowned with spore tubes",
 		objectName = "mw_bastion.s3o",
 		buildPic = "mw_bastion.png",
@@ -46,6 +47,7 @@ return {
 		weapons = {
 			{
 				name = "mw_bastion_w1",
+	script = "mw_bastion.lua",
 				def = "mw_bastion_w1",
 			},
 		},

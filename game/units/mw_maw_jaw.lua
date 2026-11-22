@@ -2,6 +2,7 @@
 return {
 	mw_maw_jaw = {
 		name = "Maw-Jaw",
+	script = "mw_maw_jaw.lua",
 		description = "Siege Borer - heavily armored subterranean-surfacing bio-titan designed to crush fortifications and chew through defenses",
 		objectName = "mw_gnasher.s3o",
 		buildPic = "mw_gnasher.png",
@@ -62,6 +63,7 @@ return {
 		weapons = {
 			{
 				name = "mw_gnasher_w1",
+	script = "mw_maw_jaw.lua",
 				def = "mw_gnasher_w1",
 			},
 		},

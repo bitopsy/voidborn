@@ -2,6 +2,7 @@
 return {
 	ch_sunpetal = {
 		name = "Sun Iris",
+	script = "ch_sunpetal.lua",
 		description = "Energy - an iris that drinks starlight",
 		objectName = "ch_sunpetal.s3o",
 		buildPic = "ch_sunpetal.png",

@@ -2,6 +2,7 @@
 return {
 	mw_matriarch = {
 		name = "Matriarch",
+	script = "mw_matriarch.lua",
 		description = "Maw Commander - a gnashing hive-mother that digests its foes",
 		objectName = "mw_matriarch.s3o",
 		buildPic = "mw_matriarch.png",
@@ -88,14 +89,17 @@ return {
 		weapons = {
 			{
 				name = "mw_matriarch_w1",
+	script = "mw_matriarch.lua",
 				def = "mw_matriarch_w1",
 			},
 			{
 				name = "mw_matriarch_w2",
+	script = "mw_matriarch.lua",
 				def = "mw_matriarch_w2",
 			},
 			{
 				name = "mw_matriarch_w3",
+	script = "mw_matriarch.lua",
 				def = "mw_matriarch_w3",
 			},
 		},

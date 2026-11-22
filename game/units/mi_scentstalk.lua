@@ -2,6 +2,7 @@
 return {
 	mi_scentstalk = {
 		name = "Scent Stalk",
+	script = "mi_scentstalk.lua",
 		description = "Radar - a tall stalk crowned with nostril pods that taste the currents of the void",
 		objectName = "mi_scentstalk.s3o",
 		buildPic = "mi_scentstalk.png",

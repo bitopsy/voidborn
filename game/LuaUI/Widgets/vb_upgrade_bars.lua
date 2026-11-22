@@ -1,6 +1,6 @@
 function widget:GetInfo()
-	return { name = "Voidborn Upgrade Bars", desc = "Progress bar above a factory that is being upgraded to Tier 2",
-		author = "goddot info@bitopsy.com", date = "2026", license = "GPL", layer = 6, enabled = true }
+	return { name = "Voidborn Upgrade Bars", desc = "Progress bar above a factory that is being upgraded to Tier 2 or Tier 3",
+		author = "goddot info@bitopsy.com", date = "2026", license = "GPL", layer = 9, enabled = true }
 end
 
 -- The gadget vb_factory_upgrade.lua publishes the upgrades of a team as the team rules param "vbu_list":
@@ -52,7 +52,10 @@ function widget:DrawScreen()
 				gl.Color(0, 0, 0, 0.75); gl.Rect(x1 - 2, y1 - 2, x1 + w + 2, y1 + hh + 2)
 				if e[3] then gl.Color(1.0, 0.4, 0.25, 0.95) else gl.Color(0.95, 0.75, 0.2, 0.95) end
 				gl.Rect(x1, y1, x1 + w * e[2], y1 + hh)
-				local label = e[3] and "T2 UPGRADE - STALLED" or string.format("T2 UPGRADE %d%%", math.floor(e[2] * 100 + 0.5))
+				-- the tier being built comes from the factory's own def (customParams.upgrade_tier, 2 when absent)
+				local ud = UnitDefs[Spring.GetUnitDefID(uid) or -1]
+				local tier = tonumber(ud and ud.customParams and ud.customParams.upgrade_tier) or 2
+				local label = e[3] and ("T" .. tier .. " UPGRADE - STALLED") or string.format("T%d UPGRADE %d%%", tier, math.floor(e[2] * 100 + 0.5))
 				VBFont.Text(label, sx - VBFont.Width(label, 10) / 2, y1 + hh + 5, 10, "o", 1, 0.92, 0.65, 1)
 			end
 		end

@@ -2,6 +2,7 @@
 return {
 	ty_cacophon = {
 		name = "Cacophon",
+	script = "ty_cacophon.lua",
 		description = "Heavy - a cochlea the size of a cathedral, ringed with horns; its voice flattens whole squads",
 		objectName = "ty_cacophon.s3o",
 		buildPic = "ty_cacophon.png",
@@ -61,10 +62,12 @@ return {
 		weapons = {
 			{
 				name = "ty_cacophon_w1",
+	script = "ty_cacophon.lua",
 				def = "ty_cacophon_w1",
 			},
 			{
 				name = "ty_cacophon_w2",
+	script = "ty_cacophon.lua",
 				def = "ty_cacophon_w2",
 			},
 		},

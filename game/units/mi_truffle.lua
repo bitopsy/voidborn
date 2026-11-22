@@ -2,6 +2,7 @@
 return {
 	mi_truffle = {
 		name = "Truffle Snout",
+	script = "mi_truffle.lua",
 		description = "Metal extractor - a snout that roots into the asteroid and smells out ore",
 		objectName = "mi_truffle.s3o",
 		buildPic = "mi_truffle.png",

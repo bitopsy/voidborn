@@ -2,6 +2,7 @@
 return {
 	ty_malleus = {
 		name = "Malleus",
+	script = "ty_malleus.lua",
 		description = "T2 Assault - an armoured champion with a hammer-bone and a drum for a shield",
 		objectName = "ty_malleus.s3o",
 		buildPic = "ty_malleus.png",
@@ -62,10 +63,12 @@ return {
 		weapons = {
 			{
 				name = "ty_malleus_w1",
+	script = "ty_malleus.lua",
 				def = "ty_malleus_w1",
 			},
 			{
 				name = "ty_malleus_w2",
+	script = "ty_malleus.lua",
 				def = "ty_malleus_w2",
 			},
 		},

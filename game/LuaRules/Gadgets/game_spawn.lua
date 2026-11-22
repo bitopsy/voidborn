@@ -37,7 +37,7 @@ end
 local modOptions = Spring.GetModOptions()
 
 -- 0.16: a human whose side was not set by the lobby or the start script picks a faction in the menu of the widget
--- vb_faction_menu.lua before the game starts.  The widget sends  "vbfaction:<Side>"  (Choir, Maw, Tympan, Miasma);
+-- vb_faction_menu.lua before the game starts.  The widget sends  "vbfaction:<Side>"  (Choir, Maw, Tympan, Miasma, Haptic);
 -- the start unit of that side is spawned when the game starts.  A team that did not choose keeps the old default
 -- (the sides in turn, by team number); a team whose side IS set cannot change it; nothing is accepted after the start.
 local SIDES = VFS.Include("gamedata/sidedata.lua") or {}

@@ -2,6 +2,7 @@
 return {
 	ty_organon = {
 		name = "Organon",
+	script = "ty_organon.lua",
 		description = "T2 Heavy - a flying organ; fifteen pipes, one chord, and nothing left standing",
 		objectName = "ty_organon.s3o",
 		buildPic = "ty_organon.png",
@@ -62,10 +63,12 @@ return {
 		weapons = {
 			{
 				name = "ty_organon_w1",
+	script = "ty_organon.lua",
 				def = "ty_organon_w1",
 			},
 			{
 				name = "ty_organon_w2",
+	script = "ty_organon.lua",
 				def = "ty_organon_w2",
 			},
 		},

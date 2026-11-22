@@ -29,8 +29,6 @@ return {
 		range = 10,
 		reloadTime = 1,
 		weaponVelocity = 100,
-		soundHit = "vb_boom_med",
-		soundHitVolume = 1.0,
 	},
 	vb_big = {
 		areaOfEffect = 170,
@@ -161,7 +159,7 @@ return {
 		soundStart = "vb_dgun_choir",
 		soundStartVolume = 1.0,
 		soundHit = "vb_boom_med",
-		soundHitVolume = 0.8,
+		soundHitVolume = 1.0,
 	},
 	ch_hierophant_w3 = {
 		noAutoTarget = true,
@@ -560,7 +558,7 @@ return {
 		soundStart = "vb_dgun_maw",
 		soundStartVolume = 1.0,
 		soundHit = "vb_boom_med",
-		soundHitVolume = 0.8,
+		soundHitVolume = 1.0,
 	},
 	mw_matriarch_w3 = {
 		noAutoTarget = true,

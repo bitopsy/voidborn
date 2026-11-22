@@ -1,10 +1,10 @@
 function widget:GetInfo()
-	return { name = "Voidborn Faction Menu", desc = "Pick Choir, Maw, Tympan or Miasma before the game starts, when the faction was not chosen in the lobby",
+	return { name = "Voidborn Faction Menu", desc = "Pick Choir, Maw, Tympan, Miasma or Haptic before the game starts, when the faction was not chosen in the lobby",
 		author = "goddot info@bitopsy.com", date = "2026", license = "GPL", layer = 60, enabled = true }
 end
 
 -- Shown while the game has not started (frame 0), to a player (not a spectator) whose side is empty: the lobby and the
--- start script did not choose one.  Four cards, one per faction; click one (or press 1 - 4, or type /vbfaction tympan)
+-- start script did not choose one.  Five cards, one per faction; click one (or press 1 - 5, or type /vbfaction tympan)
 -- and the choice goes to the rules (game_spawn.lua: "vbfaction:<Side>"), which spawn that faction's commander at the
 -- start.  The choice can be changed until the game starts.  A player who does not choose gets the old default
 -- (the factions in turn by team number).  The lobby option faction_menu = off hides the menu.
@@ -20,6 +20,8 @@ local SIDES = {
 	  lines = { "Floating ears, horns and drums.", "Sound that hits harder when many", "hit one target; radar and ears." } },
 	{ side = "Miasma", title = "MIASMA BLOOM",      organ = "THE NOSE",  col = { 0.89, 0.38, 1.00 },
 	  lines = { "Drifting snouts and flowers.", "Slow and tough; every hit poisons", "and scents its target." } },
+	{ side = "Haptic", title = "HAPTIC GRASP",      organ = "THE HAND",  col = { 0.38, 0.69, 1.00 },
+	  lines = { "Hands and tentacles. Short sight,", "short reach, hits much harder up", "close; its raiders burst on touch." } },
 }
 
 local spGetTeamInfo, spGetMyTeamID, spGetGameFrame = Spring.GetTeamInfo, Spring.GetMyTeamID, Spring.GetGameFrame
@@ -54,9 +56,10 @@ end
 local function Layout()
 	local sc = max(0.75, min(1.7, vsy / 1080))
 	local gap = 14 * sc
-	local cw = min(270 * sc, (vsx * 0.94 - gap * 5) / 4)
+	local n = #SIDES
+	local cw = min(270 * sc, (vsx * 0.94 - gap * (n + 1)) / n)
 	local ch = cw * 1.12
-	local w = cw * 4 + gap * 5
+	local w = cw * n + gap * (n + 1)
 	local x0 = floor((vsx - w) / 2)
 	local y2 = floor(vsy * 0.88)
 	local titleH = 74 * sc
@@ -84,7 +87,7 @@ function widget:TextCommand(cmd)
 	for i, s in ipairs(SIDES) do
 		if string.lower(s.side) == string.lower(name) then Choose(i) return true end
 	end
-	Spring.Echo("[VB] /vbfaction choir | maw | tympan | miasma")
+	Spring.Echo("[VB] /vbfaction choir | maw | tympan | miasma | haptic")
 	return true
 end
 
@@ -102,7 +105,7 @@ function widget:MousePress(x, y, button)
 	return true                                     -- the click is the menu's, not the map's
 end
 
-local KEYS = { [49] = 1, [50] = 2, [51] = 3, [52] = 4, [257] = 1, [258] = 2, [259] = 3, [260] = 4 }
+local KEYS = { [49] = 1, [50] = 2, [51] = 3, [52] = 4, [53] = 5, [257] = 1, [258] = 2, [259] = 3, [260] = 4, [261] = 5 }
 function widget:KeyPress(key, mods, isRepeat)
 	if isRepeat or not Wanted() then return false end
 	local i = KEYS[key]
@@ -128,7 +131,7 @@ function widget:DrawScreen()
 	glRect(panel.x1, panel.y2 - 2, panel.x2, panel.y2); glRect(panel.x1, panel.y1, panel.x2, panel.y1 + 2)
 	Txt("CHOOSE YOUR FACTION", (panel.x1 + panel.x2) / 2, panel.y2 - 34 * sc, 26 * sc, "co", 0.95, 0.93, 1.0)
 	Txt(chosen and ("You play the " .. SIDES[chosen].title .. ". Press Start when ready, or pick another.")
-	    or "Click a faction, or press 1 - 4, then press Start. No choice: the factions are handed out in turn.",
+	    or "Click a faction, or press 1 - 5, then press Start. No choice: the factions are handed out in turn.",
 	    (panel.x1 + panel.x2) / 2, panel.y2 - 60 * sc, 14 * sc, "co", 0.75, 0.74, 0.9)
 	-- the cards
 	local over = CardAt(mx or -1, my or -1)

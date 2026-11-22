@@ -2,6 +2,7 @@
 return {
 	mi_pollenwing = {
 		name = "Pollenwing",
+	script = "mi_pollenwing.lua",
 		description = "T2 Raider - a quick winged bloom that dusts everything in range with pollen",
 		objectName = "mi_pollenwing.s3o",
 		buildPic = "mi_pollenwing.png",
@@ -62,6 +63,7 @@ return {
 		weapons = {
 			{
 				name = "mi_pollenwing_w1",
+	script = "mi_pollenwing.lua",
 				def = "mi_pollenwing_w1",
 			},
 		},

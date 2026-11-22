@@ -2,6 +2,7 @@
 return {
 	mi_sniffer = {
 		name = "Sniffer",
+	script = "mi_sniffer.lua",
 		description = "Scout - a bobbing snout on a long nose; it tracks what it has tasted",
 		objectName = "mi_sniffer.s3o",
 		buildPic = "mi_sniffer.png",
@@ -61,6 +62,7 @@ return {
 		weapons = {
 			{
 				name = "mi_sniffer_w1",
+	script = "mi_sniffer.lua",
 				def = "mi_sniffer_w1",
 			},
 		},

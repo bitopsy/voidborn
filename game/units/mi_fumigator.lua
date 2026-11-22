@@ -2,6 +2,7 @@
 return {
 	mi_fumigator = {
 		name = "Fumigator",
+	script = "mi_fumigator.lua",
 		description = "T2 Artillery - a tank of gas on a trunk as long as a street; the bell lobs a shell that blankets squads",
 		objectName = "mi_fumigator.s3o",
 		buildPic = "mi_fumigator.png",
@@ -62,6 +63,7 @@ return {
 		weapons = {
 			{
 				name = "mi_fumigator_w1",
+	script = "mi_fumigator.lua",
 				def = "mi_fumigator_w1",
 			},
 		},

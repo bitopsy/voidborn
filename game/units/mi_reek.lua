@@ -2,6 +2,7 @@
 return {
 	mi_reek = {
 		name = "Reek Pod",
+	script = "mi_reek.lua",
 		description = "Light defence - a bladder-pod with a short trunk that spits poison darts",
 		objectName = "mi_reek.s3o",
 		buildPic = "mi_reek.png",
@@ -46,6 +47,7 @@ return {
 		weapons = {
 			{
 				name = "mi_reek_w1",
+	script = "mi_reek.lua",
 				def = "mi_reek_w1",
 			},
 		},

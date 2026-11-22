@@ -2,6 +2,7 @@
 return {
 	ty_trumpeter = {
 		name = "Trumpeter",
+	script = "ty_trumpeter.lua",
 		description = "Artillery - one colossal ear-trumpet turned round: it throws sound across the rift",
 		objectName = "ty_trumpeter.s3o",
 		buildPic = "ty_trumpeter.png",
@@ -61,6 +62,7 @@ return {
 		weapons = {
 			{
 				name = "ty_trumpeter_w1",
+	script = "ty_trumpeter.lua",
 				def = "ty_trumpeter_w1",
 			},
 		},

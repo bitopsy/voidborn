@@ -2,6 +2,7 @@
 return {
 	ch_lachryma = {
 		name = "Lachryma",
+	script = "ch_lachryma.lua",
 		description = "T2 Support - a haloed tear-mother; fast builder, rebuilds and mends allies",
 		objectName = "ch_lachryma.s3o",
 		buildPic = "ch_lachryma.png",

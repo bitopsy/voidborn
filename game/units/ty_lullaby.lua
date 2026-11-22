@@ -2,6 +2,7 @@
 return {
 	ty_lullaby = {
 		name = "Lullaby",
+	script = "ty_lullaby.lua",
 		description = "Support - a drifting conch that hums the wounded whole; hears what is nearby",
 		objectName = "ty_lullaby.s3o",
 		buildPic = "ty_lullaby.png",

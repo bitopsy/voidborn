@@ -2,6 +2,7 @@
 return {
 	ty_wax = {
 		name = "Wax Vault",
+	script = "ty_wax.lua",
 		description = "Storage - sealed chambers of amber cerumen",
 		objectName = "ty_wax.s3o",
 		buildPic = "ty_wax.png",

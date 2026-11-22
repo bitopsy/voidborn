@@ -2,6 +2,7 @@
 return {
 	mi_censer = {
 		name = "Censer",
+	script = "mi_censer.lua",
 		description = "Support - a swinging thurible of incense; mends the Bloom and sniffs out mushrooms faster",
 		objectName = "mi_censer.s3o",
 		buildPic = "mi_censer.png",

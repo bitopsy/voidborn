@@ -1,6 +1,6 @@
 function widget:GetInfo()
 	return { name = "Voidborn Tooltip", desc = "Draws the engine's hover tooltip (terrain, units, widget hints) with the Voidborn font, smaller, on a plate; can also just hide the engine tooltip",
-		author = "goddot info@bitopsy.com", date = "2026", license = "GPL", layer = 10, enabled = false }
+		author = "goddot info@bitopsy.com", date = "2026", license = "GPL", layer = 10, enabled = true }
 end
 
 -- The engine tooltip (position, elevation, terrain type, unit info, and the hints that other widgets return

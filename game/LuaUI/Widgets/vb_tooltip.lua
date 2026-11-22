@@ -15,6 +15,10 @@ end
 --                           (also: topleft, topright, bottomleft, bottomright, lowerleft, lowerright)
 --   /vbtooltip scale 1.2    text size (0.6 .. 2.0, default 0.9)
 -- Everything is remembered with the other widget settings.
+--
+-- DEFAULT LAYOUT: vb_layout.lua puts the plate at the bottom of the left column (tooltip, build menu, dashboard,
+-- minimap, from the bottom up).  It then gives the plate a fixed place, a fixed width and a fixed height of
+-- SLOT_LINES lines, so nothing above it moves when the text changes.  Without it the plate behaves as before.
 
 local okF, VBFont = pcall(VFS.Include, "LuaUI/Headers/vb_font.h.lua")
 if not okF or type(VBFont) ~= "table" then
@@ -31,6 +35,8 @@ local pos   = "bl"     -- tl | tr | bl | br   (default: bottom left)
 local scale = 0.9     -- default text size
 local engineHidden = false
 local lines, lastText = {}, nil
+local SLOT_LINES = 7          -- plate height (in lines) when vb_layout.lua owns the place of the plate
+local slot = nil              -- { x, y, w }: bottom left corner and width, set by vb_layout.lua
 
 local POS_ALIAS = {
 	tl = "tl", topleft = "tl",
@@ -73,11 +79,31 @@ local function Update(text)
 	lines = {}
 	if not text or text == "" then return end
 	local size, maxW = Sc(12), vsx * 0.34
+	-- if slot then maxW = slot.w - Sc(8) * 2 end
+	local maxLines = 14 -- slot and SLOT_LINES or 14
 	for raw in Clean(text):gmatch("[^\n]+") do
 		if raw:match("%S") then Wrap(raw, size, maxW, lines) end
-		if #lines >= 14 then break end
+		if #lines >= maxLines then break end
 	end
+	while #lines > maxLines do lines[#lines] = nil end
 end
+
+local function SlotHeight()
+	local size = Sc(12)
+	local lh = size * 1.32
+	return SLOT_LINES * lh + Sc(8) * 2 - (lh - size)
+end
+
+-- used by vb_layout.lua
+WG.VBTooltip = {
+	Place = function(x, y, w)
+		if not slot then slot = {} end
+		if slot.w ~= w then lastText = nil end                  -- the lines are wrapped again for the new width
+		slot.x, slot.y, slot.w = x, y, w
+	end,
+	Release = function() if slot then slot = nil; lastText = nil end end,
+	Height = function() return mode == "draw" and SlotHeight() or 0 end,
+}
 
 function widget:Update()
 	if mode ~= "draw" then return end
@@ -110,6 +136,13 @@ function widget:DrawScreen()
 		y2 = vsy - margin
 		y1 = y2 - plateH
 	end
+	--[[ Disabled vb_layout.lua slot coordinate override so pos ("bl") is always respected:
+	if slot then          -- fixed place, width and height (default layout)
+		right = false
+		x1, y1 = slot.x, slot.y
+		x2, y2 = x1 + slot.w, y1 + SlotHeight()
+	end
+	--]]
 
 	-- plate: a bright line on top, and an accent bar on the screen side of the corner it sits in
 	glColor(0.03, 0.035, 0.05, 0.78); glRect(x1, y1, x2, y2)
@@ -135,7 +168,7 @@ function widget:Initialize()
 	Apply()
 end
 
-function widget:Shutdown() HideEngine(false) end
+function widget:Shutdown() HideEngine(false); WG.VBTooltip = nil end
 
 local lastOnMode = "draw"   -- what a bare "/vbtooltip" switches back on to
 
@@ -186,4 +219,5 @@ function widget:SetConfigData(d)
 	if mode ~= "off" then lastOnMode = mode end
 	if POS_ALIAS[d.pos or ""] then pos = POS_ALIAS[d.pos] end
 	if d.scale then scale = max(0.6, min(2.0, d.scale)) end
+	pos = "bl"
 end

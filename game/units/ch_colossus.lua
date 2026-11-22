@@ -2,6 +2,7 @@
 return {
 	ch_colossus = {
 		name = "Argus Colossus",
+	script = "ch_colossus.lua",
 		description = "Heavy - hundred-eyed titan; its great eye unmakes whole squads",
 		objectName = "ch_colossus.s3o",
 		buildPic = "ch_colossus.png",
@@ -61,10 +62,12 @@ return {
 		weapons = {
 			{
 				name = "ch_colossus_w1",
+	script = "ch_colossus.lua",
 				def = "ch_colossus_w1",
 			},
 			{
 				name = "ch_colossus_w2",
+	script = "ch_colossus.lua",
 				def = "ch_colossus_w2",
 			},
 		},

@@ -2,6 +2,7 @@
 return {
 	ty_spiral = {
 		name = "Harmonic Spiral",
+	script = "ty_spiral.lua",
 		description = "Advanced energy - a cochlea standing on end, ringing the vacuum itself",
 		objectName = "ty_spiral.s3o",
 		buildPic = "ty_spiral.png",

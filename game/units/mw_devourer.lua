@@ -2,6 +2,7 @@
 return {
 	mw_devourer = {
 		name = "Devourer",
+	script = "mw_devourer.lua",
 		description = "T2 Heavy - a world-eater behind a gate of teeth",
 		objectName = "mw_devourer.s3o",
 		buildPic = "mw_devourer.png",
@@ -62,10 +63,12 @@ return {
 		weapons = {
 			{
 				name = "mw_devourer_w1",
+	script = "mw_devourer.lua",
 				def = "mw_devourer_w1",
 			},
 			{
 				name = "mw_devourer_w2",
+	script = "mw_devourer.lua",
 				def = "mw_devourer_w2",
 			},
 		},

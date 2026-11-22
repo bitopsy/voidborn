@@ -2,6 +2,7 @@
 return {
 	mi_rhinarch = {
 		name = "Rhinarch",
+	script = "mi_rhinarch.lua",
 		description = "Nose Commander - a vast drifting snout in a crown of petals; smells fear, breathes out ruin",
 		objectName = "mi_rhinarch.s3o",
 		buildPic = "mi_rhinarch.png",
@@ -88,14 +89,17 @@ return {
 		weapons = {
 			{
 				name = "mi_rhinarch_w1",
+	script = "mi_rhinarch.lua",
 				def = "mi_rhinarch_w1",
 			},
 			{
 				name = "mi_rhinarch_w2",
+	script = "mi_rhinarch.lua",
 				def = "mi_rhinarch_w2",
 			},
 			{
 				name = "mi_rhinarch_w3",
+	script = "mi_rhinarch.lua",
 				def = "mi_rhinarch_w3",
 			},
 		},

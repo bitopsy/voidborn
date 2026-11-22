@@ -2,6 +2,7 @@
 return {
 	ty_drummer = {
 		name = "Drummer",
+	script = "ty_drummer.lua",
 		description = "Assault - a bass-drum belly and two mallets; every beat leaves a ring of broken air",
 		objectName = "ty_drummer.s3o",
 		buildPic = "ty_drummer.png",
@@ -61,6 +62,7 @@ return {
 		weapons = {
 			{
 				name = "ty_drummer_w1",
+	script = "ty_drummer.lua",
 				def = "ty_drummer_w1",
 			},
 		},

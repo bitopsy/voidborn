@@ -2,6 +2,7 @@
 return {
 	mw_rupturer = {
 		name = "Rupturer",
+	script = "mw_rupturer.lua",
 		description = "T2 Artillery - a swollen bile-sac; its salvo bursts over whole squads",
 		objectName = "mw_rupturer.s3o",
 		buildPic = "mw_rupturer.png",
@@ -62,6 +63,7 @@ return {
 		weapons = {
 			{
 				name = "mw_rupturer_w1",
+	script = "mw_rupturer.lua",
 				def = "mw_rupturer_w1",
 			},
 		},

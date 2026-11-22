@@ -5,8 +5,8 @@ function widget:GetInfo()
 		author  = "goddot",
 		date    = "2026",
 		license = "GNU GPL, v2 or later",
-		layer   = 0,
-		enabled = true,
+		layer   = 10,
+		enabled = false,
 	}
 end
 
@@ -48,6 +48,7 @@ local FILE_W, FILE_HEADER_H, FILE_ROW_H = 190, 22, 22
 
 local vsx, vsy = Spring.GetViewGeometry()
 local px, py = 12, floor(vsy * 0.55) -- panel left / top, draggable
+local defaultPos = true               -- not placed by the player yet: stays right of the default layout column (vb_layout.lua)
 
 local blueprints = {}   -- { {name=, file=, items={ {def="armsolar", dx=, dz=, facing=} } } }
 local active = nil      -- index of selected blueprint
@@ -425,6 +426,7 @@ end
 
 function widget:MouseMove(x, y, dx, dy)
 	if dragging then
+		defaultPos = false
 		px = max(0, min(vsx - PANEL_W, px + dx))
 		py = max(panelHeight(), min(vsy, py + dy))
 	end
@@ -459,6 +461,9 @@ local function drawButton(x1, y1, x2, y2, label, hot, r, g, b)
 end
 
 function widget:DrawScreen()
+	if defaultPos and WG.VBLayout and WG.VBLayout.Right then
+		px = WG.VBLayout.Right() or 12
+	end
 	local mx, my = Spring.GetMouseState()
 	local hover = rowAt(mx, my)
 	local h = panelHeight()
@@ -587,6 +592,7 @@ end
 
 function widget:SetConfigData(data)
 	if not data then return end
+	if data.px then defaultPos = false end
 	px, py = data.px or px, data.py or py
 	blueprints = data.blueprints or blueprints
 end

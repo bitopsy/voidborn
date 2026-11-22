@@ -2,6 +2,7 @@
 return {
 	ch_lashling = {
 		name = "Lashling",
+	script = "ch_lashling.lua",
 		description = "Raider - cheap tentacle dart that swarms in packs",
 		objectName = "ch_lashling.s3o",
 		buildPic = "ch_lashling.png",
@@ -61,6 +62,7 @@ return {
 		weapons = {
 			{
 				name = "ch_lashling_w1",
+	script = "ch_lashling.lua",
 				def = "ch_lashling_w1",
 			},
 		},

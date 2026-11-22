@@ -2,6 +2,7 @@
 return {
 	ch_sclera = {
 		name = "Sclera Knight",
+	script = "ch_sclera.lua",
 		description = "T2 Assault - an armoured one-eyed champion behind an iris shield",
 		objectName = "ch_sclera.s3o",
 		buildPic = "ch_sclera.png",
@@ -62,10 +63,12 @@ return {
 		weapons = {
 			{
 				name = "ch_sclera_w1",
+	script = "ch_sclera.lua",
 				def = "ch_sclera_w1",
 			},
 			{
 				name = "ch_sclera_w2",
+	script = "ch_sclera.lua",
 				def = "ch_sclera_w2",
 			},
 		},

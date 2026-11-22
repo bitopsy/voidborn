@@ -2,6 +2,7 @@
 return {
 	ch_heart = {
 		name = "Singularity Heart",
+	script = "ch_heart.lua",
 		description = "Advanced energy - a caged pinprick black hole",
 		objectName = "ch_heart.s3o",
 		buildPic = "ch_heart.png",

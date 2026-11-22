@@ -362,6 +362,53 @@ def miasma():
     return _finish(img)
 
 
+def haptic():
+    """The Haptic Grasp (0.17): an open hand, a fingerprint whorl on its palm, tentacles with suckers curling out of the wrist, coral light on the fingertips."""
+    N = S * SS
+    img = _bg((12, 20, 40), (4, 8, 18), (255, 90, 120), (256, 230), 230, 40, 19)
+    c = lambda v: int(v * SS)
+    cx, cy = 256, 292
+    d = ImageDraw.Draw(img)
+    # tentacles first, behind the hand: four curling out of the wrist, with sucker dots
+    for k, (ang, amp, ln) in enumerate(((-62, 36, 190), (-28, -40, 210), (28, 40, 210), (62, -36, 190))):
+        pts = []
+        for t in range(0, 81):
+            u = t / 80; a = math.radians(90 + ang * u * 0.9)
+            x = cx + (math.sin(math.radians(ang)) * ln * u) + math.sin(u * 6 + k) * amp * u
+            y = cy + 70 + u * (ln * 0.5) + math.cos(u * 3 + k) * 14 * u
+            pts.append((x, y))
+        for i in range(len(pts) - 1):
+            w = max(3, int((30 * (1 - i / len(pts)) + 4)))
+            d.line([(pts[i][0] * SS, pts[i][1] * SS), (pts[i + 1][0] * SS, pts[i + 1][1] * SS)], fill=(78, 104, 158, 255), width=w * SS)
+        for i in range(8, 76, 9):
+            r = max(2, int(8 * (1 - i / 80)) + 2)
+            d.ellipse([c(pts[i][0] - r), c(pts[i][1] - r + 5), c(pts[i][0] + r), c(pts[i][1] + r + 5)], fill=(240, 170, 176, 255))
+    # fingers: five rounded bars fanned above the palm, a coral glow on the tips
+    tips = []
+    for k, ang in enumerate((-64, -32, 0, 30, 58)):
+        a = math.radians(-90 + ang); L = (92, 122, 134, 118, 88)[k]
+        bx, by = cx + math.cos(a) * 70, cy - 30 + math.sin(a) * 60
+        tx, ty = bx + math.cos(a) * L, by + math.sin(a) * L
+        tips.append((tx, ty))
+        d.line([(bx * SS, by * SS), (tx * SS, ty * SS)], fill=(86, 112, 166, 255), width=c(46))
+        d.ellipse([c(bx - 23), c(by - 23), c(bx + 23), c(by + 23)], fill=(86, 112, 166, 255))
+        d.ellipse([c(tx - 23), c(ty - 23), c(tx + 23), c(ty + 23)], fill=(240, 184, 182, 255), outline=(138, 62, 92, 255), width=c(3))
+        for r in (14, 8, 3):
+            d.ellipse([c(tx - r), c(ty - r), c(tx + r), c(ty + r)], outline=(138, 62, 92, 255), width=c(2))
+    for tx, ty in tips:
+        _bloom(img, lambda dd, col, tx=tx, ty=ty: dd.ellipse([c(tx - 26), c(ty - 26), c(tx + 26), c(ty + 26)], fill=col), (255, 92, 120), 14, 160)
+    d = ImageDraw.Draw(img)
+    # the palm and its whorl
+    d.ellipse([c(cx - 112), c(cy - 100), c(cx + 112), c(cy + 100)], fill=(86, 112, 166, 255), outline=(30, 26, 54, 255), width=c(5))
+    d.ellipse([c(cx - 84), c(cy - 78), c(cx + 84), c(cy + 78)], fill=(240, 184, 182, 255))
+    for i in range(1, 9):
+        rx, ry = 10 * i, 9.5 * i
+        d.ellipse([c(cx - rx), c(cy - ry), c(cx + rx), c(cy + ry)], outline=(138, 62, 92, 255), width=c(4))
+    d.ellipse([c(cx - 8), c(cy - 8), c(cx + 8), c(cy + 8)], fill=(255, 120, 120, 255))
+    _frame(img, (96, 176, 255), (190, 225, 255))
+    return _finish(img)
+
+
 def loading():
     """The loading screen: the Rift with the emblem over it."""
     w, h = 1280, 720
@@ -414,7 +461,8 @@ def main():
     import sys
     tympan().save(os.path.join(SIDE, "tympan.png"))
     miasma().save(os.path.join(SIDE, "miasma.png"))
-    if "new" in sys.argv[1:]:                # python3 tools/gen_sidepics.py new  -> only the two 0.16 emblems
+    haptic().save(os.path.join(SIDE, "haptic.png"))
+    if "new" in sys.argv[1:]:                # python3 tools/gen_sidepics.py new  -> only the 0.16 / 0.17 emblems
         return
     choir().save(os.path.join(SIDE, "choir.png"))
     maw().save(os.path.join(SIDE, "maw.png"))

@@ -2,6 +2,7 @@
 return {
 	ch_basilisk = {
 		name = "Basilisk",
+	script = "ch_basilisk.lua",
 		description = "Long range - serpent whose gaze reaches across the void",
 		objectName = "ch_basilisk.s3o",
 		buildPic = "ch_basilisk.png",
@@ -61,6 +62,7 @@ return {
 		weapons = {
 			{
 				name = "ch_basilisk_w1",
+	script = "ch_basilisk.lua",
 				def = "ch_basilisk_w1",
 			},
 		},

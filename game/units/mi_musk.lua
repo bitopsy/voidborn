@@ -2,6 +2,7 @@
 return {
 	mi_musk = {
 		name = "Musk Sac",
+	script = "mi_musk.lua",
 		description = "Storage - a cluster of swollen scent glands holding metal and energy",
 		objectName = "mi_musk.s3o",
 		buildPic = "mi_musk.png",

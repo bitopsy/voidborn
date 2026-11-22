@@ -2,6 +2,7 @@
 return {
 	ty_gong = {
 		name = "Great Gong",
+	script = "ty_gong.lua",
 		description = "Heavy defence - a tower that holds a vast bronze disc; one strike clears a sky",
 		objectName = "ty_gong.s3o",
 		buildPic = "ty_gong.png",
@@ -46,6 +47,7 @@ return {
 		weapons = {
 			{
 				name = "ty_gong_w1",
+	script = "ty_gong.lua",
 				def = "ty_gong_w1",
 			},
 		},

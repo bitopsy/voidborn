@@ -2,6 +2,7 @@
 return {
 	mw_ravager = {
 		name = "Ravager",
+	script = "mw_ravager.lua",
 		description = "Assault - armoured mandible beast spitting corrosive bolts",
 		objectName = "mw_ravager.s3o",
 		buildPic = "mw_ravager.png",
@@ -61,6 +62,7 @@ return {
 		weapons = {
 			{
 				name = "mw_ravager_w1",
+	script = "mw_ravager.lua",
 				def = "mw_ravager_w1",
 			},
 		},

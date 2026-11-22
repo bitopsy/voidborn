@@ -1,5 +1,5 @@
 function gadget:GetInfo()
-	return { name = "Voidborn Factory Upgrade", desc = "Upgrade a tier 1 factory to tier 2 in place; the T2 factory unlocks T2 units and the unit forge",
+	return { name = "Voidborn Factory Upgrade", desc = "Upgrade a factory in place: tier 1 -> tier 2 (unlocks the T2 units and the unit forge) and tier 2 -> tier 3 (unlocks the slow T3 heavies)",
 		author = "goddot info@bitopsy.com", date = "2026", license = "GPL", layer = -1, enabled = true }
 end
 
@@ -31,8 +31,10 @@ local FPS = 30
 local CMD_UPGRADE = 34920
 
 local upgradeDefs = {}      -- tier 1 factory defID -> { to = defID, metal, energy, seconds, name }
-local t2Defs = {}           -- defIDs of tier 2 factories
-local t2Units = {}          -- teamID -> { [unitID] = true } finished tier 2 factories
+local t2Defs = {}           -- defIDs of tier 2 and tier 3 factories (a T3 lab keeps the forge unlocked)
+local t3Defs = {}           -- defIDs of tier 3 factories
+local t2Units = {}          -- teamID -> { [unitID] = true } finished tier 2 or tier 3 factories
+local t3Units = {}          -- teamID -> { [unitID] = true } finished tier 3 factories
 local upg = {}              -- unitID -> upgrade state
 local dirty = {}            -- teamID -> true when "vbu_list" has to be rewritten
 
@@ -51,8 +53,15 @@ local function Count(teamID)
 	return n
 end
 
+local function Count3(teamID)
+	local n = 0
+	for _ in pairs(t3Units[teamID] or {}) do n = n + 1 end
+	return n
+end
+
 local function PublishCount(teamID)
-	Spring.SetTeamRulesParam(teamID, "vb_t2", Count(teamID), { allied = true })
+	Spring.SetTeamRulesParam(teamID, "vb_t2", Count(teamID), { allied = true })      -- labs of tier 2 or higher
+	Spring.SetTeamRulesParam(teamID, "vb_t3", Count3(teamID), { allied = true })     -- labs of tier 3
 end
 
 local function Publish(teamID)
@@ -88,12 +97,13 @@ end
 -- the order button
 --------------------------------------------------------------------------------
 local function Tooltip(rule)
-	return string.format("Upgrade this factory to Tier 2: %d metal + %d energy, %d s. Unlocks the T2 units and the unit forge. Press again to cancel.",
-		rule.metal, rule.energy, rule.seconds)
+	local what = rule.tier >= 3 and "Unlocks the slow T3 heavy." or "Unlocks the T2 units and the unit forge."
+	return string.format("Upgrade this factory to Tier %d: %d metal + %d energy, %d s. %s Press again to cancel.",
+		rule.tier, rule.metal, rule.energy, rule.seconds, what)
 end
 
 local function CmdDesc(rule)
-	return { id = CMD_UPGRADE, type = CMDTYPE.ICON, name = "Upgrade T2", action = "vbupgrade", tooltip = Tooltip(rule), params = {} }
+	return { id = CMD_UPGRADE, type = CMDTYPE.ICON, name = "Upgrade T" .. rule.tier, action = "vbupgrade", tooltip = Tooltip(rule), params = {} }
 end
 
 local function AddButton(unitID, defID)
@@ -109,11 +119,11 @@ local function SetLabel(unitID, st)
 	if not rule then return end
 	local label, tip
 	if st.stalled then
-		label = string.format("T2 %d%% stall", math.floor(st.prog * 100))
-		tip = "Upgrade to Tier 2 is STALLED: not enough metal or energy. Press to cancel and get the payment back."
+		label = string.format("T%d %d%% stall", rule.tier, math.floor(st.prog * 100))
+		tip = string.format("Upgrade to Tier %d is STALLED: not enough metal or energy. Press to cancel and get the payment back.", rule.tier)
 	else
-		label = string.format("T2 %d%%", math.floor(st.prog * 100))
-		tip = "Upgrading to Tier 2. Press to cancel and get the payment back."
+		label = string.format("T%d %d%%", rule.tier, math.floor(st.prog * 100))
+		tip = string.format("Upgrading to Tier %d. Press to cancel and get the payment back.", rule.tier)
 	end
 	Spring.EditUnitCmdDesc(unitID, idx, { name = label, tooltip = tip })
 end
@@ -121,7 +131,7 @@ end
 local function ResetButton(unitID, defID)
 	local idx = Spring.FindUnitCmdDesc(unitID, CMD_UPGRADE)
 	local rule = upgradeDefs[defID]
-	if idx and rule then Spring.EditUnitCmdDesc(unitID, idx, { name = "Upgrade T2", tooltip = Tooltip(rule) }) end
+	if idx and rule then Spring.EditUnitCmdDesc(unitID, idx, { name = "Upgrade T" .. rule.tier, tooltip = Tooltip(rule) }) end
 end
 
 --------------------------------------------------------------------------------
@@ -137,7 +147,7 @@ local function Start(unitID, defID, teamID)
 	Spring.SetUnitRulesParam(unitID, "vbu", 0, { allied = true })
 	dirty[teamID] = true
 	SetLabel(unitID, upg[unitID])
-	Say(teamID, string.format("upgrading %s to Tier 2 (%d metal + %d energy over %d s)", rule.name, rule.metal, rule.energy, rule.seconds))
+	Say(teamID, string.format("upgrading %s to Tier %d (%d metal + %d energy over %d s)", rule.name, rule.tier, rule.metal, rule.energy, rule.seconds))
 end
 
 local function Cancel(unitID, why)
@@ -149,7 +159,7 @@ local function Cancel(unitID, why)
 	dirty[st.team] = true
 	Spring.SetUnitRulesParam(unitID, "vbu", nil)
 	if Spring.ValidUnitID(unitID) then ResetButton(unitID, st.def) end
-	Say(st.team, why or "Tier 2 upgrade cancelled, the payment was refunded")
+	Say(st.team, why or string.format("Tier %d upgrade cancelled, the payment was refunded", st.rule.tier))
 end
 
 local function Complete(unitID)
@@ -176,14 +186,16 @@ local function Complete(unitID)
 			Spring.SetUnitHealth(newID, (select(2, Spring.GetUnitHealth(newID)) or 1) * frac)
 			if GG.VB_FactorySwap then GG.VB_FactorySwap(unitID, newID) end
 		end
-		Say(teamID, "the Tier 2 upgrade failed (something blocks the spot); the payment was refunded")
+		Say(teamID, string.format("the Tier %d upgrade failed (something blocks the spot); the payment was refunded", st.rule.tier))
 		return
 	end
 	GG.VB_swapping = nil
 	local _, newMax = Spring.GetUnitHealth(newID)
 	if newMax then Spring.SetUnitHealth(newID, newMax * frac) end
 	if GG.VB_FactorySwap then GG.VB_FactorySwap(unitID, newID) end
-	Say(teamID, string.format("%s online: T2 units and the unit forge are unlocked", UnitDefs[newDef].humanName or UnitDefs[newDef].name))
+	local tier = st.rule.tier
+	Say(teamID, string.format("%s online: %s", UnitDefs[newDef].humanName or UnitDefs[newDef].name,
+		tier >= 3 and "the T3 heavy is unlocked" or "T2 units and the unit forge are unlocked"))
 end
 
 --------------------------------------------------------------------------------
@@ -198,9 +210,11 @@ function gadget:Initialize()
 			local cp = ud.customParams or {}
 			if cp.upgrade_to and UnitDefNames[cp.upgrade_to] then
 				upgradeDefs[id] = { to = UnitDefNames[cp.upgrade_to].id, metal = Num(cp.upgrade_metal, 2000), energy = Num(cp.upgrade_energy, 2800),
-					seconds = Num(cp.upgrade_seconds, 45), name = ud.humanName or ud.name }
+					seconds = Num(cp.upgrade_seconds, 45), name = ud.humanName or ud.name,
+					tier = math.floor(Num(cp.upgrade_tier, 2)) }
 			end
-			if cp.tier == "2" and cp.kind == "fac2" then t2Defs[id] = true end
+			if cp.kind == "fac2" or cp.kind == "fac3" then t2Defs[id] = true end
+			if cp.kind == "fac3" then t3Defs[id] = true end
 		end
 	end
 	-- a game that is reloaded (or this gadget switched on late): pick up the factories that already stand
@@ -209,6 +223,7 @@ function gadget:Initialize()
 		if not (Spring.GetUnitIsBeingBuilt and Spring.GetUnitIsBeingBuilt(unitID)) then
 			if upgradeDefs[defID] then AddButton(unitID, defID) end
 			if t2Defs[defID] then t2Units[teamID] = t2Units[teamID] or {}; t2Units[teamID][unitID] = true end
+			if t3Defs[defID] then t3Units[teamID] = t3Units[teamID] or {}; t3Units[teamID][unitID] = true end
 		end
 	end
 	for _, teamID in ipairs(Spring.GetTeamList()) do PublishCount(teamID); Publish(teamID) end
@@ -219,6 +234,7 @@ function gadget:UnitFinished(unitID, unitDefID, teamID)
 	if t2Defs[unitDefID] then
 		t2Units[teamID] = t2Units[teamID] or {}
 		t2Units[teamID][unitID] = true
+		if t3Defs[unitDefID] then t3Units[teamID] = t3Units[teamID] or {}; t3Units[teamID][unitID] = true end
 		PublishCount(teamID)
 	end
 end
@@ -231,16 +247,19 @@ function gadget:UnitDestroyed(unitID, unitDefID, teamID)
 	end
 	if t2Defs[unitDefID] and t2Units[teamID] and t2Units[teamID][unitID] then
 		t2Units[teamID][unitID] = nil
+		if t3Units[teamID] then t3Units[teamID][unitID] = nil end
 		PublishCount(teamID)
 	end
 end
 
 function gadget:UnitGiven(unitID, unitDefID, newTeam, oldTeam)
-	if upg[unitID] then Cancel(unitID, "the factory changed owner: its Tier 2 upgrade was cancelled") end
+	if upg[unitID] then Cancel(unitID, "the factory changed owner: its upgrade was cancelled") end
 	if t2Defs[unitDefID] then
 		if t2Units[oldTeam] then t2Units[oldTeam][unitID] = nil end
+		if t3Units[oldTeam] then t3Units[oldTeam][unitID] = nil end
 		t2Units[newTeam] = t2Units[newTeam] or {}
 		t2Units[newTeam][unitID] = true
+		if t3Defs[unitDefID] then t3Units[newTeam] = t3Units[newTeam] or {}; t3Units[newTeam][unitID] = true end
 		PublishCount(oldTeam); PublishCount(newTeam)
 	end
 end

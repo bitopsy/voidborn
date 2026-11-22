@@ -2,6 +2,7 @@
 return {
 	mi_bellows = {
 		name = "Bellows",
+	script = "mi_bellows.lua",
 		description = "Assault - a pleated barrel that heaves gas through a flared snout",
 		objectName = "mi_bellows.s3o",
 		buildPic = "mi_bellows.png",
@@ -61,6 +62,7 @@ return {
 		weapons = {
 			{
 				name = "mi_bellows_w1",
+	script = "mi_bellows.lua",
 				def = "mi_bellows_w1",
 			},
 		},

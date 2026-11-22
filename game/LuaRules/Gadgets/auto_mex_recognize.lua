@@ -42,7 +42,7 @@ function gadget:UnitCreated(unitID, unitDefID, unitTeam)
         if x then
             local metalVal = Spring.GetMetalAmount(math.floor(x / 16), math.floor(z / 16)) or 0
             discoveredMexValues[unitID] = metalVal
-            Spring.Echo(string.format("Auto-RECOGNIZED MEX at %.1f,%.1f: %.1f metal/s", x, z, metalVal))
+            --Spring.Echo(string.format("Auto-RECOGNIZED MEX at %.1f,%.1f: %.1f metal/s", x, z, metalVal))
         end
     end
 end
@@ -89,7 +89,7 @@ function gadget:AllowBuild(unitID, unitDefID, teamID, cmdID, cx, cy, cz)
     end
     
     if bestMex then
-        Spring.Echo(string.format("Suggested build: nearest MEX unit %d (%.0f elmos away)", bestMex, math.sqrt(bestDist)))
+        --Spring.Echo(string.format("Suggested build: nearest MEX unit %d (%.0f elmos away)", bestMex, math.sqrt(bestDist)))
     end
     
     return true
@@ -105,7 +105,7 @@ function gadget:AllowMessage(msg, playerID)
             for _, v in pairs(discoveredMexValues) do
                 if v and v > 0 then count = count + 1 end
             end
-            Spring.Echo(string.format("Auto-MEX Recognizer: %d mex(es) currently recognized", count))
+            --Spring.Echo(string.format("Auto-MEX Recognizer: %d mex(es) currently recognized", count))
         else
             Spring.Echo("Usage: /automex info")
         end

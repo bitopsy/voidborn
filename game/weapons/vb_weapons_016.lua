@@ -69,7 +69,7 @@ return {
 		soundStart = "vb_dgun_tympan",
 		soundStartVolume = 1.0,
 		soundHit = "vb_boom_med",
-		soundHitVolume = 0.8,
+		soundHitVolume = 1.0,
 	},
 	ty_auditor_w3 = {
 		name = "Destabilisation Gun",
@@ -720,7 +720,7 @@ return {
 		soundStart = "vb_dgun_miasma",
 		soundStartVolume = 1.0,
 		soundHit = "vb_boom_med",
-		soundHitVolume = 0.8,
+		soundHitVolume = 1.0,
 	},
 	mi_rhinarch_w3 = {
 		name = "Destabilisation Gun",

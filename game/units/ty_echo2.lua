@@ -2,6 +2,7 @@
 return {
 	ty_echo2 = {
 		name = "Grand Echo Chamber",
+	script = "ty_echo2.lua",
 		description = "Tier 2 Factory - the upgraded chamber; a cathedral of horns that births the conclave's elite and unlocks the unit forge",
 		objectName = "ty_echo2.s3o",
 		buildPic = "ty_echo2.png",
@@ -23,6 +24,11 @@ return {
 			kind = "fac2",
 			iscommander = "false",
 			tier = "2",
+			upgrade_to = "ty_echo3",
+			upgrade_metal = "4500",
+			upgrade_energy = "7500",
+			upgrade_seconds = "70",
+			upgrade_tier = "3",
 		},
 		corpse = "",
 		sounds = {

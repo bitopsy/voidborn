@@ -39,7 +39,7 @@ for f in sorted(glob.glob(os.path.join(game, "units", "*.lua"))):
     for uname, d in defs.items():
         icon, cp = d["iconType"], d["customParams"]
         kind, fac = cp["kind"], cp["faction"]
-        if kind in ("fac2", "raider2", "assault2", "art2", "support2", "heavy2"): kind = kind[:-1]   # tier 2 shares the role icon
+        if kind in ("fac2", "raider2", "assault2", "art2", "support2", "heavy2", "fac3", "heavy3"): kind = kind[:-1]   # tier 2 and 3 share the role icon
         if icon not in types: bad.append(f"{uname}: unknown iconType '{icon}'")
         if kind == "combat": continue                       # internal weapon carriers
         if icon != "vb_" + kind: bad.append(f"{uname}: kind '{kind}' but iconType '{icon}'")

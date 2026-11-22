@@ -2,6 +2,7 @@
 return {
 	mw_spitter = {
 		name = "Spitter",
+	script = "mw_spitter.lua",
 		description = "Artillery - bloated sac that lobs homing spore-missiles",
 		objectName = "mw_spitter.s3o",
 		buildPic = "mw_spitter.png",
@@ -61,6 +62,7 @@ return {
 		weapons = {
 			{
 				name = "mw_spitter_w1",
+	script = "mw_spitter.lua",
 				def = "mw_spitter_w1",
 			},
 		},

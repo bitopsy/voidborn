@@ -2,6 +2,7 @@
 return {
 	ch_stare = {
 		name = "Stare Stalk",
+	script = "ch_stare.lua",
 		description = "Light defence - an eye on a stalk that never blinks",
 		objectName = "ch_stare.s3o",
 		buildPic = "ch_stare.png",
@@ -46,6 +47,7 @@ return {
 		weapons = {
 			{
 				name = "ch_stare_w1",
+	script = "ch_stare.lua",
 				def = "ch_stare_w1",
 			},
 		},

@@ -2,6 +2,7 @@
 return {
 	ch_saccade = {
 		name = "Saccade",
+	script = "ch_saccade.lua",
 		description = "T2 Raider - a dart of fins and one wide eye; its twin pulse stings faster than the eye can follow",
 		objectName = "ch_saccade.s3o",
 		buildPic = "ch_saccade.png",
@@ -62,6 +63,7 @@ return {
 		weapons = {
 			{
 				name = "ch_saccade_w1",
+	script = "ch_saccade.lua",
 				def = "ch_saccade_w1",
 			},
 		},

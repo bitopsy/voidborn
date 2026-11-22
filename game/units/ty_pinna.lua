@@ -2,6 +2,7 @@
 return {
 	ty_pinna = {
 		name = "Sun Pinna",
+	script = "ty_pinna.lua",
 		description = "Energy - a cupped ear that drinks the hum of the stars",
 		objectName = "ty_pinna.s3o",
 		buildPic = "ty_pinna.png",

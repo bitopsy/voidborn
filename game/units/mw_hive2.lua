@@ -2,6 +2,7 @@
 return {
 	mw_hive2 = {
 		name = "Great Brood Hive",
+	script = "mw_hive2.lua",
 		description = "Tier 2 Factory - the grown hive; vomits out the swarm's elite and unlocks the unit forge",
 		objectName = "mw_hive2.s3o",
 		buildPic = "mw_hive2.png",
@@ -23,6 +24,11 @@ return {
 			kind = "fac2",
 			iscommander = "false",
 			tier = "2",
+			upgrade_to = "mw_hive3",
+			upgrade_metal = "4500",
+			upgrade_energy = "7500",
+			upgrade_seconds = "70",
+			upgrade_tier = "3",
 		},
 		corpse = "",
 		sounds = {

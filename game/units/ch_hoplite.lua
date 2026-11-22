@@ -2,6 +2,7 @@
 return {
 	ch_hoplite = {
 		name = "Cyclops Hoplite",
+	script = "ch_hoplite.lua",
 		description = "Assault - one-eyed brute with club-arms and a heavy gaze",
 		objectName = "ch_hoplite.s3o",
 		buildPic = "ch_hoplite.png",
@@ -61,6 +62,7 @@ return {
 		weapons = {
 			{
 				name = "ch_hoplite_w1",
+	script = "ch_hoplite.lua",
 				def = "ch_hoplite_w1",
 			},
 		},

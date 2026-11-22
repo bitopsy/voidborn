@@ -2,6 +2,7 @@
 return {
 	mw_hive = {
 		name = "Brood Hive",
+	script = "mw_hive.lua",
 		description = "Factory - a pulsing mound that vomits out the swarm",
 		objectName = "mw_hive.s3o",
 		buildPic = "mw_hive.png",

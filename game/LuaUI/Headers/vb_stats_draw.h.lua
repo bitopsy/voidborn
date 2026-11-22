@@ -19,6 +19,7 @@ D.vsx, D.vsy = 1280, 720
 D.mx, D.my = -1, -1
 D.time = 0
 D.regions, D.tip, D.modal = {}, nil, false
+D.overlays, D.dd = {}, nil          -- overlays: drawn after everything else (open dropdown lists); dd: id of the open dropdown
 D.Stats = nil
 
 D.C = {
@@ -48,16 +49,8 @@ if not okF or type(VBFont) ~= "table" then
 	VBFont = { Width = function(str, size) return #str * size * 0.6 end,
 		Text = function(str, x, y, size, opts, r, g, b, a) glColor(r or 1, g or 1, b or 1, a or 1); gl.Text(str, x, y, size, opts or "o") end }
 end
-local mono, monoTried = nil, false
-local function Mono()
-	if monoTried then return mono end
-	monoTried = true
-	if gl.LoadFont then
-		local ok, f = pcall(gl.LoadFont, "fonts/VoidbornMono.ttf", 32, 3, 1.5)
-		if ok and f then mono = f end
-	end
-	return mono
-end
+-- numbers use the same face as the rest of the game (Georgia)
+local function Mono() return VBFont.Face and VBFont.Face() or nil end
 
 function D.Text(str, x, y, size, opts, c, a)
 	c = c or C.text
@@ -161,7 +154,7 @@ end
 -- regions (what the mouse can hit) and the frame cycle
 --------------------------------------------------------------------------------
 function D.BeginFrame(mx, my, vsx, vsy, dt)
-	D.regions, D.tip = {}, nil
+	D.regions, D.tip, D.overlays = {}, nil, {}
 	D.mx, D.my, D.vsx, D.vsy = mx, my, vsx, vsy
 	D.time = D.time + (dt or 0)
 	D.over = nil
@@ -184,6 +177,7 @@ end
 -- a tooltip is drawn last, on top of everything: lines = { { left, color, right }, ... }
 function D.Tooltip(lines) D.tip = lines end
 function D.EndFrame()
+	for i = 1, #D.overlays do D.overlays[i]() end          -- open dropdown lists: on top of the page, below the tooltip
 	local tip = D.tip
 	if not tip or #tip == 0 then return end
 	local size = sc(10)
@@ -253,6 +247,62 @@ function D.Button(x1, y1, x2, y2, label, spec)
 	local size = spec.size or sc(10)
 	D.Text(label, (x1 + x2) / 2, (y1 + y2) / 2 - size * 0.35, size, "oc", spec.active and C.text or (hot and C.text or C.dim))
 	return D.Region(x1, y1, x2, y2, { click = spec.click, tip = spec.tip })
+end
+
+--[[ D.Dropdown(x1, y1, x2, y2, spec)   a button that opens a list of choices below it (above it when there is no room)
+  spec.id        name of this dropdown (only one is open at a time: D.dd)       spec.options   list of labels
+  spec.selected  index of the chosen option, nil = none (spec.text is shown)     spec.onSelect  fn(index)
+  spec.tip       text (or list of lines) shown while the mouse is over the button  spec.tips   per option, same form
+  The list is drawn in D.EndFrame, above the page. A click anywhere else closes it (and is used up by that). ]]
+local function TipLines(t)
+	if type(t) == "string" then return { { t } } end
+	local r = {}
+	for i, line in ipairs(t) do r[i] = { line } end
+	return r
+end
+
+function D.Dropdown(x1, y1, x2, y2, spec)
+	local open = D.dd == spec.id
+	local hot = D.Inside(x1, y1, x2, y2)
+	local lit = open or hot
+	D.Rect(x1, y1, x2, y2, lit and C.panel2 or C.panel, 0.95)
+	D.Frame(x1, y1, x2, y2, lit and C.accent or C.line, lit and 0.9 or 1)
+	local size = spec.size or sc(10)
+	local label = spec.selected and spec.options[spec.selected] or spec.text or ""
+	D.Text(label, x1 + sc(8), (y1 + y2) / 2 - size * 0.35, size, "o", C.text)
+	-- the arrow: a small triangle made of four rows
+	local u, cx, cy = sc(1.5), x2 - sc(14), (y1 + y2) / 2
+	for k = 0, 3 do
+		local half = (4 - k) * u                                       -- widest row first: down when closed, up when open
+		local ry = open and (cy - 2 * u + k * u) or (cy + u - k * u)
+		D.Rect(cx - half, ry, cx + half, ry + u, lit and C.accent or C.dim, 1)
+	end
+	if hot and not open and spec.tip then D.Tooltip(TipLines(spec.tip)) end
+	local region = D.Region(x1, y1, x2, y2, { click = function() D.dd = (D.dd == spec.id) and nil or spec.id end })
+
+	if open then
+		D.overlays[#D.overlays + 1] = function()
+			local rh = sc(22)
+			local h = #spec.options * rh + sc(4)
+			local top = y1 - 1
+			local bot = top - h
+			if bot < sc(4) then bot = y2 + 1; top = bot + h end          -- no room below: open upwards
+			D.Region(0, 0, D.vsx, D.vsy, { click = function() D.dd = nil end })
+			D.Rect(x1, bot, x2, top, C.bg, 0.99)
+			D.Frame(x1, bot, x2, top, C.accent, 0.9)
+			for i, text in ipairs(spec.options) do
+				local ry2 = top - sc(2) - (i - 1) * rh
+				local ry1 = ry2 - rh
+				local over = D.Inside(x1, ry1, x2, ry2)
+				if i == spec.selected then D.Rect(x1 + 1, ry1, x2 - 1, ry2, C.accent, 0.28)
+				elseif over then D.Rect(x1 + 1, ry1, x2 - 1, ry2, C.panel2, 1) end
+				D.Text(text, x1 + sc(8), (ry1 + ry2) / 2 - size * 0.35, size, "o", (over or i == spec.selected) and C.text or C.dim)
+				if over and spec.tips and spec.tips[i] then D.Tooltip(TipLines(spec.tips[i])) end
+				D.Region(x1, ry1, x2, ry2, { click = function() D.dd = nil; if spec.onSelect then spec.onSelect(i) end end })
+			end
+		end
+	end
+	return region
 end
 
 --------------------------------------------------------------------------------

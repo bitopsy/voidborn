@@ -2,6 +2,7 @@
 return {
 	mw_sunbloom = {
 		name = "Sunbloom",
+	script = "mw_sunbloom.lua",
 		description = "Energy - tentacle anemone feeding on starlight",
 		objectName = "mw_sunbloom.s3o",
 		buildPic = "mw_sunbloom.png",

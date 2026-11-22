@@ -2,6 +2,7 @@
 return {
 	ty_pinnamast = {
 		name = "Auricle Array",
+	script = "ty_pinnamast.lua",
 		description = "Radar - a tall stalk and one enormous turning ear; it hears cloaked things breathe",
 		objectName = "ty_pinnamast.s3o",
 		buildPic = "ty_pinnamast.png",

@@ -2,6 +2,7 @@
 return {
 	ty_whisper = {
 		name = "Whisper",
+	script = "ty_whisper.lua",
 		description = "Scout - a fluttering ear-wing that hears the enemy long before it sees it",
 		objectName = "ty_whisper.s3o",
 		buildPic = "ty_whisper.png",
@@ -62,6 +63,7 @@ return {
 		weapons = {
 			{
 				name = "ty_whisper_w1",
+	script = "ty_whisper.lua",
 				def = "ty_whisper_w1",
 			},
 		},

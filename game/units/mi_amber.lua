@@ -2,6 +2,7 @@
 return {
 	mi_amber = {
 		name = "Ambergris Core",
+	script = "mi_amber.lua",
 		description = "Advanced energy - a congealed lump of perfume that burns like a slow star",
 		objectName = "mi_amber.s3o",
 		buildPic = "mi_amber.png",

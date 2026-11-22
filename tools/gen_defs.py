@@ -110,6 +110,8 @@ def U(id, fac, name, desc, kind, m, hp, **kw):
 # and (together with them) the unit forge.  The gadget LuaRules/Gadgets/vb_factory_upgrade.lua reads these
 # numbers from the factory's customParams, so this is the one place to tune them.
 UPGRADE_METAL, UPGRADE_ENERGY, UPGRADE_SECONDS = 2000, 2800, 45
+# 0.18: a Tier 2 factory upgrades in place to Tier 3 (same gadget, customParams.upgrade_tier = 3); the T3 lab builds the T3 heavy
+UPGRADE3_METAL, UPGRADE3_ENERGY, UPGRADE3_SECONDS = 4500, 7500, 70
 T1_CHOIR = ['ch_seer', 'ch_gazer', 'ch_lashling', 'ch_hoplite', 'ch_basilisk', 'ch_weeper', 'ch_colossus']
 T1_MAW = ['mw_weaver', 'mw_skitter', 'mw_gnasher', 'mw_ravager', 'mw_spitter', 'mw_nurse', 'mw_leviathan']
 T2_CHOIR = ['ch_saccade', 'ch_sclera', 'ch_lance', 'ch_lachryma', 'ch_panopticon']
@@ -182,7 +184,7 @@ UNITS = [
 
  # ================================================================ TIER 2 (needs the upgraded factory)
  # kind = '<role>2' so that tools that look units up by kind (the AI, the hotkeys) never mix tiers up.
- U('ch_womb2', 'choir', 'Great Iris Womb', 'Tier 2 Factory - the upgraded womb; births the Choir\'s elite and unlocks the unit forge', 'fac2', 2470, 7200, fp=6, build=T1_CHOIR + T2_CHOIR, bp=220, e=4100, bt=9000, sight=520, tier=2),
+ U('ch_womb2', 'choir', 'Great Iris Womb', 'Tier 2 Factory - the upgraded womb; births the Choir\'s elite and unlocks the unit forge', 'fac2', 2470, 7200, fp=6, build=T1_CHOIR + T2_CHOIR, bp=220, e=4100, bt=9000, sight=520, tier=2, up=('ch_womb3', UPGRADE3_METAL, UPGRADE3_ENERGY, UPGRADE3_SECONDS)),
  U('ch_saccade', 'choir', 'Saccade', 'T2 Raider - a dart of fins and one wide eye; its twin pulse stings faster than the eye can follow', 'raider2', 140, 620, speed=5.0, alt=70, sight=520,
    weapons=[laser('choir', 285, 0.35, 9, '0.55 1 1', 1.8, 6, burst=2, burstrate=0.08, name='Saccade Pulse')], tier=2),
  U('ch_sclera', 'choir', 'Sclera Knight', 'T2 Assault - an armoured one-eyed champion behind an iris shield', 'assault2', 520, 4200, speed=1.9, alt=100, sight=560,
@@ -193,7 +195,7 @@ UNITS = [
  U('ch_panopticon', 'choir', 'Panopticon', 'T2 Heavy - the all-seeing flagship; a hundred eyes and a halo that judges', 'heavy2', 4200, 34000, speed=0.85, alt=300, sight=800,
    weapons=[laser('choir', 800, 1.3, 900, '1 0.6 1', 11.0, 70, vel=1500, core=0.9, flare=16, name='Verdict'),
             laser('choir', 480, 0.4, 38, '0.5 1 1', 2.6, 10, burst=2, burstrate=0.1, name='Hundred Eyes')], tier=2),
- U('mw_hive2', 'maw', 'Great Brood Hive', 'Tier 2 Factory - the grown hive; vomits out the swarm\'s elite and unlocks the unit forge', 'fac2', 2420, 7600, fp=6, build=T1_MAW + T2_MAW, bp=220, e=4050, bt=9000, sight=520, heal=8, tier=2),
+ U('mw_hive2', 'maw', 'Great Brood Hive', 'Tier 2 Factory - the grown hive; vomits out the swarm\'s elite and unlocks the unit forge', 'fac2', 2420, 7600, fp=6, build=T1_MAW + T2_MAW, bp=220, e=4050, bt=9000, sight=520, heal=8, tier=2, up=('mw_hive3', UPGRADE3_METAL, UPGRADE3_ENERGY, UPGRADE3_SECONDS)),
  U('mw_shear', 'maw', 'Shearwing', 'T2 Raider - four-winged wasp with a flaying breath', 'raider2', 130, 1100, speed=4.4, alt=65, sight=500,
    weapons=[flame(150, 0.1, 9.5)], heal=3, tier=2),
  U('mw_warmaw', 'maw', 'Warmaw', 'T2 Assault - an armoured war-beast; corrosive bolts and a pod of spore-missiles', 'assault2', 480, 5200, speed=1.8, alt=85, sight=540,
@@ -237,7 +239,7 @@ UNITS = [
  U('ty_gong', 'tympan', 'Great Gong', 'Heavy defence - a tower that holds a vast bronze disc; one strike clears a sky', 'def2', 530, 5000, fp=4, e=3200, bt=9300, sight=620,
    weapons=[sonic('tympan', 880, 1.9, 240, '1 0.75 0.3', aoe=80, vel=900, size=14, name='Strike')]),
  U('ty_echo2', 'tympan', 'Grand Echo Chamber', 'Tier 2 Factory - the upgraded chamber; a cathedral of horns that births the conclave\'s elite and unlocks the unit forge', 'fac2', 2450, 7000, fp=6,
-   build=T1_TYMPAN + T2_TYMPAN, bp=220, e=4050, bt=9000, sight=440, tier=2),
+   build=T1_TYMPAN + T2_TYMPAN, bp=220, e=4050, bt=9000, sight=440, tier=2, up=('ty_echo3', UPGRADE3_METAL, UPGRADE3_ENERGY, UPGRADE3_SECONDS)),
  U('ty_banshee', 'tympan', 'Banshee', 'T2 Raider - a streamlined scream with swept ear-wings; its burst is three notes too high to bear', 'raider2', 140, 640, speed=5.0, alt=70, sight=420, radar_m=900,
    weapons=[pulse('tympan', 290, 0.35, 6.5, '1 0.6 0.9', 1.8, 6, burst=3, burstrate=0.07, name='Shriek')], tier=2),
  U('ty_malleus', 'tympan', 'Malleus', 'T2 Assault - an armoured champion with a hammer-bone and a drum for a shield', 'assault2', 520, 4300, speed=1.9, alt=100, sight=480,
@@ -282,7 +284,7 @@ UNITS = [
  U('mi_stench', 'miasma', 'Stench Tower', 'Heavy defence - a trunk-tower crowned with a flared bell that lobs heavy gas', 'def2', 510, 5800, fp=4, e=3100, bt=9000, sight=780,
    weapons=[gasshell('miasma', 860, 2.2, 190, '0.8 0.45 1', aoe=90, vel=330, size=12, name='Stench Shell')], heal=4),
  U('mi_nostril2', 'miasma', 'Great Nostril', 'Tier 2 Factory - the grown pit, a tower of snouts that breathes out the Bloom\'s elite and unlocks the unit forge', 'fac2', 2400, 7800, fp=6,
-   build=T1_MIASMA + T2_MIASMA, bp=220, e=4000, bt=9000, sight=520, heal=8, tier=2),
+   build=T1_MIASMA + T2_MIASMA, bp=220, e=4000, bt=9000, sight=520, heal=8, tier=2, up=('mi_nostril3', UPGRADE3_METAL, UPGRADE3_ENERGY, UPGRADE3_SECONDS)),
  U('mi_pollenwing', 'miasma', 'Pollenwing', 'T2 Raider - a quick winged bloom that dusts everything in range with pollen', 'raider2', 128, 1150, speed=4.3, alt=65, sight=500,
    weapons=[gasjet(160, 0.1, 9.5)], heal=3, tier=2),
  U('mi_bloomguard', 'miasma', 'Bloomguard', 'T2 Assault - an armoured flower knight; heavy fume shells and a pod of spore-missiles', 'assault2', 470, 5400, speed=1.8, alt=85, sight=540,
@@ -300,7 +302,7 @@ ID = {u['id']: u for u in UNITS}
 # zoomed-out icon per role, shared by both factions (the icons are made by tools/gen_icons.py -> game/gamedata/icontypes.lua)
 ICON_KINDS = {k: 'vb_' + k for k in ('com', 'con', 'scout', 'raider', 'assault', 'art', 'support', 'heavy', 'fac', 'mex', 'solar',
                                       'heart', 'store', 'radar', 'def1', 'def2')}
-T2_KINDS = ('fac2', 'raider2', 'assault2', 'art2', 'support2', 'heavy2')      # NB: 'def2' (heavy defence) is a T1 kind
+T2_KINDS = ('fac2', 'raider2', 'assault2', 'art2', 'support2', 'heavy2', 'fac3', 'heavy3')      # NB: 'def2' (heavy defence) is a T1 kind
 def base_kind(k): return k[:-1] if k in T2_KINDS else k
 def unitdef(u):
     m = meta[u['id']]; k = u['kind']; fac = u['fac']
@@ -315,6 +317,7 @@ def unitdef(u):
     if u.get('hear'): d['customParams']['hear'] = str(u['hear'])       # Tympan: enemy cloaks within this many elmos are blown (vb_cloak.lua)
     if u.get('up'):
         d['customParams'].update(upgrade_to=u['up'][0], upgrade_metal=str(u['up'][1]), upgrade_energy=str(u['up'][2]), upgrade_seconds=str(u['up'][3]))
+        if u['up'][0].endswith('3'): d['customParams']['upgrade_tier'] = '3'      # 0.18: T2 -> T3 (the gadget's default is 2)
     mobile = bk in ('com', 'con', 'scout', 'raider', 'assault', 'art', 'support', 'heavy')
     if mobile:
         d.update(canMove=True, canFly=True, hoverAttack=True, cruiseAlt=u['alt'], maxVelocity=u['speed'], acceleration=0.06 + 0.08 / (1 + u['m'] / 200),

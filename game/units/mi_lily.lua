@@ -2,6 +2,7 @@
 return {
 	mi_lily = {
 		name = "Sunlily",
+	script = "mi_lily.lua",
 		description = "Energy - a scented flower that drinks starlight and breathes perfume",
 		objectName = "mi_lily.s3o",
 		buildPic = "mi_lily.png",

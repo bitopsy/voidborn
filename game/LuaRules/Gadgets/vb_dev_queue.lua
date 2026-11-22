@@ -12,8 +12,8 @@ if not gadgetHandler:IsSyncedCode() then return end
 --       vbq:rem:<n>:<id>        take n units out of the queue (the last ones first)
 --       vbq:hold:1:<id>         toggle hold on that queue entry
 --       vbq:clear:1:<id>        cancel the entry
---   Every factory has its own production line, and designs from the forge (which come from no
---   factory) share one team line.  On each line the first entry that is not on hold is
+--   Every factory has its own production line.  A forge design is built by a tier 2 lab and gets that lab's
+--   line too (the build panel names the lab in spec.fac); without a tier 2 lab the designs share one team line.  On each line the first entry that is not on hold is
 --   built; the lines run side by side and all pay from the team's metal and energy.  While it is built the gadget pays its metal and energy a little every
 --   frame; when the team cannot pay, the unit stalls.  Cancelling refunds what was
 --   already paid.  When a unit is finished, the gadget hands "vbdev:<spec>" (count=1)
@@ -232,6 +232,15 @@ local function Add(teamID, playerID, spec, n)
 			return
 		end
 		if spec.lua and not (GG.VB_DevAllowed and GG.VB_DevAllowed(playerID)) then spec.lua = nil end
+		-- designs are built by a TIER 2 lab and get that lab's own line (the units appear next to it);
+		-- without a lab that is tier 2 (cheats, or the build panel did not name one) they share the team line
+		local fac = OwnFactory(teamID, spec.fac)
+		local fd = fac and UnitDefs[Spring.GetUnitDefID(fac)]
+		if fac and (tonumber(fd and fd.customParams and fd.customParams.tier) or 1) >= 2 then
+			line, spec.fac = fac, fac
+		else
+			spec.fac = nil
+		end
 	end
 	spec.team = teamID
 	spec.x, spec.z = nil, nil
@@ -342,7 +351,14 @@ function gadget:RecvLuaMsg(msg, playerID)
 		local spec = Parse(rest)
 		if spec then Add(teamID, playerID, spec, n) end
 	elseif cmd == "rem" then local id, f = SplitRef(rest); Remove(teamID, id, n, false, f)
-	elseif cmd == "clear" then local id, f = SplitRef(rest); Remove(teamID, id, 0, true, f)
+	elseif cmd == "clear" then
+		local id, f = SplitRef(rest)
+		if f == 0 then      -- no lab named (e.g. a design is deleted): clear its entry on every line
+			local q = queues[teamID] or {}
+			for i = #q, 1, -1 do
+				if q[i].tid == id then Refund(teamID, q[i]); table.remove(q, i); dirty[teamID] = true end
+			end
+		else Remove(teamID, id, 0, true, f) end
 	elseif cmd == "hold" then
 		local id, f = SplitRef(rest)
 		local e = Find(teamID, id, f)

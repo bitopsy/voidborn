@@ -95,6 +95,14 @@ function gadget:AllowWeaponTarget(attackerID, targetID, attackerWeaponNum, attac
 	return true, defPriority
 end
 
+local FACTION = { ch = "choir", mw = "maw", ty = "tympan", mi = "miasma", ha = "haptic" }
+local function GunSound(defID, slot)
+	local pre = (UnitDefs[defID].name or ""):match("^(%a%a)_")
+	local fac = pre and FACTION[pre]
+	if not fac then return nil end
+	return "vb_" .. (slot == 1 and "dgun_" or "qgun_") .. fac
+end
+
 local function Denied(teamID) SendToUnsynced("vbGunDenied", teamID) end
 
 local function Fire(uid, defID, teamID, slot, tx, ty, tz)
@@ -153,7 +161,9 @@ local function Fire(uid, defID, teamID, slot, tx, ty, tz)
 	nextFire[uid][slot] = frame + math.floor((wd.reload or 1) * FPS)
 	notify[uid] = notify[uid] or {}
 	notify[uid][slot] = (wd.reload or 1) >= READY_MIN and teamID or nil
-	Spring.PlaySoundFile(wd.soundStart or "", 1.0, px, py, pz)
+	-- WeaponDefs does not expose soundStart to Lua, so pick the sound by faction + slot
+	local snd = GunSound(defID, slot)
+	if snd then Spring.PlaySoundFile(snd, 1.0, px, py, pz) end
 end
 
 function gadget:AllowCommand(uid, defID, teamID, cmdID, params, opts, tag, fromSynced)

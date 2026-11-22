@@ -2,6 +2,7 @@
 return {
 	mw_gnasher = {
 		name = "Gnasher",
+	script = "mw_gnasher.lua",
 		description = "Raider - flying jaws that scorch everything nearby",
 		objectName = "mw_gnasher.s3o",
 		buildPic = "mw_gnasher.png",
@@ -61,6 +62,7 @@ return {
 		weapons = {
 			{
 				name = "mw_gnasher_w1",
+	script = "mw_gnasher.lua",
 				def = "mw_gnasher_w1",
 			},
 		},

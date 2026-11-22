@@ -2,6 +2,7 @@
 return {
 	ch_siphon = {
 		name = "Leech Eye",
+	script = "ch_siphon.lua",
 		description = "Metal extractor - drinks ore from asteroid marrow",
 		objectName = "ch_siphon.s3o",
 		buildPic = "ch_siphon.png",

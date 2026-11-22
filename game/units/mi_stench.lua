@@ -2,6 +2,7 @@
 return {
 	mi_stench = {
 		name = "Stench Tower",
+	script = "mi_stench.lua",
 		description = "Heavy defence - a trunk-tower crowned with a flared bell that lobs heavy gas",
 		objectName = "mi_stench.s3o",
 		buildPic = "mi_stench.png",
@@ -46,6 +47,7 @@ return {
 		weapons = {
 			{
 				name = "mi_stench_w1",
+	script = "mi_stench.lua",
 				def = "mi_stench_w1",
 			},
 		},

@@ -2,6 +2,7 @@
 return {
 	ch_womb2 = {
 		name = "Great Iris Womb",
+	script = "ch_womb2.lua",
 		description = "Tier 2 Factory - the upgraded womb; births the Choir's elite and unlocks the unit forge",
 		objectName = "ch_womb2.s3o",
 		buildPic = "ch_womb2.png",
@@ -23,6 +24,11 @@ return {
 			kind = "fac2",
 			iscommander = "false",
 			tier = "2",
+			upgrade_to = "ch_womb3",
+			upgrade_metal = "4500",
+			upgrade_energy = "7500",
+			upgrade_seconds = "70",
+			upgrade_tier = "3",
 		},
 		corpse = "",
 		sounds = {

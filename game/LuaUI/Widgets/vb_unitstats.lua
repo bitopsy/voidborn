@@ -1,6 +1,6 @@
 function widget:GetInfo()
-	return { name = "Voidborn Unit Census", desc = "Shows summary figures + distributions of specs for the SELECTED units only (/vbstats)",
-		author = "goddot info@bitopsy.com", date = "2026", license = "GPL", layer = 6, enabled = false }
+	return { name = "Voidborn Unit Census", desc = "Census of the SELECTED units: a drawer that slides out of the build menu (tab on its right edge, or /vbstats)",
+		author = "goddot info@bitopsy.com", date = "2026", license = "GPL", layer = 6, enabled = true }
 end
 
 -- What it shows (all values are the LIVE ones, so /vbcreate changes, growth and experience bonuses are included):
@@ -8,8 +8,9 @@ end
 --   * distributions (histograms) of health, speed, range, damage/s, experience and size
 --   * the unit types present (count, average health %, average experience)
 --   * the units closest to splitting
--- The panel only exists while units are selected: it covers exactly the current selection and disappears when nothing is selected.
--- /vbstats            show / hide          drag the title bar to move
+-- THE DRAWER: a CENSUS tab sits on the right edge of the build menu.  Click it (or type /vbstats) and the census slides
+-- out of the build menu, bottom aligned with it, and follows it wherever the build menu goes.  It covers exactly the
+-- current selection.  Without the build menu (widget off or closed) it falls back to a floating panel you can drag.
 local okF, VBFont = pcall(VFS.Include, "LuaUI/Headers/vb_font.h.lua")
 if not okF or type(VBFont) ~= "table" then
 	VBFont = { Width = function(str, size) return #str * size * 0.6 end,
@@ -23,8 +24,11 @@ local BINS         = 14
 local W, TITLE, PAD = 300, 20, 8
 
 local vsx, vsy = Spring.GetViewGeometry()
-local px, py = nil, nil               -- top-left corner of the panel (set on first draw)
-local closed, drag = false, nil
+local px, py = nil, nil               -- floating mode only: top-left corner of the panel (set on first draw)
+local open, drag = false, nil         -- open = the drawer is out (docked) / the panel is shown (floating)
+local anim = 0                        -- 0..1: how far the drawer has slid out
+local HANDLE_W, HANDLE_H = 18, 78     -- the CENSUS tab on the right edge of the build menu
+local docked, clipX = false, 0        -- drawn as a drawer of the build menu this frame?  left edge of what may be seen
 local SCOPE_NAME = "SELECTED"
 
 local C_AMBER = { 0.85, 0.65, 0.2 }
@@ -147,25 +151,57 @@ local HIST_H, ROW = 30, 13
 local function PanelHeight()
 	return TITLE + PAD + 3 * ROW + 6 + #METRICS * (HIST_H + 16) + 6 + 14 + 6 * ROW + 6 + 14 + 4 * ROW + PAD
 end
+local EMPTY_H = TITLE + 36
 
 local rects = {}
+
+-- the build menu's box (x, y of its bottom-left corner, width, height), nil when it is not there
+local function DockBox()
+	local bp = WG and WG.VBBuildPanel
+	if not (bp and bp.Box) then return nil end
+	local bx, by, bw, bh = bp.Box()
+	if not bx then return nil end
+	return bx, by, bw, bh
+end
+local function Ease() return anim * anim * (3 - 2 * anim) end
 
 function widget:ViewResize(w, h) vsx, vsy = w, h end
 
 function widget:Initialize()
 	if widgetHandler and widgetHandler.AddAction then
-		widgetHandler:AddAction("vbstats", function() closed = not closed; return true end, nil, "t")
+		widgetHandler:AddAction("vbstats", function() open = not open; return true end, nil, "t")
 	end
-	Spring.Echo("[VB] Unit stats loaded: shows the selected units only. /vbstats toggles it, drag the title bar to move it")
+	-- the hover panel of the build menu asks how much room the drawer takes on its right side
+	WG.VBCensus = { Width = function() if not DockBox() then return 0 end return HANDLE_W + (W + 6) * Ease() end }
+	Spring.Echo("[VB] Unit census loaded: click the CENSUS tab on the right edge of the build menu (or /vbstats)")
 end
-function widget:Shutdown() if widgetHandler and widgetHandler.RemoveAction then widgetHandler:RemoveAction("vbstats") end end
-function widget:TextCommand(cmd) if cmd == "vbstats" then closed = not closed; return true end end
+function widget:Shutdown()
+	if widgetHandler and widgetHandler.RemoveAction then widgetHandler:RemoveAction("vbstats") end
+	WG.VBCensus = nil
+end
+function widget:TextCommand(cmd) if cmd == "vbstats" then open = not open; return true end end
+
+function widget:GetConfigData() return { open = open, px = px, py = py } end
+function widget:SetConfigData(d)
+	if type(d) ~= "table" then return end
+	open = d.open == true
+	if d.px and d.py then px, py = d.px, d.py end
+end
 
 function widget:SelectionChanged() census = nil end     -- rebuild at once when the selection changes
 
-function widget:Update()
-	if closed then return end
-	if (Spring.GetSelectedUnitsCount() or 0) == 0 then census = nil return end   -- nothing selected: no panel
+function widget:Update(dt)
+	local target = open and 1 or 0
+	if DockBox() then
+		if anim ~= target then
+			anim = anim + (target - anim) * math.min(1, (dt or 0.03) * 14)      -- slide
+			if math.abs(target - anim) < 0.01 then anim = target end
+		end
+	else
+		anim = target
+	end
+	if anim <= 0 then census = nil return end
+	if (Spring.GetSelectedUnitsCount() or 0) == 0 then census = nil return end   -- nothing selected: nothing to count
 	local f = Spring.GetGameFrame()
 	if not census or f % REFRESH == 0 and f ~= (widget.lastF or -1) then
 		widget.lastF = f
@@ -174,19 +210,56 @@ function widget:Update()
 	end
 end
 
+-- the CENSUS tab: always there while the build menu is, on its right edge
+local function DrawHandle(bx, by, bw, bh)
+	local hx1 = bx + bw
+	local hy2 = by + bh - 26
+	local hy1 = math.max(0, hy2 - HANDLE_H)
+	rects.handle = { hx1, hy1, hx1 + HANDLE_W, hy2 }
+	local mx, my = Spring.GetMouseState()
+	local over = Inside(mx, my, rects.handle)
+	Box(hx1, hy1, hx1 + HANDLE_W, hy2, over and 0.22 or 0.13, over and 0.19 or 0.11, over and 0.12 or 0.2, 0.95)
+	Frame(hx1, hy1, hx1 + HANDLE_W, hy2, C_AMBER[1], C_AMBER[2], C_AMBER[3], open and 1 or 0.75)
+	local word = "CENSUS"
+	for i = 1, #word do
+		VBFont.Text(word:sub(i, i), hx1 + HANDLE_W / 2 - 3, hy2 - 3 - i * 10, 9, "o", 1, 0.92, 0.65, over and 1 or 0.85)
+	end
+	VBFont.Text(open and "<" or ">", hx1 + HANDLE_W / 2 - 3, hy1 + 3, 10, "o", 0.65, 0.9, 1, 1)
+end
+
 function widget:DrawScreen()
-	if closed or not census then return end
-	local H = PanelHeight()
-	if not px then px, py = vsx - W - 12, vsy - 80 end
-	px = math.max(0, math.min(vsx - W, px)); py = math.max(H, math.min(vsy, py))
-	local x1, y2 = px, py
+	rects = {}
+	local bx, by, bw, bh = DockBox()
+	docked = bx ~= nil
+	if docked then DrawHandle(bx, by, bw, bh) end
+	if anim <= 0 then return end
+	if not docked and not census then return end      -- floating: only while units are selected
+
+	local H = census and PanelHeight() or EMPTY_H
+	local x1, y2
+	if docked then
+		-- bottom aligned with the build menu, to the right of the tab; slides out from behind the tab
+		local xd = bx + bw + HANDLE_W
+		clipX = xd
+		local yb = by
+		local yt = yb + H
+		if yt > vsy - 4 then yt = vsy - 4; yb = yt - H end
+		x1, y2 = xd - (1 - Ease()) * (W + 2), yt
+		gl.Scissor(xd, 0, W + 4, vsy)
+	else
+		if not px then px, py = vsx - W - 12, vsy - 80 end
+		px = math.max(0, math.min(vsx - W, px)); py = math.max(H, math.min(vsy, py))
+		x1, y2 = px, py
+		clipX = 0
+	end
 	local x2, y1 = x1 + W, y2 - H
 	Box(x1, y1, x2, y2, 0.05, 0.05, 0.09, 0.88)
 	Frame(x1, y1, x2, y2, C_AMBER[1], C_AMBER[2], C_AMBER[3], 0.95)
 	Box(x1, y2 - TITLE, x2, y2, 0.14, 0.12, 0.22, 0.95)
 	VBFont.Text("SELECTED UNITS", x1 + PAD, y2 - TITLE + 6, 11, "o", 1, 0.92, 0.65, 1)
 	-- scope tag + close button
-	local tag = "[" .. census.n .. (census.n == 1 and " unit]" or " units]")
+	local n = census and census.n or 0
+	local tag = "[" .. n .. (n == 1 and " unit]" or " units]")
 	local tw = VBFont.Width(tag, 10)
 	rects.scope = { x2 - TITLE - tw - 14, y2 - TITLE, x2 - TITLE - 4, y2 }
 	VBFont.Text(tag, rects.scope[1] + 5, y2 - TITLE + 6, 10, "o", 0.65, 0.9, 1, 1)
@@ -194,6 +267,12 @@ function widget:DrawScreen()
 	VBFont.Text("X", x2 - TITLE + 6, y2 - TITLE + 5, 11, "o", 1, 1, 1, 1)
 	rects.title = { x1, y2 - TITLE, rects.scope[1], y2 }
 	rects.panel = { x1, y1, x2, y2 }
+
+	if not census then      -- drawer is out but nothing is selected
+		VBFont.Text("Select units to count them.", x1 + PAD, y2 - TITLE - 20, 10, "o", 0.62, 0.62, 0.72, 1)
+		if docked then gl.Scissor(false) end
+		return
+	end
 
 	local y = y2 - TITLE - PAD
 	local C = census
@@ -211,7 +290,7 @@ function widget:DrawScreen()
 	y = y - 6
 
 	-- distributions
-	local bw = (W - 2 * PAD) / BINS
+	local bw2 = (W - 2 * PAD) / BINS
 	for _, m in ipairs(METRICS) do
 		local h = C.hist[m[1]]
 		local col = m[3]
@@ -227,8 +306,8 @@ function widget:DrawScreen()
 			for i = 1, BINS do
 				local c = h.bins[i]
 				if c > 0 then
-					local bh = math.max(2, c / h.top * (HIST_H - 2))
-					Box(x1 + PAD + (i - 1) * bw + 1, y + 1, x1 + PAD + i * bw - 1, y + 1 + bh, col[1], col[2], col[3], 0.85)
+					local bh2 = math.max(2, c / h.top * (HIST_H - 2))
+					Box(x1 + PAD + (i - 1) * bw2 + 1, y + 1, x1 + PAD + i * bw2 - 1, y + 1 + bh2, col[1], col[2], col[3], 0.85)
 				end
 			end
 		end
@@ -268,16 +347,55 @@ function widget:DrawScreen()
 			VBFont.Text(string.format("%d%%", math.floor(f * 100)), x2 - PAD, y + 2, 9, "or", 1, 0.9, 0.3, 1)
 		end
 	end
+	if docked then gl.Scissor(false) end
 end
 
 -- ------------------------------------------------------------------ mouse
-function widget:IsAbove(x, y) return not closed and census ~= nil and Inside(x, y, rects.panel) end
+local function OnPanel(x, y)
+	return anim > 0 and rects.panel and x >= clipX and Inside(x, y, rects.panel)
+end
+function widget:IsAbove(x, y)
+	return (rects.handle and Inside(x, y, rects.handle)) or OnPanel(x, y) or false
+end
 
 function widget:MousePress(x, y, button)
-	if closed or not census or not Inside(x, y, rects.panel) then return false end
-	if Inside(x, y, rects.close) then closed = true; return true end
-	if Inside(x, y, rects.title) then drag = { x - px, y - py } end
+	if rects.handle and Inside(x, y, rects.handle) then open = not open; return true end
+	if not OnPanel(x, y) then return false end
+	if Inside(x, y, rects.close) then open = false; return true end
+	if not docked and Inside(x, y, rects.title) then drag = { x - px, y - py } end
 	return true
 end
 function widget:MouseMove(x, y) if drag then px, py = x - drag[1], y - drag[2] end end
 function widget:MouseRelease() drag = nil end
+
+--------------------------------------------------------------------------------
+-- Panel Snap: lets gui_panel_snap.lua dock this panel when it is floating (drag it near an edge and let go)
+--------------------------------------------------------------------------------
+local panelSnapSeen
+local function PanelSnapRegister()
+	local PL = WG.PanelLayout
+	if not PL or PL == panelSnapSeen then return end
+	panelSnapSeen = PL
+	PL.Register("vb_unitstats", {
+		dock = "right", order = 20, fixedSize = true,
+		getRect = function()
+			if not px then return nil end
+			local H = census and PanelHeight() or EMPTY_H
+			return px, py - H, W, H
+		end,
+		setRect = function(x, y, w, h) px, py = x, y + h end,   -- px, py = top-left corner
+		isVisible = function() return not docked and open and census ~= nil end,
+	})
+end
+do
+	local prevUpdate = widget.Update
+	function widget:Update(...)
+		PanelSnapRegister()
+		if prevUpdate then return prevUpdate(self, ...) end
+	end
+	local prevShutdown = widget.Shutdown
+	function widget:Shutdown(...)
+		if WG.PanelLayout then WG.PanelLayout.Unregister("vb_unitstats") end
+		if prevShutdown then return prevShutdown(self, ...) end
+	end
+end

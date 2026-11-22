@@ -2,6 +2,7 @@
 return {
 	mi_pollinator = {
 		name = "Pollinator",
+	script = "mi_pollinator.lua",
 		description = "Builder - a small nostril bloom that sheds spore-threads and knits them into structures",
 		objectName = "mi_pollinator.s3o",
 		buildPic = "mi_pollinator.png",

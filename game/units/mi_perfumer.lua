@@ -2,6 +2,7 @@
 return {
 	mi_perfumer = {
 		name = "Perfumer",
+	script = "mi_perfumer.lua",
 		description = "T2 Support - a bloom hung with censers; fast builder, mends the Bloom and sniffs out mushrooms",
 		objectName = "mi_perfumer.s3o",
 		buildPic = "mi_perfumer.png",

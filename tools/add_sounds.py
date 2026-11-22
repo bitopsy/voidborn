@@ -11,7 +11,7 @@ def items(*names): return "{ " + ", ".join('"vb_%s"' % n for n in names) + " }"
 # ----------------------------------------------------------------------------- units
 def unit_sounds(fac, kind):
     f = fac if fac in ("choir", "maw", "tympan", "miasma") else "maw"
-    if kind in ("fac2", "raider2", "assault2", "art2", "support2", "heavy2"): kind = kind[:-1]      # tier 2 units sound like their tier 1 role
+    if kind in ("fac2", "raider2", "assault2", "art2", "support2", "heavy2", "fac3", "heavy3"): kind = kind[:-1]      # tier 2 units sound like their tier 1 role
     s = {}
     if kind in ("com", "con", "scout", "raider", "assault", "art", "support", "heavy"):
         s["select"] = items("select_" + f); s["ok"] = items("ok_" + f); s["cant"] = items("ui_error")
@@ -85,7 +85,7 @@ def patch(m):
     if hit: add += '\t\tsoundHit = "vb_%s",\n\t\tsoundHitVolume = 0.8,\n' % hit
     n_w += 1
     return "\n\t%s = {%s%s\n\t}," % (key, body.rstrip("\n"), add.rstrip("\n"))
-for fname in ("vb_weapons.lua", "vb_weapons_016.lua"):
+for fname in ("vb_weapons.lua", "vb_weapons_016.lua", "vb_weapons_018.lua"):
     wp = os.path.join(G, "weapons", fname)
     if not os.path.exists(wp): continue
     txt = open(wp).read()

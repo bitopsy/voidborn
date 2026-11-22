@@ -2,6 +2,7 @@
 return {
 	ty_cilia = {
 		name = "Cilia Tap",
+	script = "ty_cilia.lua",
 		description = "Metal extractor - hair cells that feel ore humming in the asteroid",
 		objectName = "ty_cilia.s3o",
 		buildPic = "ty_cilia.png",

@@ -2,6 +2,7 @@
 return {
 	mw_warmaw = {
 		name = "Warmaw",
+	script = "mw_warmaw.lua",
 		description = "T2 Assault - an armoured war-beast; corrosive bolts and a pod of spore-missiles",
 		objectName = "mw_warmaw.s3o",
 		buildPic = "mw_warmaw.png",
@@ -62,10 +63,12 @@ return {
 		weapons = {
 			{
 				name = "mw_warmaw_w1",
+	script = "mw_warmaw.lua",
 				def = "mw_warmaw_w1",
 			},
 			{
 				name = "mw_warmaw_w2",
+	script = "mw_warmaw.lua",
 				def = "mw_warmaw_w2",
 			},
 		},

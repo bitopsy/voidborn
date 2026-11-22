@@ -13,6 +13,12 @@
 -- All engine settings are written as *transient* (overlay) config values and the
 -- original values are restored when the widget is unloaded, so nothing is left
 -- permanently changed in springsettings.cfg.
+--
+-- For other widgets (the graphics quality dropdown of the Voidborn dashboard, vb_graphics.lua):
+--   WG.FPSOps.SetPreset(p)   p = 0 (OFF: nothing turned down), 1 (LOW), 2 (MED), 3 (HIGH), 99 (MAX);
+--                            returns false when it is locked (a benchmark is running)
+--   WG.FPSOps.GetPreset()    the preset in force, nil when the knobs were mixed by hand
+--   WG.FPSOps.SetVisible(b)  show or hide the floating panel
 --------------------------------------------------------------------------------
 
 function widget:GetInfo()
@@ -23,7 +29,7 @@ function widget:GetInfo()
 		date    = "2026-11-18",
 		license = "GNU GPL, v2 or later",
 		layer   = 1000,
-		enabled = true,
+		enabled = false,
 		handler = true, -- needed for widgetHandler (toggling heavy FX widgets)
 	}
 end
@@ -241,6 +247,7 @@ local S = {
 	dragging = false, dirty = true,
 	ema = 1 / 60, low1 = nil, msg = nil,
 	inited = false,
+	preset = nil,               -- the preset in force (0 .. 99), nil = knobs mixed by hand
 }
 local G = nil                   -- cached geometry
 local applied = {}              -- level currently applied to the engine per knob
@@ -283,18 +290,21 @@ local function setKnob(i, lvl)
 	lvl = clamp(lvl, 0, #k.levels)
 	k.level = lvl
 	applyKnob(i, lvl)
+	S.preset = nil
 	S.msg = nil
 end
 
 local function applyPreset(p)
-	if bench then S.msg = "Locked while benchmark is running"; return end
+	if bench then S.msg = "Locked while benchmark is running"; return false end
 	for i, k in ipairs(knobs) do
 		local n = #k.levels
 		local lvl = (p == 0) and 0 or min(p, n)
 		k.level = lvl
 		applyKnob(i, lvl)
 	end
+	S.preset = p
 	S.msg = nil
+	return true
 end
 
 --------------------------------------------------------------------------------
@@ -842,13 +852,20 @@ function widget:Initialize()
 
 	local any = false
 	for _, k in ipairs(knobs) do if k.level > 0 then any = true end end
-	if any then applyLevels(userLevels()) end
+	if any then applyLevels(userLevels()) else S.preset = 0 end
+
+	WG.FPSOps = {
+		SetPreset  = function(p) return applyPreset(p) end,
+		GetPreset  = function() return S.preset end,
+		SetVisible = function(b) S.visible = b and true or false; S.dirty = true end,
+	}
 
 	S.inited = true
 	S.dirty = true
 end
 
 function widget:Shutdown()
+	WG.FPSOps = nil
 	if bench then
 		if bench.vsync then cmd("vsync " .. bench.vsync) end
 		bench = nil
@@ -863,7 +880,7 @@ end
 function widget:GetConfigData()
 	local lv = {}
 	for _, k in ipairs(knobs) do lv[k.id] = k.level end
-	return { px = S.px, py = S.py, collapsed = S.collapsed, visible = S.visible, levels = lv }
+	return { px = S.px, py = S.py, collapsed = S.collapsed, visible = S.visible, levels = lv, preset = S.preset }
 end
 
 function widget:SetConfigData(d)
@@ -871,6 +888,7 @@ function widget:SetConfigData(d)
 	S.px, S.py = d.px, d.py
 	if d.collapsed ~= nil then S.collapsed = d.collapsed end
 	if d.visible ~= nil then S.visible = d.visible end
+	if type(d.preset) == "number" then S.preset = d.preset end
 	if type(d.levels) == "table" then
 		for _, k in ipairs(knobs) do
 			local l = d.levels[k.id]
@@ -879,4 +897,35 @@ function widget:SetConfigData(d)
 		if S.inited then applyLevels(userLevels()) end
 	end
 	S.dirty = true
+end
+
+--------------------------------------------------------------------------------
+-- Panel Snap: lets gui_panel_snap.lua dock this panel (drag it near an edge and let go)
+--------------------------------------------------------------------------------
+local panelSnapSeen
+local function PanelSnapRegister()
+	local PL = WG.PanelLayout
+	if not PL or PL == panelSnapSeen then return end
+	panelSnapSeen = PL
+	PL.Register("gui_fps_ops", {
+		dock = "right", order = 30, fixedSize = true,
+		getRect = function()
+			if not (G and G.w) then return nil end
+			return G.x1, G.top - G.h, G.w, G.h
+		end,
+		setRect = function(x, y, w, h) S.px, S.py = x, y + h end,           -- S.px = left, S.py = top
+		isVisible = function() return S.visible and G ~= nil end,
+	})
+end
+do
+	local prevUpdate = widget.Update
+	function widget:Update(...)
+		PanelSnapRegister()
+		if prevUpdate then return prevUpdate(self, ...) end
+	end
+	local prevShutdown = widget.Shutdown
+	function widget:Shutdown(...)
+		if WG.PanelLayout then WG.PanelLayout.Unregister("gui_fps_ops") end
+		if prevShutdown then return prevShutdown(self, ...) end
+	end
 end

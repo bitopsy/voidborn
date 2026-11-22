@@ -2,6 +2,7 @@
 return {
 	mw_cyst = {
 		name = "Gut Cyst",
+	script = "mw_cyst.lua",
 		description = "Storage - swollen sacs for metal and energy",
 		objectName = "mw_cyst.s3o",
 		buildPic = "mw_cyst.png",

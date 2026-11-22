@@ -1,6 +1,6 @@
 function widget:GetInfo()
 	return { name = "Voidborn Build Panel", desc = "Compact draggable build/order/toggle panel with scale handle and close button",
-		author = "goddot info@bitopsy.com", date = "2026", license = "GPL", layer = 5, enabled = true }
+		author = "goddot info@bitopsy.com", date = "2026", license = "GPL", layer = 6, enabled = true }
 end
 
 -- alien UI font; falls back to the engine font automatically if it cannot load
@@ -68,14 +68,75 @@ local lastHoverID, lastHoverSnd   -- id of the command last hovered (nil = none)
 -- when a factory is selected: pie chart, hold, right-click to take one out.  Structures still use the engine
 -- (they have to be placed), and so does everything when the queue gadget is not running.
 local function PlainId(name) return ((("d_" .. name):gsub("[^%w_%-]", "_")):sub(1, 24)) end
+
+-- A lab = a factory (the Hive, Palm, Womb, Nostril, Echo and their tier 2 versions).  Every lab has its own
+-- roster (what IT can build) and its own production queue, so the panel always shows ONE lab: the selected one,
+-- else the one picked with its chip, else the first.  A tier 1 and a tier 2 lab are never mixed together.
+local function IsLab(ud)
+	if not ud then return false end
+	if ud.isFactory then return true end
+	local cp = ud.customParams
+	if cp and (cp.kind == "fac" or cp.kind == "fac2") then return true end
+	return (not ud.canMove and ud.buildOptions and #ud.buildOptions > 0) and true or false
+end
+local function LabTier(ud) return tonumber(ud and ud.customParams and ud.customParams.tier) or 1 end
+local labs = {}          -- my labs in unitID order: { uid, def, tier, n }
+local labPick            -- the lab picked with its chip (used when no lab is selected)
 local function SelectedFactory()
 	local sel = Spring.GetSelectedUnits() or {}
 	for i = 1, #sel do
 		local ud = UnitDefs[Spring.GetUnitDefID(sel[i]) or -1]
-		if ud and (ud.isFactory or (not ud.canMove and ud.buildOptions and #ud.buildOptions > 0)) then return sel[i] end
+		if IsLab(ud) then return sel[i] end
 	end
 end
-local BUILD_TAG = "q3"        -- shown in the title bar so you can tell which version of the panel is running
+local function ActiveLab()
+	local sel = SelectedFactory()
+	if sel then return sel end
+	if labPick then
+		for _, l in ipairs(labs) do if l.uid == labPick then return labPick end end
+	end
+	return labs[1] and labs[1].uid
+end
+-- the lab that builds forge designs: the active one when it is tier 2, else the first tier 2 lab (nil = the team line)
+local designLab
+local function DesignLab(act)
+	for _, l in ipairs(labs) do if l.uid == act and l.tier >= 2 then return act end end
+	for _, l in ipairs(labs) do if l.tier >= 2 then return l.uid end end
+end
+
+-- Categories: every tile belongs to one of four, shown all at once as labelled sections.
+--   ECONOMY  mex, energy, storage, heart       COMBAT  fighting units and defences
+--   UTILITY  radar, support units              BUILD   labs and constructors
+local CATS = {
+	{ id = "E", name = "ECONOMY", col = { 1.00, 0.82, 0.25 } },
+	{ id = "C", name = "COMBAT",  col = { 1.00, 0.42, 0.32 } },
+	{ id = "U", name = "UTILITY", col = { 0.40, 0.85, 1.00 } },
+	{ id = "B", name = "BUILD",   col = { 0.50, 1.00, 0.55 } },
+}
+local KIND_CAT = { mex = "E", solar = "E", heart = "E", store = "E",
+	art = "C", art2 = "C", heavy = "C", heavy2 = "C", assault = "C", assault2 = "C", raider = "C", raider2 = "C",
+	scout = "C", combat = "C", def1 = "C", def2 = "C",
+	radar = "U", support = "U", support2 = "U",
+	fac = "B", fac2 = "B", con = "B", com = "B" }
+local catCache = {}
+local function CatOf(ud)
+	if not ud then return "U" end
+	local id = ud.id or 0
+	local c = catCache[id]
+	if c then return c end
+	local cp = ud.customParams
+	c = cp and KIND_CAT[cp.kind]
+	if not c then      -- no kind given: decide from what the def can do
+		if (ud.energyMake or 0) > 0 or (ud.extractsMetal or 0) > 0 or (ud.metalStorage or 0) > 0 or (ud.energyStorage or 0) > 0 then c = "E"
+		elseif ud.buildOptions and #ud.buildOptions > 0 then c = "B"
+		elseif ud.weapons and #ud.weapons > 0 then c = "C"
+		else c = "U" end
+	end
+	catCache[id] = c
+	return c
+end
+
+local BUILD_TAG = "q4"        -- shown in the title bar so you can tell which version of the panel is running
 do   -- plus the stamp that build_sdz.py puts in the archive (vb_build.txt): proves which .sdz the game loaded
 	local okS, st = pcall(function() return VFS.LoadFile("vb_build.txt") end)
 	if okS and type(st) == "string" and st ~= "" then BUILD_TAG = BUILD_TAG .. " " .. st:gsub("%s+", "") end
@@ -86,7 +147,7 @@ end
 local roster, rosterFrame = {}, -100
 local function FactoryDef(uid)
 	local ud = UnitDefs[Spring.GetUnitDefID(uid) or -1]
-	if ud and (ud.isFactory or (not ud.canMove and ud.buildOptions and #ud.buildOptions > 0)) then return ud end
+	if IsLab(ud) then return ud end
 end
 local function CanBuild(fd, defID)
 	for _, b in ipairs(fd.buildOptions or {}) do if b == defID or (UnitDefs[defID] and b == UnitDefs[defID].name) then return true end end
@@ -95,8 +156,9 @@ end
 -- constr[defID] = { n = how many are under construction, prog = the most advanced 0..1, active = a builder is working on one }
 local constr = {}
 local function RebuildRoster(skip)
-	local byDef, order, pend, target = {}, {}, {}, {}
+	local order, pend, target = {}, {}, {}
 	local ready = (Spring.GetGameRulesParam("vbq_ready") or 0) == 1
+	labs = {}
 	for _, uid in ipairs(Spring.GetTeamUnits(Spring.GetMyTeamID()) or {}) do
 		local did = Spring.GetUnitDefID(uid)
 		local ud = did and UnitDefs[did]
@@ -108,14 +170,21 @@ local function RebuildRoster(skip)
 				local t = Spring.GetUnitIsBuilding(uid)
 				if t then target[t] = true end
 			end
-			if ready and (ud.isFactory or (not ud.canMove and ud.buildOptions and #ud.buildOptions > 0)) then
-				for _, b in ipairs(ud.buildOptions or {}) do
-					local bd = type(b) == "number" and UnitDefs[b] or UnitDefNames[b]
-					if bd and bd.canMove and not skip[bd.id] then
-						if not byDef[bd.id] then byDef[bd.id] = { def = bd.id, facs = {} }; order[#order + 1] = byDef[bd.id] end
-						local f = byDef[bd.id].facs; f[#f + 1] = uid
-					end
-				end
+			if IsLab(ud) then labs[#labs + 1] = { uid = uid, def = did, tier = LabTier(ud) } end
+		end
+	end
+	table.sort(labs, function(a, b) return a.uid < b.uid end)
+	for i, l in ipairs(labs) do l.n = i end
+	-- the roster is what the ACTIVE lab can build: each lab has its own list and its own queue
+	local act = ActiveLab()
+	local ad = act and FactoryDef(act)
+	if ready and ad then
+		local seen = {}
+		for _, b in ipairs(ad.buildOptions or {}) do
+			local bd = type(b) == "number" and UnitDefs[b] or UnitDefNames[b]
+			if bd and bd.canMove and not skip[bd.id] and not seen[bd.id] then
+				seen[bd.id] = true
+				order[#order + 1] = { def = bd.id, facs = { act } }
 			end
 		end
 	end
@@ -141,15 +210,7 @@ end
 -- first that can - a factory that is finished comes first, one that is still being
 -- built is only used when there is no other choice (the entry then waits for it)
 local function RosterFactory(r)
-	local sel = SelectedFactory()
-	if sel then
-		local fd = FactoryDef(sel)
-		if fd and CanBuild(fd, r.def) then return sel end
-	end
-	for _, f in ipairs(r.facs) do
-		if FactoryReady(f) then return f end
-	end
-	return r.facs[1]
+	return r.facs[1]      -- the roster only holds what the active lab builds
 end
 
 -- one click on a stock-unit tile (a roster tile or an engine tile that is routed through the queue)
@@ -224,6 +285,8 @@ local function RefreshRoster()
 	RebuildRoster(skip)
 end
 
+function widget:SelectionChanged() RefreshRoster() end      -- another lab selected: its own roster and queue at once
+
 function widget:Initialize()
 	Spring.Echo("[VB] Build panel (" .. BUILD_TAG .. ") loaded: drag title bar to move, corner handle to scale, X to close (/vbpanel reopens)")
 	if widgetHandler and widgetHandler.AddAction then
@@ -241,6 +304,22 @@ function widget:SetConfigData(d)
 	if d and d.scale then scale = math.max(MIN_SCALE, math.min(MAX_SCALE, d.scale)) end
 end
 function widget:ViewResize(w, h) vsx, vsy = w, h end
+
+-- Default layout (vb_layout.lua): it places the panel (bottom left corner) and picks the scale that gives the
+-- panel the column width.  Moving or scaling the panel by hand hands the layout back to the player.
+local function UserTookOver() if WG.VBLayout and WG.VBLayout.Release then WG.VBLayout.Release() end end
+local BASE_W = COLS * (ICON + GAP) - GAP + PAD * 2      -- panel width at scale 1
+WG.VBBuildPanel = {
+	Box = function()
+		if closed or not panelBox then return nil end
+		return px, py, panelBox.w, panelBox.h
+	end,
+	Place = function(x, y, w)
+		px, py = x, y
+		scale = math.max(MIN_SCALE, math.min(MAX_SCALE, w / BASE_W))
+	end,
+}
+
 function widget:Update()
 	frame = frame + 1
 	if frame % 6 == 0 then Refresh() end
@@ -479,7 +558,8 @@ local function DrawHexPanel(ud, icon, extra)
 	local k = H * 0.12                                    -- how far the left/right points stick out
 	-- beside the build panel, vertically centred on the hovered icon; flip to the left side if no room
 	local cy = (icon[2] + icon[4]) / 2
-	local hx1 = px + (panelBox and panelBox.w or 0) + 10
+	local drawerW = (WG.VBCensus and WG.VBCensus.Width and WG.VBCensus.Width()) or 0      -- the census drawer slides out on this side
+	local hx1 = px + (panelBox and panelBox.w or 0) + 10 + drawerW
 	if hx1 + W > vsx then hx1 = px - 10 - W end
 	local hy1 = math.max(4, math.min(vsy - H - 4, cy - H / 2))
 	local hx2, hy2 = hx1 + W, hy1 + H
@@ -515,6 +595,21 @@ local function DrawHexPanel(ud, icon, extra)
 	if st.m then DrawRadar(st.m, cx, hy1 + 14 * s + (radarH - 14 * s) / 2 - 6 * s, R, s) end
 end
 
+-- per lab: how many units are queued on its line and the most telling state (s stalled > b building > p pending)
+local STATE_RANK = { s = 3, b = 2, p = 1 }
+local function LabInfo(queue)
+	local info = {}
+	for k, e in pairs(queue) do
+		if type(k) == "string" and k:find("@", 1, true) and (e.fac or 0) > 0 then
+			local li = info[e.fac]
+			if not li then li = { n = 0 }; info[e.fac] = li end
+			li.n = li.n + e.n
+			if (STATE_RANK[e.st] or 0) > (STATE_RANK[li.st] or 0) then li.st = e.st end
+		end
+	end
+	return info
+end
+
 local function DrawClosedTab()
 	local s = 22
 	local x1, y1 = px, math.max(0, math.min(vsy - s, py + lastH - s))
@@ -537,14 +632,36 @@ function widget:DrawScreen()
 	local icon, gap, pad, title = ICON * s, GAP * s, PAD * s, math.max(16, TITLE * s)
 	local fs = math.max(9, 10 * s)
 	local gridW = COLS * (icon + gap) - gap
-	local nTiles = #builds + #roster + #tplIds + 1            -- engine build icons, saved designs, and the [+] tile
-	local brows = math.ceil(nTiles / COLS)
+	-- sort every tile into its category; the four sections are all shown at once
+	local act = ActiveLab()
+	designLab = DesignLab(act)
+	local cats = { E = {}, C = {}, U = {}, B = {} }
+	local actDef = act and FactoryDef(act)
+	for _, b in ipairs(builds) do
+		local bd = UnitDefs[-b.c.id]
+		-- with several labs selected the engine lists the units of all of them: keep the active lab's
+		local keep = true
+		if bd and bd.canMove and actDef and SelectedFactory() then keep = CanBuild(actDef, bd.id) end
+		if keep then local c = cats[CatOf(bd)]; c[#c + 1] = { kind = "build", b = b } end
+	end
+	for _, ru in ipairs(roster) do local c = cats[CatOf(UnitDefs[ru.def])]; c[#c + 1] = { kind = "ru", ru = ru } end
+	for _, tid in ipairs(tplIds) do
+		local t = F.templates[tid] or {}
+		local c = cats[CatOf(t.base and UnitDefNames[t.base])]
+		c[#c + 1] = { kind = "tpl", tid = tid }
+	end
+	local combat = cats.C; combat[#combat + 1] = { kind = "plus" }          -- the [+] tile opens the forge: designs are fighters
+	local LEG, chipH = 12 * s, 17 * s
+	local labsH = #labs > 0 and (math.ceil(#labs / 3) * (chipH + gap) + 2 * s) or 0
+	local nflat = 0
+	for _, c in ipairs(CATS) do nflat = nflat + #cats[c.id] end
+	local gridH = LEG + math.ceil(nflat / COLS) * (icon + gap) + 3 * s      -- ONE grid: a one-line legend + the tiles
 	local tcols, ocols = 2, 3
 	local trows, orows = math.ceil(#toggles / tcols), math.ceil(#orders / ocols)
 	local tbW, tbH = (gridW - (tcols - 1) * gap) / tcols, 20 * s
 	local obW, obH = (gridW - (ocols - 1) * gap) / ocols, 18 * s
 	local w = gridW + pad * 2
-	local h = title + pad + brows * (icon + gap)
+	local h = title + pad + labsH + gridH
 		+ (orows > 0 and (orows * (obH + gap) + 4 * s) or 0)
 		+ (trows > 0 and (trows * (tbH + gap) + 4 * s) or 0) + pad + 8 * s
 	if scaling then py = scaling.top - h end
@@ -572,128 +689,176 @@ function widget:DrawScreen()
 	local _, activeID = Spring.GetActiveCommand()
 	hover, hoverRect = nil, nil
 	hoverPlus, hoverPlusRect = false, nil
-	local top = y2 - title - pad
-	-- build icons
-	for n, b in ipairs(builds) do
-		local col, row = (n - 1) % COLS, math.floor((n - 1) / COLS)
-		local ix, iy = x1 + pad + col * (icon + gap), top - (row + 1) * (icon + gap) + gap
-		local r = { ix, iy, ix + icon, iy + icon, cmd = b }
-		rects[#rects + 1] = r
-		local over = Inside(mx, my, r); if over then hover, hoverRect = b, r end
-		gl.Color(1, 1, 1, b.c.disabled and 0.35 or 1)
-		gl.Texture("#" .. (-b.c.id)); gl.TexRect(ix, iy, ix + icon, iy + icon); gl.Texture(false)
-		if b.c.id == activeID then Frame(ix, iy, ix + icon, iy + icon, 1, 0.9, 0.3, 1)
-		elseif over then Frame(ix, iy, ix + icon, iy + icon, 1, 1, 1, 0.9)
-		else Frame(ix, iy, ix + icon, iy + icon, 0.85, 0.65, 0.2, 0.8) end
-		local cnt = b.c.params and b.c.params[1]
-		if cnt and tonumber(cnt) and tonumber(cnt) > 0 then VBFont.Text(cnt, ix + icon - 4 * s, iy + 3 * s, 12 * s, "or", 1, 1, 1, 1) end
-		-- production state of a stock unit that is going through the queue
-		local qd = UnitDefs[-b.c.id]
-		local selFac = qd and qd.canMove and SelectedFactory()
-		local q = selFac and queue[PlainId(qd.name) .. "@" .. selFac]
-		if q then
-			DrawPie(ix + icon / 2, iy + icon / 2 + 3 * s, icon * 0.34, q.prog, q.st, s)
-			VBFont.Text("x" .. q.n, ix + icon - 4 * s, iy + 13 * s, 12 * s, "or", 1, 1, 1, 1)
-		end
-		-- a structure (or unit) of this kind that is under construction right now: pie of the most advanced one
-		local cs = qd and constr[qd.id]
-		if cs and not q then
-			DrawPie(ix + icon / 2, iy + icon / 2 + 3 * s, icon * 0.34, cs.prog, cs.active and "b" or "w", s)
-			if cs.n > 1 then VBFont.Text("x" .. cs.n, ix + icon - 4 * s, iy + 13 * s, 12 * s, "or", 1, 1, 1, 1) end
-		end
-	end
-	-- stock units your factories can build: one tile each, with the same pie chart
 	hoverRu, hoverRuRect = nil, nil
-	for k, ru in ipairs(roster) do
-		local n = #builds + k
-		local col, row = (n - 1) % COLS, math.floor((n - 1) / COLS)
-		local ix, iy = x1 + pad + col * (icon + gap), top - (row + 1) * (icon + gap) + gap
-		local r = { ix, iy, ix + icon, iy + icon, ru = ru }
-		rects[#rects + 1] = r
-		local over = Inside(mx, my, r)
-		if over then hoverRu, hoverRuRect = ru, r end
-		local rd = UnitDefs[ru.def]
-		local fac = RosterFactory(ru)
-		local q = fac and queue[PlainId(rd.name) .. "@" .. fac]
-		gl.Color(1, 1, 1, (q and q.st == "h") and 0.45 or 1)
-		gl.Texture("#" .. ru.def); gl.TexRect(ix, iy, ix + icon, iy + icon); gl.Texture(false)
-		if over then Frame(ix, iy, ix + icon, iy + icon, 1, 1, 1, 0.9)
-		else Frame(ix, iy, ix + icon, iy + icon, 0.85, 0.65, 0.2, 0.8) end
-		if q then
-			DrawPie(ix + icon / 2, iy + icon / 2 + 3 * s, icon * 0.34, q.prog, q.st, s)
-			VBFont.Text("x" .. q.n, ix + icon - 4 * s, iy + 3 * s, 12 * s, "or", 1, 1, 1, 1)
-		end
-	end
-	-- saved designs of the forge: one tile each, with a pie chart for the production progress
 	hoverTpl, hoverTplRect = nil, nil
-	for k, tid in ipairs(tplIds) do
-		local n = #builds + #roster + k
-		local col, row = (n - 1) % COLS, math.floor((n - 1) / COLS)
-		local ix, iy = x1 + pad + col * (icon + gap), top - (row + 1) * (icon + gap) + gap
-		local dx = 14 * s
-		local xrect = { ix + icon - dx, iy + icon - dx, ix + icon, iy + icon, tpl = tid, del = true }
-		rects[#rects + 1] = xrect                  -- listed first so that it wins over the tile under it
-		local r = { ix, iy, ix + icon, iy + icon, tpl = tid }
-		rects[#rects + 1] = r
-		local over = Inside(mx, my, r)
-		if over then hoverTpl, hoverTplRect = tid, r end
-		local t = F.templates[tid] or {}
-		local q = queue[tid]
-		local locked = T2Locked()
-		Box(ix, iy, ix + icon, iy + icon, 0.07, 0.1, 0.14, 1)
-		local tex
-		if t.png and t.png ~= "" and F.PngPath and F.PngPath(t.png) then tex = F.PngPath(t.png)
-		elseif t.base and UnitDefNames[t.base] then tex = "#" .. UnitDefNames[t.base].id end
-		if tex then
-			gl.Color(1, 1, 1, (q and q.st == "h") and 0.45 or 1)
-			gl.Texture(tex); gl.TexRect(ix, iy, ix + icon, iy + icon); gl.Texture(false)
-		end
-		if locked then      -- greyed out until the Tier 2 factory is up
-			Box(ix, iy, ix + icon, iy + icon, 0.04, 0.04, 0.05, 0.72)
-			Frame(ix, iy, ix + icon, iy + icon, 0.4, 0.4, 0.45, 0.9)
-			VBFont.Text("T2", ix + icon / 2 - VBFont.Width("T2", 14 * s) / 2, iy + icon / 2 - 4 * s, 14 * s, "o", 0.75, 0.75, 0.8, 1)
-		elseif over then Frame(ix, iy, ix + icon, iy + icon, 1, 1, 1, 0.9)
-		else Frame(ix, iy, ix + icon, iy + icon, 0.35, 0.9, 1, 0.9) end
-		if over then      -- red [x]: delete this design
-			local onX = Inside(mx, my, xrect)
-			Box(xrect[1], xrect[2], xrect[3], xrect[4], onX and 0.85 or 0.55, 0.1, 0.1, 0.95)
-			VBFont.Text("x", xrect[1] + dx * 0.3, xrect[2] + dx * 0.2, 11 * s, "o", 1, 1, 1, 1)
-		end
-		-- name strip, so that custom units can be told apart
-		Box(ix + 1, iy + 1, ix + icon - 1, iy + 11 * s, 0, 0, 0, 0.6)
-		VBFont.Text(string.sub(tid, 1, 9), ix + 3 * s, iy + 2 * s, 8 * s, "o", 0.6, 0.95, 1, 1)
-		if q then
-			DrawPie(ix + icon / 2, iy + icon / 2 + 3 * s, icon * 0.34, q.prog, q.st, s)
-			VBFont.Text("x" .. q.n, ix + icon - 4 * s, iy + 13 * s, 12 * s, "or", 1, 1, 1, 1)
-		end
+	local top = y2 - title - pad
+	local function TplQ(tid)      -- the queue entry of a design on the lab that builds designs
+		if designLab then return queue[tid .. "@" .. designLab] end
+		return queue[tid]
 	end
-	-- the [+] tile at the end of the build row: it opens the unit forge
-	do
-		local n = #builds + #roster + #tplIds + 1
-		local col, row = (n - 1) % COLS, math.floor((n - 1) / COLS)
-		local ix, iy = x1 + pad + col * (icon + gap), top - (row + 1) * (icon + gap) + gap
-		local r = { ix, iy, ix + icon, iy + icon, plus = true }
-		rects[#rects + 1] = r
-		local over = Inside(mx, my, r)
-		hoverPlus, hoverPlusRect = over, over and r or nil
-		local half = icon / 2
-		if T2Locked() then      -- greyed out: custom units need the Tier 2 factory first
-			Box(ix, iy, ix + icon, iy + icon, 0.07, 0.07, 0.08, 1)
-			Frame(ix, iy, ix + icon, iy + icon, over and 0.7 or 0.4, over and 0.55 or 0.4, over and 0.3 or 0.42, 0.9)
-			gl.Color(0.32, 0.32, 0.36, 1)
-			gl.Rect(ix + icon * 0.28, iy + half - 1.5 * s, ix + icon * 0.72, iy + half + 1.5 * s)
-			gl.Rect(ix + half - 1.5 * s, iy + icon * 0.28, ix + half + 1.5 * s, iy + icon * 0.72)
-			VBFont.Text("T2", ix + icon - VBFont.Width("T2", 10 * s) - 3 * s, iy + 3 * s, 10 * s, "o", 0.85, 0.65, 0.3, 1)
-		else
-			Box(ix, iy, ix + icon, iy + icon, over and 0.12 or 0.08, over and 0.22 or 0.16, over and 0.16 or 0.12, 1)
-			Frame(ix, iy, ix + icon, iy + icon, over and 0.35 or 0.2, over and 0.95 or 0.55, over and 0.65 or 0.35, over and 0.95 or 0.55)
-			gl.Color(over and 0.55 or 0.35, over and 1 or 0.75, over and 0.7 or 0.5, 1)
-			gl.Rect(ix + icon * 0.28, iy + half - 1.5 * s, ix + icon * 0.72, iy + half + 1.5 * s)
-			gl.Rect(ix + half - 1.5 * s, iy + icon * 0.28, ix + half + 1.5 * s, iy + icon * 0.72)
+
+	-- lab chips: each lab has its own roster and queue; the active one is shown below, click a chip to switch
+	local cursor = top
+	if #labs > 0 then
+		local labInfo = LabInfo(queue)
+		local lcols = math.min(#labs, 3)
+		local cw = (gridW - (lcols - 1) * gap) / lcols
+		for i, l in ipairs(labs) do
+			local colI, row = (i - 1) % lcols, math.floor((i - 1) / lcols)
+			local cx1, cy2 = x1 + pad + colI * (cw + gap), top - row * (chipH + gap)
+			local r = { cx1, cy2 - chipH, cx1 + cw, cy2, lab = l.uid }
+			rects[#rects + 1] = r
+			local over, isAct = Inside(mx, my, r), (l.uid == act)
+			local bc = l.tier >= 2 and { 0.35, 0.9, 1.0 } or { 0.85, 0.65, 0.2 }
+			Box(r[1], r[2], r[3], r[4], isAct and 0.2 or (over and 0.17 or 0.1), isAct and 0.18 or (over and 0.17 or 0.1), isAct and 0.28 or (over and 0.24 or 0.15), 1)
+			Frame(r[1], r[2], r[3], r[4], bc[1], bc[2], bc[3], isAct and 1 or 0.5)
+			if isAct then Box(r[1], r[2], r[3], r[2] + 2 * s, bc[1], bc[2], bc[3], 1) end
+			local li = labInfo[l.uid]
+			local led = { 0.3, 0.3, 0.35 }
+			if li and li.st == "s" then led = { 1, 0.3, 0.25 } elseif li and li.st == "b" then led = { 0.3, 1, 0.45 } elseif li and li.st == "p" then led = { 0.3, 0.85, 1 } end
+			Box(r[1] + 3 * s, r[2] + chipH / 2 - 2 * s, r[1] + 7 * s, r[2] + chipH / 2 + 2 * s, led[1], led[2], led[3], 1)
+			VBFont.Text("LAB " .. l.n .. " T" .. l.tier, r[1] + 10 * s, r[2] + chipH * 0.28, fs, "o", bc[1], bc[2], bc[3], isAct and 1 or 0.75)
+			if li and li.n > 0 then VBFont.Text("x" .. li.n, r[3] - 3 * s, r[2] + chipH * 0.28, fs, "or", 1, 1, 1, 1) end
+		end
+		cursor = top - labsH
+	end
+
+	-- one compact grid, sorted by category (economy, combat, utility, build); a one-line legend with the counts,
+	-- and every tile carries a small coloured tag of its category
+	local flat = {}
+	local cw4 = gridW / #CATS
+	for k, c in ipairs(CATS) do
+		local col, lx = c.col, x1 + pad + (k - 1) * cw4
+		Box(lx, cursor - LEG + 2, lx + 5 * s, cursor - 2, col[1], col[2], col[3], 1)
+		VBFont.Text(c.name, lx + 8 * s, cursor - LEG + 3 * s, math.max(8, 8 * s), "o", col[1], col[2], col[3], 1)
+		VBFont.Text(tostring(#cats[c.id]), lx + cw4 - 4 * s, cursor - LEG + 3 * s, math.max(8, 8 * s), "or", 0.75, 0.78, 0.85, 1)
+		for _, t in ipairs(cats[c.id]) do t.cat = c; flat[#flat + 1] = t end
+	end
+	cursor = cursor - LEG
+	for i, t in ipairs(flat) do
+		local colI, row = (i - 1) % COLS, math.floor((i - 1) / COLS)
+		t.ix = x1 + pad + colI * (icon + gap)
+		t.iy = cursor - (row + 1) * (icon + gap) + gap
+	end
+	cursor = cursor - math.ceil(#flat / COLS) * (icon + gap) - 3 * s
+	local gridBottom = cursor
+
+	for _, t in ipairs(flat) do
+		local ix, iy, cc = t.ix, t.iy, t.cat.col
+		if t.kind == "build" then
+			-- engine build tiles: structures, and the units of the selected lab
+			local b = t.b
+			local r = { ix, iy, ix + icon, iy + icon, cmd = b }
+			rects[#rects + 1] = r
+			local over = Inside(mx, my, r); if over then hover, hoverRect = b, r end
+			gl.Color(1, 1, 1, b.c.disabled and 0.35 or 1)
+			gl.Texture("#" .. (-b.c.id)); gl.TexRect(ix, iy, ix + icon, iy + icon); gl.Texture(false)
+			if b.c.id == activeID then Frame(ix, iy, ix + icon, iy + icon, 1, 0.9, 0.3, 1)
+			elseif over then Frame(ix, iy, ix + icon, iy + icon, 1, 1, 1, 0.9)
+			else Frame(ix, iy, ix + icon, iy + icon, cc[1], cc[2], cc[3], 0.8) end
+			local cnt = b.c.params and b.c.params[1]
+			if cnt and tonumber(cnt) and tonumber(cnt) > 0 then VBFont.Text(cnt, ix + icon - 4 * s, iy + 3 * s, 12 * s, "or", 1, 1, 1, 1) end
+			-- production state of a stock unit that is going through the queue (of the active lab)
+			local qd = UnitDefs[-b.c.id]
+			local selFac = qd and qd.canMove and act
+			local q = selFac and queue[PlainId(qd.name) .. "@" .. selFac]
+			if q then
+				DrawPie(ix + icon / 2, iy + icon / 2 + 3 * s, icon * 0.34, q.prog, q.st, s)
+				VBFont.Text("x" .. q.n, ix + icon - 4 * s, iy + 13 * s, 12 * s, "or", 1, 1, 1, 1)
+			end
+			-- a structure (or unit) of this kind that is under construction right now: pie of the most advanced one
+			local cs = qd and constr[qd.id]
+			if cs and not q then
+				DrawPie(ix + icon / 2, iy + icon / 2 + 3 * s, icon * 0.34, cs.prog, cs.active and "b" or "w", s)
+				if cs.n > 1 then VBFont.Text("x" .. cs.n, ix + icon - 4 * s, iy + 13 * s, 12 * s, "or", 1, 1, 1, 1) end
+			end
+		elseif t.kind == "ru" then
+			-- a stock unit the active lab can build: one tile each, with the pie chart of THIS lab's line
+			local ru = t.ru
+			local r = { ix, iy, ix + icon, iy + icon, ru = ru }
+			rects[#rects + 1] = r
+			local over = Inside(mx, my, r)
+			if over then hoverRu, hoverRuRect = ru, r end
+			local rd = UnitDefs[ru.def]
+			local fac = RosterFactory(ru)
+			local q = fac and queue[PlainId(rd.name) .. "@" .. fac]
+			gl.Color(1, 1, 1, (q and q.st == "h") and 0.45 or 1)
+			gl.Texture("#" .. ru.def); gl.TexRect(ix, iy, ix + icon, iy + icon); gl.Texture(false)
+			if over then Frame(ix, iy, ix + icon, iy + icon, 1, 1, 1, 0.9)
+			else Frame(ix, iy, ix + icon, iy + icon, cc[1], cc[2], cc[3], 0.8) end
+			if q then
+				DrawPie(ix + icon / 2, iy + icon / 2 + 3 * s, icon * 0.34, q.prog, q.st, s)
+				VBFont.Text("x" .. q.n, ix + icon - 4 * s, iy + 3 * s, 12 * s, "or", 1, 1, 1, 1)
+			end
+		elseif t.kind == "tpl" then
+			-- saved designs of the forge: one tile each, with a pie chart for the production progress
+			local tid = t.tid
+			local dx = 14 * s
+			local xrect = { ix + icon - dx, iy + icon - dx, ix + icon, iy + icon, tpl = tid, del = true }
+			rects[#rects + 1] = xrect                  -- listed first so that it wins over the tile under it
+			local r = { ix, iy, ix + icon, iy + icon, tpl = tid }
+			rects[#rects + 1] = r
+			local over = Inside(mx, my, r)
+			if over then hoverTpl, hoverTplRect = tid, r end
+			local tp = F.templates[tid] or {}
+			local q = TplQ(tid)
+			local locked = T2Locked()
+			Box(ix, iy, ix + icon, iy + icon, 0.07, 0.1, 0.14, 1)
+			local tex
+			if tp.png and tp.png ~= "" and F.PngPath and F.PngPath(tp.png) then tex = F.PngPath(tp.png)
+			elseif tp.base and UnitDefNames[tp.base] then tex = "#" .. UnitDefNames[tp.base].id end
+			if tex then
+				gl.Color(1, 1, 1, (q and q.st == "h") and 0.45 or 1)
+				gl.Texture(tex); gl.TexRect(ix, iy, ix + icon, iy + icon); gl.Texture(false)
+			end
+			if locked then      -- greyed out until the Tier 2 factory is up
+				Box(ix, iy, ix + icon, iy + icon, 0.04, 0.04, 0.05, 0.72)
+				Frame(ix, iy, ix + icon, iy + icon, 0.4, 0.4, 0.45, 0.9)
+				VBFont.Text("T2", ix + icon / 2 - VBFont.Width("T2", 14 * s) / 2, iy + icon / 2 - 4 * s, 14 * s, "o", 0.75, 0.75, 0.8, 1)
+			elseif over then Frame(ix, iy, ix + icon, iy + icon, 1, 1, 1, 0.9)
+			else Frame(ix, iy, ix + icon, iy + icon, 0.35, 0.9, 1, 0.9) end
+			if over then      -- red [x]: delete this design
+				local onX = Inside(mx, my, xrect)
+				Box(xrect[1], xrect[2], xrect[3], xrect[4], onX and 0.85 or 0.55, 0.1, 0.1, 0.95)
+				VBFont.Text("x", xrect[1] + dx * 0.3, xrect[2] + dx * 0.2, 11 * s, "o", 1, 1, 1, 1)
+			end
+			-- name strip, so that custom units can be told apart
+			Box(ix + 1, iy + 1, ix + icon - 1, iy + 11 * s, 0, 0, 0, 0.6)
+			VBFont.Text(string.sub(tid, 1, 9), ix + 3 * s, iy + 2 * s, 8 * s, "o", 0.6, 0.95, 1, 1)
+			if q then
+				DrawPie(ix + icon / 2, iy + icon / 2 + 3 * s, icon * 0.34, q.prog, q.st, s)
+				VBFont.Text("x" .. q.n, ix + icon - 4 * s, iy + 13 * s, 12 * s, "or", 1, 1, 1, 1)
+			end
+		elseif t.kind == "plus" then
+			-- the [+] tile: it opens the unit forge
+			local r = { ix, iy, ix + icon, iy + icon, plus = true }
+			rects[#rects + 1] = r
+			local over = Inside(mx, my, r)
+			hoverPlus, hoverPlusRect = over, over and r or nil
+			local half = icon / 2
+			if T2Locked() then      -- greyed out: custom units need the Tier 2 factory first
+				Box(ix, iy, ix + icon, iy + icon, 0.07, 0.07, 0.08, 1)
+				Frame(ix, iy, ix + icon, iy + icon, over and 0.7 or 0.4, over and 0.55 or 0.4, over and 0.3 or 0.42, 0.9)
+				gl.Color(0.32, 0.32, 0.36, 1)
+				gl.Rect(ix + icon * 0.28, iy + half - 1.5 * s, ix + icon * 0.72, iy + half + 1.5 * s)
+				gl.Rect(ix + half - 1.5 * s, iy + icon * 0.28, ix + half + 1.5 * s, iy + icon * 0.72)
+				VBFont.Text("T2", ix + icon - VBFont.Width("T2", 10 * s) - 3 * s, iy + 3 * s, 10 * s, "o", 0.85, 0.65, 0.3, 1)
+			else
+				Box(ix, iy, ix + icon, iy + icon, over and 0.12 or 0.08, over and 0.22 or 0.16, over and 0.16 or 0.12, 1)
+				Frame(ix, iy, ix + icon, iy + icon, over and 0.35 or 0.2, over and 0.95 or 0.55, over and 0.65 or 0.35, over and 0.95 or 0.55)
+				gl.Color(over and 0.55 or 0.35, over and 1 or 0.75, over and 0.7 or 0.5, 1)
+				gl.Rect(ix + icon * 0.28, iy + half - 1.5 * s, ix + icon * 0.72, iy + half + 1.5 * s)
+				gl.Rect(ix + half - 1.5 * s, iy + icon * 0.28, ix + half + 1.5 * s, iy + icon * 0.72)
+			end
+		end
+		if t.kind ~= "plus" then      -- category tag in the tile's top-left corner
+			local tg = 9 * s
+			Box(ix, iy + icon - tg, ix + tg, iy + icon, cc[1], cc[2], cc[3], 0.95)
+			VBFont.Text(t.cat.id, ix + 2.2 * s, iy + icon - tg + 1.5 * s, 7 * s, "o", 0, 0, 0, 1)
 		end
 	end
 	-- order buttons
-	local oy = top - brows * (icon + gap) - 4 * s
+	local oy = gridBottom - 4 * s
 	for n, o in ipairs(orders) do
 		local col, row = (n - 1) % ocols, math.floor((n - 1) / ocols)
 		local bx, by = x1 + pad + col * (obW + gap), oy - (row + 1) * (obH + gap) + gap
@@ -802,7 +967,7 @@ function widget:DrawScreen()
 	elseif hoverTpl then
 		local t = F.templates[hoverTpl] or {}
 		local pr = F.Price and F.Price(t)
-		local q = queue[hoverTpl]
+		local q = TplQ(hoverTpl)
 		local l1 = hoverTpl .. "   (base: " .. tostring(t.base) .. ")"
 		local l2 = pr and string.format("metal %d   energy %d   time %ds", math.floor(pr.metal + 0.5), math.floor(pr.energy + 0.5), math.floor(pr.build + 0.5)) or "price unknown"
 		local st = q and ({ b = "building", s = "STALLED: not enough metal/energy", w = "waiting", h = "ON HOLD",
@@ -884,9 +1049,15 @@ function widget:MousePress(x, y, button)
 	for _, r in ipairs(rects) do
 		if Inside(x, y, r) then
 			if r.open then closed = false; Snd("ui_open") return true end
+			if r.lab then      -- a lab chip: select that lab (its own roster and queue follow)
+				labPick = r.lab
+				if Spring.SelectUnitArray then Spring.SelectUnitArray({ r.lab }) end
+				RefreshRoster(); Snd("ui_select")
+				return true
+			end
 			if r.close then closed = true; Snd("ui_close") return true end
-			if r.scale then scaling = { x0 = x, y0 = y, s0 = scale, top = py + (panelBox and panelBox.h or 0) } return true end
-			if r.drag then drag = { x - px, y - py } return true end
+			if r.scale then UserTookOver(); scaling = { x0 = x, y0 = y, s0 = scale, top = py + (panelBox and panelBox.h or 0) } return true end
+			if r.drag then UserTookOver(); drag = { x - px, y - py } return true end
 			if r.plus and T2Locked() then      -- greyed out: say what to do instead of opening anything
 				Snd("ui_error", 0.8)
 				Spring.Echo("[VB] " .. (ForgeRef().T2_HINT or "Custom units need a Tier 2 factory: upgrade your factory first"))
@@ -925,11 +1096,12 @@ function widget:MousePress(x, y, button)
 				local alt, ctrl, meta, shift = Spring.GetModKeyState()
 				if button == 1 then
 					if ctrl then F.EditTemplate(r.tpl)
-					else F.QueueAdd(r.tpl, shift and 5 or 1) end
+					else F.QueueAdd(r.tpl, shift and 5 or 1, designLab) end
 					Snd("ui_select")
-				elseif button == 2 then F.QueueHold(r.tpl); Snd("ui_click")
+				elseif button == 2 then F.QueueHold(designLab and (r.tpl .. "@" .. designLab) or r.tpl); Snd("ui_click")
 				elseif button == 3 then
-					if ctrl then F.DeleteTemplate(r.tpl); Spring.Echo("[VB] deleted design '" .. r.tpl .. "'") else F.QueueRemove(r.tpl, shift and 5 or 1) end
+					if ctrl then F.DeleteTemplate(r.tpl); Spring.Echo("[VB] deleted design '" .. r.tpl .. "'")
+					else F.QueueRemove(designLab and (r.tpl .. "@" .. designLab) or r.tpl, shift and 5 or 1) end
 					Snd("ui_close", 0.5)
 				end
 				return true
@@ -951,3 +1123,35 @@ function widget:MouseMove(x, y)
 	end
 end
 function widget:MouseRelease() drag, scaling = nil, nil end
+
+--------------------------------------------------------------------------------
+-- Panel Snap: lets gui_panel_snap.lua dock this panel (drag it near an edge and let go)
+--------------------------------------------------------------------------------
+local panelSnapSeen
+local function PanelSnapRegister()
+	local PL = WG.PanelLayout
+	if not PL or PL == panelSnapSeen then return end
+	panelSnapSeen = PL
+	PL.Register("vb_buildpanel", {
+		dock = "left", order = 20, fixedSize = true,
+		getRect = function()
+			if not panelBox then return nil end
+			return px, py, panelBox.w, panelBox.h
+		end,
+		setRect = function(x, y) px, py = x, y end,              -- px, py = bottom-left corner; the scale stays yours
+		isVisible = function() return not closed and panelBox ~= nil end,
+	})
+end
+do
+	local prevUpdate = widget.Update
+	function widget:Update(...)
+		PanelSnapRegister()
+		if prevUpdate then return prevUpdate(self, ...) end
+	end
+	local prevShutdown = widget.Shutdown
+	function widget:Shutdown(...)
+		if WG.PanelLayout then WG.PanelLayout.Unregister("vb_buildpanel") end
+		WG.VBBuildPanel = nil
+		if prevShutdown then return prevShutdown(self, ...) end
+	end
+end

@@ -2,6 +2,7 @@
 return {
 	mw_extractor = {
 		name = "Root Drill",
+	script = "mw_extractor.lua",
 		description = "Metal extractor - roots that bore into asteroid ore",
 		objectName = "mw_extractor.s3o",
 		buildPic = "mw_extractor.png",

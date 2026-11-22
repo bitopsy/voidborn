@@ -1,7 +1,7 @@
 function gadget:GetInfo()
 	return {
 		name = "Voidborn mass detonation",
-		desc = "Ctrl+B: the selected units blow themselves up after a five second countdown; each blast radius is proportional to the unit's current health",
+		desc = "Ctrl+D: the selected units blow themselves up after a five second countdown; each blast radius is proportional to the unit's current health",
 		author = "goddot info@bitopsy.com", date = "2026", license = "GPL", layer = 2, enabled = true,
 	}
 end
@@ -34,6 +34,7 @@ if gadgetHandler:IsSyncedCode() then
 			spSpawnCEG(ceg, x + math.cos(a) * r, y + (i == 1 and 0 or math.random() * radius * 0.2), z + math.sin(a) * r, 0, 1, 0, radius)
 		end
 		SendToUnsynced("vbboom", x, y, z, radius)
+		if GG.VB_Crater then GG.VB_Crater(x, y, z, radius) end      -- vb_crater.lua: the blast digs the ground
 	end
 
 	local function Detonate(ids, teamID)
@@ -52,7 +53,10 @@ if gadgetHandler:IsSyncedCode() then
 		end
 		if #blasts == 0 then return 0 end
 		-- 2. remove the exploders without the engine's own death explosion (we make the blast), cleaned up immediately
-		for id in pairs(batch) do spDestroyUnit(id, false, true, nil, true) end
+		for id in pairs(batch) do
+			spDestroyUnit(id, false, true, nil, true)
+			SendToUnsynced("vbarm", "disarm", id)          -- the warning ring must never outlive its unit
+		end
 		-- 3. apply every blast to the units still alive (exploders are gone, so they are not hit twice)
 		for _, b in ipairs(blasts) do
 			local r = b.radius
@@ -108,16 +112,17 @@ if gadgetHandler:IsSyncedCode() then
 		return true
 	end
 
-	-- the clock runs out
-	function gadget:Update()
-		local frame = Spring.GetGameFrame()
+	-- the clock runs out (game frames, so every player sees the blast on the same frame)
+	function gadget:GameFrame(frame)
+		if next(armed) == nil then return end
 		local ready = {}
 		for id, at in pairs(armed) do
-			if frame >= at then
-				ready[#ready + 1] = id
-			elseif not spValidUnitID(id) then
+			if not spValidUnitID(id) then
 				armed[id] = nil
 				armedTeam[id] = nil
+				SendToUnsynced("vbarm", "disarm", id)
+			elseif frame >= at then
+				ready[#ready + 1] = id
 			end
 		end
 		if #ready > 0 then
@@ -129,7 +134,10 @@ if gadgetHandler:IsSyncedCode() then
 				armedTeam[id] = nil
 				if t then byTeam[t] = byTeam[t] or {}; byTeam[t][#byTeam[t] + 1] = id end
 			end
-			for t, ids in pairs(byTeam) do Detonate(ids, t) end
+			for t, ids in pairs(byTeam) do
+				Detonate(ids, t)
+				for _, id in ipairs(ids) do SendToUnsynced("vbarm", "disarm", id) end
+			end
 		end
 	end
 
@@ -146,6 +154,8 @@ else
 		gadgetHandler:AddSyncAction("vbarm", function(_, what, id, frame)
 			if what == "cancel" then
 				armed = {}
+			elseif what == "disarm" then
+				armed[id] = nil
 			else
 				armed[id] = frame
 			end
@@ -164,7 +174,7 @@ else
 		local left = 0
 		for id, at in pairs(armed) do
 			local x, y, z = Spring.GetUnitPosition(id)
-			if x then
+			if x and frame - at < 90 then      -- a ring still there 3 s after its blast is a leftover: drop it
 				left = math.max(left, at - frame)
 				local pulse = 0.5 + 0.5 * math.sin(t * (6 + (at - frame) * 0.5))
 				local r = 26 + pulse * 8

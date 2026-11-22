@@ -2,6 +2,7 @@
 return {
 	mi_nostril = {
 		name = "Nostril Pit",
+	script = "mi_nostril.lua",
 		description = "Factory - a yawning pair of nostrils that breathe out the swarm",
 		objectName = "mi_nostril.s3o",
 		buildPic = "mi_nostril.png",

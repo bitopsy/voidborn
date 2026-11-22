@@ -2,6 +2,7 @@
 return {
 	mi_titanarum = {
 		name = "Titan Arum",
+	script = "mi_titanarum.lua",
 		description = "T2 Heavy - the corpse flower grown to a monster; its stench is a weapon of its own",
 		objectName = "mi_titanarum.s3o",
 		buildPic = "mi_titanarum.png",
@@ -62,10 +63,12 @@ return {
 		weapons = {
 			{
 				name = "mi_titanarum_w1",
+	script = "mi_titanarum.lua",
 				def = "mi_titanarum_w1",
 			},
 			{
 				name = "mi_titanarum_w2",
+	script = "mi_titanarum.lua",
 				def = "mi_titanarum_w2",
 			},
 		},

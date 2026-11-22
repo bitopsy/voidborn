@@ -1,0 +1,112 @@
+[GAME]
+{
+	GameType=Voidborn 0.19;
+	MapName=Voidborn Rift 1.0;
+	IsHost=1;
+	HostIP=127.0.0.1;
+	HostPort=8452;
+	MyPlayerName=Spectator;
+	StartPosType=0;
+	NumPlayers=1;
+	NumUsers=1;
+	NumTeams=5;
+	NumAllyTeams=5;
+	[MODOPTIONS]
+	{
+		commander_ends=1;
+		startmetal=1000;
+		startenergy=1000;
+		bot_skill=2;
+	}
+	[PLAYER0]
+	{
+		Name=Spectator;
+		Spectator=1;
+		Team=0;
+	}
+	[TEAM0]
+	{
+		TeamLeader=0;
+		AllyTeam=0;
+		Side=Choir;
+		RGBColor=0.35 0.7 1.0;
+		StartPosX=790;
+		StartPosZ=2230;
+	}
+	[TEAM1]
+	{
+		TeamLeader=0;
+		AllyTeam=1;
+		Side=Maw;
+		RGBColor=1.0 0.5 0.1;
+		StartPosX=4330;
+		StartPosZ=2230;
+	}
+	[TEAM2]
+	{
+		TeamLeader=0;
+		AllyTeam=2;
+		Side=Tympan;
+		RGBColor=1.0 0.85 0.25;
+		StartPosX=790;
+		StartPosZ=2890;
+	}
+	[TEAM3]
+	{
+		TeamLeader=0;
+		AllyTeam=3;
+		Side=Miasma;
+		RGBColor=0.8 0.3 1.0;
+		StartPosX=4330;
+		StartPosZ=2890;
+	}
+	[TEAM4]
+	{
+		TeamLeader=0;
+		AllyTeam=4;
+		Side=Haptic;
+		RGBColor=0.35 0.55 1.0;
+		StartPosX=2560;
+		StartPosZ=890;
+	}
+	[AI0]
+	{
+		Name=VoidBot Choir;
+		ShortName=VoidBot;
+		Team=0;
+		Host=0;
+	}
+	[AI1]
+	{
+		Name=VoidBot Maw;
+		ShortName=VoidBot;
+		Team=1;
+		Host=0;
+	}
+	[AI2]
+	{
+		Name=VoidBot Tympan;
+		ShortName=VoidBot;
+		Team=2;
+		Host=0;
+	}
+	[AI3]
+	{
+		Name=VoidBot Miasma;
+		ShortName=VoidBot;
+		Team=3;
+		Host=0;
+	}
+	[AI4]
+	{
+		Name=VoidBot Haptic;
+		ShortName=VoidBot;
+		Team=4;
+		Host=0;
+	}
+	[ALLYTEAM0] { NumAllies=0; }
+	[ALLYTEAM1] { NumAllies=0; }
+	[ALLYTEAM2] { NumAllies=0; }
+	[ALLYTEAM3] { NumAllies=0; }
+	[ALLYTEAM4] { NumAllies=0; }
+}

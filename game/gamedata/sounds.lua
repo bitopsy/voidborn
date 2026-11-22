@@ -41,7 +41,7 @@ add("qgun_choir", 0.95, { maxconcurrent = 2 }); add("qgun_maw", 0.95, { maxconcu
 add("gun_ready", 0.7, flat); add("gun_denied", 0.6, flat)
 -- announcements (played flat by the vb_sounds widget)
 for n, g in pairs({ cloak_on = 0.6, cloak_off = 0.6, commander_lost = 1.0, enemy_commander_down = 0.9, victory = 1.0,
-                    defeat = 1.0, energy_low = 0.8, metal_low = 0.8, tier2_ready = 0.9 }) do add(n, g, flat) end
+                    defeat = 1.0, energy_low = 0.8, metal_low = 0.8, tier2_ready = 0.9, tier3_ready = 0.95, t3_unit_ready = 0.95 }) do add(n, g, flat) end
 
 -- 0.16: Tympan Conclave (the Ear) and Miasma Bloom (the Nose)
 add("select_tympan", 0.7, { in3d = false, maxconcurrent = 2 });  add("ok_tympan", 0.55, { in3d = false, maxconcurrent = 2 })
@@ -53,5 +53,12 @@ add("gas_dart", 0.5, { maxconcurrent = 8 }); add("gas_lob", 0.8, { maxconcurrent
 add("hit_gas", 0.65, { maxconcurrent = 6 })
 add("dgun_tympan", 1.0, { maxconcurrent = 2 }); add("dgun_miasma", 1.0, { maxconcurrent = 2 })
 add("qgun_tympan", 0.95, { maxconcurrent = 2 }); add("qgun_miasma", 0.95, { maxconcurrent = 2 })
+
+-- 0.17: Haptic Grasp (the Hand, touch)
+add("select_haptic", 0.7, { in3d = false, maxconcurrent = 2 });  add("ok_haptic", 0.55, { in3d = false, maxconcurrent = 2 })
+add("select_struct_haptic", 0.7, { in3d = false, maxconcurrent = 2 })
+add("touch_light", 0.5, { maxconcurrent = 8 }); add("touch_lash", 0.65, { maxconcurrent = 6 }); add("touch_pound", 0.8, { maxconcurrent = 4 }); add("touch_heavy", 0.95, { maxconcurrent = 3 })
+add("hit_touch", 0.65, { maxconcurrent = 6 }); add("kami_burst", 0.9, { maxconcurrent = 4 })
+add("dgun_haptic", 1.0, { maxconcurrent = 2 }); add("qgun_haptic", 0.95, { maxconcurrent = 2 })
 
 return { SoundItems = S }

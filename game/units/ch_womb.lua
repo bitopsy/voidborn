@@ -2,6 +2,7 @@
 return {
 	ch_womb = {
 		name = "Iris Womb",
+	script = "ch_womb.lua",
 		description = "Factory - the Choir births its army through an unblinking pool",
 		objectName = "ch_womb.s3o",
 		buildPic = "ch_womb.png",

@@ -2,6 +2,7 @@
 return {
 	ty_banshee = {
 		name = "Banshee",
+	script = "ty_banshee.lua",
 		description = "T2 Raider - a streamlined scream with swept ear-wings; its burst is three notes too high to bear",
 		objectName = "ty_banshee.s3o",
 		buildPic = "ty_banshee.png",
@@ -62,6 +63,7 @@ return {
 		weapons = {
 			{
 				name = "ty_banshee_w1",
+	script = "ty_banshee.lua",
 				def = "ty_banshee_w1",
 			},
 		},

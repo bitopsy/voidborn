@@ -2,6 +2,7 @@
 return {
 	ty_fork = {
 		name = "Tuning Fork",
+	script = "ty_fork.lua",
 		description = "Light defence - two humming prongs; the note leaves between them",
 		objectName = "ty_fork.s3o",
 		buildPic = "ty_fork.png",
@@ -46,6 +47,7 @@ return {
 		weapons = {
 			{
 				name = "ty_fork_w1",
+	script = "ty_fork.lua",
 				def = "ty_fork_w1",
 			},
 		},

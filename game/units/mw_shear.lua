@@ -2,6 +2,7 @@
 return {
 	mw_shear = {
 		name = "Shearwing",
+	script = "mw_shear.lua",
 		description = "T2 Raider - four-winged wasp with a flaying breath",
 		objectName = "mw_shear.s3o",
 		buildPic = "mw_shear.png",
@@ -62,6 +63,7 @@ return {
 		weapons = {
 			{
 				name = "mw_shear_w1",
+	script = "mw_shear.lua",
 				def = "mw_shear_w1",
 			},
 		},

@@ -2,6 +2,7 @@
 return {
 	ty_tinnitus = {
 		name = "Tinnitus",
+	script = "ty_tinnitus.lua",
 		description = "Raider - a shrill little dart; one is a nuisance, a pack is a ringing that does not stop",
 		objectName = "ty_tinnitus.s3o",
 		buildPic = "ty_tinnitus.png",
@@ -61,6 +62,7 @@ return {
 		weapons = {
 			{
 				name = "ty_tinnitus_w1",
+	script = "ty_tinnitus.lua",
 				def = "ty_tinnitus_w1",
 			},
 		},

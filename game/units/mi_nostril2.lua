@@ -2,6 +2,7 @@
 return {
 	mi_nostril2 = {
 		name = "Great Nostril",
+	script = "mi_nostril2.lua",
 		description = "Tier 2 Factory - the grown pit, a tower of snouts that breathes out the Bloom's elite and unlocks the unit forge",
 		objectName = "mi_nostril2.s3o",
 		buildPic = "mi_nostril2.png",
@@ -23,6 +24,11 @@ return {
 			kind = "fac2",
 			iscommander = "false",
 			tier = "2",
+			upgrade_to = "mi_nostril3",
+			upgrade_metal = "4500",
+			upgrade_energy = "7500",
+			upgrade_seconds = "70",
+			upgrade_tier = "3",
 		},
 		corpse = "",
 		sounds = {

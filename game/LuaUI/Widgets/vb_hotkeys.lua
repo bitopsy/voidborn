@@ -1,5 +1,5 @@
 function widget:GetInfo()
-	return { name = "Voidborn Hotkeys", desc = "BAR-style hotkeys: orders (a s m f p g r e t d w), build keys (z x c v b n j u), Ctrl+B = detonate the selected units (five second countdown)",
+	return { name = "Voidborn Hotkeys", desc = "BAR-style hotkeys: orders (a s m f p g r e t d w), build keys (z x c v b n j u), Ctrl+D = detonate the selected units (five second countdown)",
 		author = "goddot info@bitopsy.com", date = "2026", license = "GPL", layer = 1, enabled = true }
 end
 
@@ -26,13 +26,13 @@ WG.VBHotkeys = { orders = ORDER_KEYS, build = BUILD_KEYS, factory = FACTORY_KEYS
 
 local function Describe(tbl) local t = {} for k, v in pairs(tbl) do t[#t + 1] = k:upper() .. "=" .. v end table.sort(t) return table.concat(t, "  ") end
 
--- Ctrl+B: detonate every selected unit (the LuaRules gadget vb_explode.lua applies the blasts;
+-- Ctrl+D: detonate every selected unit (the LuaRules gadget vb_explode.lua applies the blasts;
 -- blast radius is proportional to each unit's health). Also available as the text command /vbexplode.
 -- It has to be defined before the functions that call it: a local that is not yet in scope
 -- would be looked up as a global at call time and come out nil.
 --
 -- The detonation is not immediate: the units get five seconds to change their mind.
--- Ctrl+B again while the clock is running cancels it.
+-- Ctrl+D again while the clock is running cancels it.
 local COUNTDOWN = 5          -- seconds between the order and the blast
 local pending = nil          -- the moment the countdown was started
 local function Explode()
@@ -50,7 +50,7 @@ local function Explode()
 		Spring.SendLuaRulesMsg("vbexplode:" .. table.concat(sel, ",", i, math.min(i + 99, #sel)))
 	end
 	pending = now
-	Spring.Echo("[VB] Detonation in " .. COUNTDOWN .. " seconds - Ctrl+B again to cancel")
+	Spring.Echo("[VB] Detonation in " .. COUNTDOWN .. " seconds - Ctrl+D again to cancel")
 	return true
 end
 
@@ -121,8 +121,34 @@ local function FindBuild(builderDefID, kind)
 end
 
 
+-- Tab: select your commander and fly the camera to it (press again to cycle if you own several)
+local lastComm = nil
+local function JumpToCommander()
+	if Spring.GetSpectatingState() then return false end
+	local list = {}
+	for _, uid in ipairs(Spring.GetTeamUnits(Spring.GetMyTeamID()) or {}) do
+		local cp = UnitDefs[Spring.GetUnitDefID(uid)] and UnitDefs[Spring.GetUnitDefID(uid)].customParams
+		if cp and cp.iscommander == "true" and not Spring.GetUnitIsDead(uid) then list[#list + 1] = uid end
+	end
+	if #list == 0 then return false end
+	table.sort(list)
+	local pick = list[1]
+	if lastComm then
+		for i, uid in ipairs(list) do if uid == lastComm then pick = list[i % #list + 1] break end end
+	end
+	lastComm = pick
+	Spring.SelectUnitArray({ pick })
+	local x, y, z = Spring.GetUnitPosition(pick)
+	if x then Spring.SetCameraTarget(x, y, z, 0.4) end
+	return true
+end
+
 function widget:KeyPress(key, mods, isRepeat)
-	if mods and mods.ctrl and not mods.alt and not mods.meta and not mods.shift and key == 98 then   -- 98 = 'b'
+	if key == 9 and not (mods and (mods.ctrl or mods.alt or mods.meta or mods.shift)) then   -- 9 = Tab
+		if isRepeat then return true end
+		return JumpToCommander()
+	end
+	if mods and mods.ctrl and not mods.alt and not mods.meta and not mods.shift and key == 100 then   -- 100 = 'd'
 		if isRepeat then return true end
 		return Explode()
 	end

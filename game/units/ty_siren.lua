@@ -2,6 +2,7 @@
 return {
 	ty_siren = {
 		name = "Siren",
+	script = "ty_siren.lua",
 		description = "T2 Support - a haloed song-conch; fast builder, mends the conclave and hears what hides",
 		objectName = "ty_siren.s3o",
 		buildPic = "ty_siren.png",

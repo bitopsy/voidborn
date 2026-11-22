@@ -2,6 +2,7 @@
 return {
 	ch_gazer_eye = {
 		name = "Gazer-Eye",
+	script = "ch_gazer_eye.lua",
 		description = "Interceptor Drone - specialized floating eye equipped with automated ocular laser cannons for precision anti-air defense",
 		objectName = "ch_gazer.s3o",
 		buildPic = "ch_gazer.png",
@@ -62,6 +63,7 @@ return {
 		weapons = {
 			{
 				name = "ch_gazer_w1",
+	script = "ch_gazer_eye.lua",
 				def = "ch_gazer_w1",
 				onlyTargetCategory = "VOIDBORN",
 			},

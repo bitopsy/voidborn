@@ -13,8 +13,12 @@ PAL = {
                 tile4='drum', membrane=(240,216,178), mring=(196,140,62), umbo=(120,70,40), team_alpha=True),
  'miasma': dict(skin=(128,140,74), vein=(216,122,198), dark=(44,32,54), trim=(172,72,122), glow=(228,98,255), glow2=(238,230,86),
                 tile4='nostril', hole=(10,4,14), rim=(208,98,130), moss=(98,112,52), team_alpha=True),
+ # 0.17: the Hand (touch).  Slate-blue flesh with rose veins, ink-dark plates, a hot coral nerve-glow; the fourth tile is a
+ # FINGERPRINT (pale pad, dark ridges in a whorl) that covers fingertips, palms and the suckers of the tentacles.
+ 'haptic': dict(skin=(86,112,166), vein=(238,150,176), dark=(30,26,54), trim=(210,92,122), glow=(255,92,112), glow2=(255,204,140),
+                tile4='print', pad=(240,184,182), ridge=(138,62,92), core=(255,120,120), team_alpha=True),
 }
-SEEDS = {'choir': 7, 'maw': 11, 'tympan': 13, 'miasma': 17}
+SEEDS = {'choir': 7, 'maw': 11, 'tympan': 13, 'miasma': 17, 'haptic': 19}
 
 def pnoise(rs, u, v, terms=14, fmax=9, power=1.2):
     out = np.zeros_like(u)
@@ -82,6 +86,19 @@ def build(faction, outdir):
         tex = np.where(hair[..., None], c('dark')[None, None] * 1.3, tex)
         img[:, 768:1024, :3] = tex; img[:, 768:1024, 3] = 0
         em[:, 768:1024, 0] = wet * 130
+        em[:, 768:1024, 1] = 200
+    elif kind4 == 'print':
+        # a fingerprint seen head-on (symmetric around v=0.5 like the other fourth tiles): ridges follow a whorl that is pulled
+        # into an oval and wobbles with the angle, a pale pad around it, a warm core where the finger touches
+        wob = 0.018 * np.sin(ang * 3 + 1.0) + 0.012 * np.sin(ang * 7)
+        ridge_phase = (rho + wob) / 0.0185
+        ridges = (np.cos(2 * np.pi * ridge_phase) > 0.25).astype(float) * (rho < 0.46)
+        padc = c('pad')[None, None] * (0.90 + 0.10 * pnoise(rs, u, v, 10, 10)[..., None])
+        pr = padc * (1 - 0.88 * ridges[..., None]) + c('ridge')[None, None] * 0.88 * ridges[..., None]
+        core = rho < 0.06
+        pr = np.where(core[..., None], c('core')[None, None], pr)
+        img[:, 768:1024, :3] = pr; img[:, 768:1024, 3] = 0
+        em[:, 768:1024, 0] = np.where(core, 150, 0) + ridges * 25
         em[:, 768:1024, 1] = 200
     else:
         streak = 0.5 + 0.5 * np.cos(ang * 17 + 3 * np.sin(ang * 5))

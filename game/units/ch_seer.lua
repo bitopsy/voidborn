@@ -2,6 +2,7 @@
 return {
 	ch_seer = {
 		name = "Seer",
+	script = "ch_seer.lua",
 		description = "Builder - a floating eye with tendrils that knit flesh into structures",
 		objectName = "ch_seer.s3o",
 		buildPic = "ch_seer.png",

@@ -146,3 +146,9 @@ table.t tr:hover td{background:#120d26}
 .kv div{background:#0c0818;border:1px solid var(--line);border-radius:8px;padding:14px 16px}
 .kv b{display:block;color:#fff;font-size:19px;font-family:Oxanium,sans-serif}
 .kv span{color:var(--dim);font-size:14px}
+
+/* ---- story page: faction emblems and unit icons ------------------------ */
+.card .emb{float:right;width:96px;height:96px;margin:0 0 8px 14px;border-radius:16px;object-fit:cover}
+.u .uic{float:left;width:84px;height:84px;margin:0 12px 4px 0;border-radius:8px}
+.u::after{content:"";display:block;clear:both}
+@media(max-width:520px){.card .emb{width:72px;height:72px}}

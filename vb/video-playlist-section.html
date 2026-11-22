@@ -1,0 +1,32 @@
+<!-- Home page: replace the whole "See it in a video" section with this block.
+     One playlist embed, loaded only when the visitor presses play (the page itself requests nothing from YouTube).
+     To change the playlist, edit data-list in ONE place. -->
+<section id="video"><div class="wrap">
+<h2>See it in a video</h2>
+<p class="lead">The armies, the factories, the build panel and the unit forge doing their thing &ndash; from the first release to the latest.</p>
+<div class="video" id="playlist" data-list="PLErmsWWFp8sk">
+<img src="img/demo.webp" width="1280" height="720" loading="lazy" decoding="async" alt="Video still from the Voidborn evolution playlist">
+<button class="play" type="button" aria-label="Play the Voidborn evolution playlist"><span></span></button>
+<div class="caption"><b>Voidborn evolution</b> &ndash; the playlist, from the first release to the latest.</div>
+</div>
+<p class="lead" style="margin-top:14px">Or <a href="https://youtube.com/playlist?list=PLErmsWWFp8sk&amp;si=sPq5xfspewX0n2hN" rel="noopener">open the playlist on YouTube</a>.</p>
+</div></section>
+
+<script>
+// the poster is a local picture; YouTube is only asked for when the visitor presses play
+(function () {
+  var box = document.getElementById('playlist');
+  var btn = box && box.querySelector('.play');
+  if (!btn) return;
+  btn.addEventListener('click', function () {
+    var f = document.createElement('iframe');
+    f.src = 'https://www.youtube-nocookie.com/embed/videoseries?list=' + encodeURIComponent(box.dataset.list) + '&autoplay=1&rel=0';
+    f.title = 'Voidborn evolution - playlist';
+    f.setAttribute('allow', 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture');
+    f.setAttribute('allowfullscreen', '');
+    var img = box.querySelector('img'); if (img) img.remove();
+    btn.remove();
+    box.insertBefore(f, box.querySelector('.caption'));
+  });
+})();
+</script>

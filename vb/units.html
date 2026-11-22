@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Voidborn Units – the build tree of all five factions</title>
+<meta name="description" content="The Voidborn build tree for the Choir of the Eye, Maw Swarm, Tympan Conclave, Miasma Bloom and Haptic Grasp: what each commander builds, and the Tier 1, Tier 2 and Tier 3 units that follow.">
+<meta name="color-scheme" content="dark">
+<link rel="preload" href="./fonts/oxanium-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="./fonts/oxanium.css">
+<link rel="stylesheet" href="./style.css">
+<link rel="stylesheet" href="./units.css">
+</head><body>
+
+<nav class="topnav"><div class="wrap">
+<a class="brand" href="./index.html">VOID<span>BORN</span></a>
+<a class="navlink" href="./index.html">Home</a>
+<a class="navlink" href="./play.html">Play</a>
+<a class="navlink" href="./maps.html">Maps</a>
+<a class="navlink" href="./units.html" aria-current="page">Units</a>
+<a class="navlink" href="./forge.html">Unit Forge</a>
+<a class="navlink" href="./story.html">Story</a>
+<a class="navlink" href="./roadmap.html">Roadmap</a>
+<span class="spacer"></span>
+<a class="btn sm dc" href="https://discord.com/channels/1481771055063502925/">Discord</a>
+</div></nav>
+
+<header class="pagehead"><div class="wrap">
+<h1>UNITS</h1>
+<p>Every army grows the same way: a commander, a factory, and two upgrades that open a deeper tier. This is the build tree
+of all five factions &ndash; what you build, in what order, and what each step costs.</p>
+<div class="chips"><span class="chip"><b>5</b> factions</span><span class="chip"><b>3</b> tiers</span><span class="chip"><b>65</b> buildable units</span><span class="chip">the <b>unit forge</b> opens at Tier 2</span></div>
+<div class="btns" style="margin-top:22px"><a class="btn" href="./forge.html">Open the unit forge</a><a class="btn alt" href="./story.html">Read the story page</a></div>
+</div></header>
+
+<section id="rules" class="tight"><div class="wrap">
+<h2>One tree, five bodies</h2>
+<p class="lead">The tree is the same in every faction. What changes are the units, the weapons and the tricks that
+come with them.</p>
+<div class="steps3">
+<div class="card"><h3>Tier 1</h3><p>The commander builds the structures and the first factory. The factory builds seven units: a builder, a scout, a raider, an assault unit, a long-range unit, a support unit and a heavy.</p></div>
+<div class="card"><h3>Tier 2</h3><p>Upgrade the factory in place for 2000 metal and 2800 energy. It keeps every Tier 1 unit and adds five: a raider, an assault unit, an artillery unit, a support unit and a heavy. The <a href="./forge.html">unit forge</a> unlocks here.</p></div>
+<div class="card"><h3>Tier 3</h3><p>Upgrade again for 4500 metal and 7500 energy. The lab keeps everything below it and adds one colossus per faction: 9200 to 9800 metal, 88,000 to 120,000 HP, and about half the speed of a Tier 2 heavy.</p></div>
+</div>
+<div class="tablewrap"><table class="t glance">
+<thead><tr><th>Faction</th><th>Tier 1 factory</th><th>Tier 2 factory</th><th>Tier 3 factory</th><th>Tier 3 heavy</th><th class="num">metal / HP</th></tr></thead>
+<tbody>
+<tr><th scope="row"><a href="#choir" style="color:#6fb3ff">Choir of the Eye</a></th><td>Iris Womb</td><td>Great Iris Womb</td><td>Eternal Iris Womb</td><td>Eidolon</td><td class="num">9,600 / 90,000</td></tr>
+<tr><th scope="row"><a href="#maw" style="color:#ff9a3c">Maw Swarm</a></th><td>Brood Hive</td><td>Great Brood Hive</td><td>Primeval Brood Hive</td><td>Dreadmaw</td><td class="num">9,200 / 115,000</td></tr>
+<tr><th scope="row"><a href="#tympan" style="color:#e6b84a">Tympan Conclave</a></th><td>Echo Chamber</td><td>Grand Echo Chamber</td><td>Sanctum Echo Chamber</td><td>Carillon</td><td class="num">9,700 / 88,000</td></tr>
+<tr><th scope="row"><a href="#miasma" style="color:#8bd16a">Miasma Bloom</a></th><td>Nostril Pit</td><td>Great Nostril</td><td>Ancient Nostril</td><td>Rafflesia</td><td class="num">9,200 / 120,000</td></tr>
+<tr><th scope="row"><a href="#haptic" style="color:#ff7a6b">Haptic Grasp</a></th><td>Open Palm</td><td>Great Palm</td><td>Titan Palm</td><td>Atlas</td><td class="num">9,800 / 95,000</td></tr>
+</tbody></table></div>
+<p class="note"><b>Tier 3 is a first pass.</b> The Tier 3 heavies and the factory upgrade have not been played in the engine yet, and the bot upgrades only to Tier 2. See the <a href="./roadmap.html">roadmap</a>.</p>
+<p class="jump"><span>Jump to</span> <a href="#choir" style="color:#6fb3ff">Choir of the Eye</a> <a href="#maw" style="color:#ff9a3c">Maw Swarm</a> <a href="#tympan" style="color:#e6b84a">Tympan Conclave</a> <a href="#miasma" style="color:#8bd16a">Miasma Bloom</a> <a href="#haptic" style="color:#ff7a6b">Haptic Grasp</a></p>
+</div></section>
+
+<section class="fac" id="choir" style="--acc:#6fb3ff"><div class="wrap">
+<div class="fhead"><h2>Choir of the Eye</h2><p class="sense">the eye</p><p class="blurb">Pale, many-eyed cyclopes. Long-range lasers, fragile at close quarters.</p></div>
+<ul class="tree">
+<li><div class="node com"><span class="tier">Start</span><b>Hierophant</b><em>Commander</em><span class="m">2500 metal &middot; 4,200 HP</span></div><ul>
+<li><div class="node"><span class="tier">Structures</span><b>Economy and defence</b><em>built by the commander and the builder</em></div>
+<ul class="structs"><li class="uc sc"><b>Leech Eye</b><em>Metal extractor</em></li><li class="uc sc"><b>Sun Iris</b><em>Energy</em></li><li class="uc sc"><b>Singularity Heart</b><em>Advanced energy</em></li><li class="uc sc"><b>Tear Vault</b><em>Storage</em></li><li class="uc sc"><b>Watcher</b><em>Radar</em></li><li class="uc sc"><b>Stare Stalk</b><em>Light defence</em></li><li class="uc sc"><b>Pillar of Judgement</b><em>Heavy defence</em></li></ul></li>
+<li><div class="node lab t1"><span class="tier">Tier 1</span><b>Iris Womb</b><em>Factory</em><span class="m">470 metal &middot; 1300 energy</span></div><ul>
+<li class="grp"><p class="gl">Builds 7 units, including the builder</p><ul class="units"><li class="uc"><b>Seer</b><em>Builder</em><span>90 metal &middot; 520 HP</span></li><li class="uc"><b>Gazer</b><em>Scout</em><span>38 metal &middot; 230 HP</span></li><li class="uc"><b>Lashling</b><em>Raider</em><span>55 metal &middot; 330 HP</span></li><li class="uc"><b>Cyclops Hoplite</b><em>Assault</em><span>195 metal &middot; 1,400 HP</span></li><li class="uc"><b>Basilisk</b><em>Long range</em><span>250 metal &middot; 560 HP</span></li><li class="uc"><b>Weeper</b><em>Support</em><span>150 metal &middot; 700 HP</span></li><li class="uc"><b>Argus Colossus</b><em>Heavy</em><span>1650 metal &middot; 9,500 HP</span></li></ul></li>
+<li><div class="node up"><span class="tier">Upgrade</span><b>Tier 2</b><span class="m">2000 metal + 2800 energy &middot; 45 s, in place</span></div><ul>
+<li><div class="node lab t2"><span class="tier">Tier 2</span><b>Great Iris Womb</b><em>Factory</em><span class="m">2,470 metal in all (upgrade included)</span><a class="forgelink" href="./forge.html">Unlocks the unit forge &rarr;</a></div><ul>
+<li class="grp"><p class="gl">Keeps all of Tier 1, and adds 5 units</p><ul class="units"><li class="uc"><b>Saccade</b><em>Raider</em><span>140 metal &middot; 620 HP</span></li><li class="uc"><b>Sclera Knight</b><em>Assault</em><span>520 metal &middot; 4,200 HP</span></li><li class="uc"><b>Lidless Lance</b><em>Artillery</em><span>640 metal &middot; 1,100 HP</span></li><li class="uc"><b>Lachryma</b><em>Support</em><span>380 metal &middot; 1,800 HP</span></li><li class="uc"><b>Panopticon</b><em>Heavy</em><span>4200 metal &middot; 34,000 HP</span></li></ul></li>
+<li><div class="node up"><span class="tier">Upgrade</span><b>Tier 3</b><span class="m">4500 metal + 7500 energy &middot; 70 s, in place</span></div><ul>
+<li><div class="node lab t3"><span class="tier">Tier 3</span><b>Eternal Iris Womb</b><em>Factory</em><span class="m">6,970 metal in all</span></div><ul>
+<li class="grp"><p class="gl">Keeps all of Tier 2, and adds one heavy</p><ul class="units"><li class="uc big"><b>Eidolon</b><em>Tier 3 heavy</em><span>9,600 metal &middot; 90,000 HP</span><span class="w">Final Sight (beam, 900), Optic Storm (lightning, 560), Judgement Lance (1400)</span></li></ul></li>
+</ul></li></ul></li>
+</ul></li></ul></li>
+</ul></li>
+</ul></li></ul>
+</div></section>
+
+<section class="fac" id="maw" style="--acc:#ff9a3c"><div class="wrap">
+<div class="fhead"><h2>Maw Swarm</h2><p class="sense">the mouth</p><p class="blurb">Chitinous, toothed, many-legged. Short reach; tougher, regenerating and cheaper.</p></div>
+<ul class="tree">
+<li><div class="node com"><span class="tier">Start</span><b>Matriarch</b><em>Commander</em><span class="m">2500 metal &middot; 4,400 HP</span></div><ul>
+<li><div class="node"><span class="tier">Structures</span><b>Economy and defence</b><em>built by the commander and the builder</em></div>
+<ul class="structs"><li class="uc sc"><b>Root Drill</b><em>Metal extractor</em></li><li class="uc sc"><b>Sunbloom</b><em>Energy</em></li><li class="uc sc"><b>Heartfire Egg</b><em>Advanced energy</em></li><li class="uc sc"><b>Gut Cyst</b><em>Storage</em></li><li class="uc sc"><b>Listening Maw</b><em>Radar</em></li><li class="uc sc"><b>Tooth Spire</b><em>Light defence</em></li><li class="uc sc"><b>Maw Bastion</b><em>Heavy defence</em></li></ul></li>
+<li><div class="node lab t1"><span class="tier">Tier 1</span><b>Brood Hive</b><em>Factory</em><span class="m">420 metal &middot; 1250 energy</span></div><ul>
+<li class="grp"><p class="gl">Builds 7 units, including the builder</p><ul class="units"><li class="uc"><b>Weaver</b><em>Builder</em><span>90 metal &middot; 560 HP</span></li><li class="uc"><b>Skitter</b><em>Scout</em><span>32 metal &middot; 240 HP</span></li><li class="uc"><b>Gnasher</b><em>Raider</em><span>52 metal &middot; 560 HP</span></li><li class="uc"><b>Ravager</b><em>Assault</em><span>160 metal &middot; 2,100 HP</span></li><li class="uc"><b>Spitter</b><em>Artillery</em><span>205 metal &middot; 600 HP</span></li><li class="uc"><b>Nurse</b><em>Support</em><span>150 metal &middot; 760 HP</span></li><li class="uc"><b>Leviathan</b><em>Heavy</em><span>1450 metal &middot; 13,000 HP</span></li></ul></li>
+<li><div class="node up"><span class="tier">Upgrade</span><b>Tier 2</b><span class="m">2000 metal + 2800 energy &middot; 45 s, in place</span></div><ul>
+<li><div class="node lab t2"><span class="tier">Tier 2</span><b>Great Brood Hive</b><em>Factory</em><span class="m">2,420 metal in all (upgrade included)</span><a class="forgelink" href="./forge.html">Unlocks the unit forge &rarr;</a></div><ul>
+<li class="grp"><p class="gl">Keeps all of Tier 1, and adds 5 units</p><ul class="units"><li class="uc"><b>Shearwing</b><em>Raider</em><span>130 metal &middot; 1,100 HP</span></li><li class="uc"><b>Warmaw</b><em>Assault</em><span>480 metal &middot; 5,200 HP</span></li><li class="uc"><b>Rupturer</b><em>Artillery</em><span>620 metal &middot; 1,300 HP</span></li><li class="uc"><b>Midwife</b><em>Support</em><span>360 metal &middot; 2,000 HP</span></li><li class="uc"><b>Devourer</b><em>Heavy</em><span>3900 metal &middot; 46,000 HP</span></li></ul></li>
+<li><div class="node up"><span class="tier">Upgrade</span><b>Tier 3</b><span class="m">4500 metal + 7500 energy &middot; 70 s, in place</span></div><ul>
+<li><div class="node lab t3"><span class="tier">Tier 3</span><b>Primeval Brood Hive</b><em>Factory</em><span class="m">6,920 metal in all</span></div><ul>
+<li class="grp"><p class="gl">Keeps all of Tier 2, and adds one heavy</p><ul class="units"><li class="uc big"><b>Dreadmaw</b><em>Tier 3 heavy</em><span>9,200 metal &middot; 115,000 HP</span><span class="w">Gorge Beam (900), Arc Glands (lightning, 540), Brood Mortar (1300), Brood Swarm (rockets, 800)</span></li></ul></li>
+</ul></li></ul></li>
+</ul></li></ul></li>
+</ul></li>
+</ul></li></ul>
+</div></section>
+
+<section class="fac" id="tympan" style="--acc:#e6b84a"><div class="wrap">
+<div class="fhead"><h2>Tympan Conclave</h2><p class="sense">the ear</p><p class="blurb">Floating ears, horns and drums. Resonance makes focused fire hit harder; radar rides on the units, and ears blow cloaks.</p></div>
+<ul class="tree">
+<li><div class="node com"><span class="tier">Start</span><b>Auditor</b><em>Commander</em><span class="m">2500 metal &middot; 4,300 HP</span></div><ul>
+<li><div class="node"><span class="tier">Structures</span><b>Economy and defence</b><em>built by the commander and the builder</em></div>
+<ul class="structs"><li class="uc sc"><b>Cilia Tap</b><em>Metal extractor</em></li><li class="uc sc"><b>Sun Pinna</b><em>Energy</em></li><li class="uc sc"><b>Harmonic Spiral</b><em>Advanced energy</em></li><li class="uc sc"><b>Wax Vault</b><em>Storage</em></li><li class="uc sc"><b>Auricle Array</b><em>Radar</em></li><li class="uc sc"><b>Tuning Fork</b><em>Light defence</em></li><li class="uc sc"><b>Great Gong</b><em>Heavy defence</em></li></ul></li>
+<li><div class="node lab t1"><span class="tier">Tier 1</span><b>Echo Chamber</b><em>Factory</em><span class="m">460 metal &middot; 1280 energy</span></div><ul>
+<li class="grp"><p class="gl">Builds 7 units, including the builder</p><ul class="units"><li class="uc"><b>Tuner</b><em>Builder</em><span>90 metal &middot; 540 HP</span></li><li class="uc"><b>Whisper</b><em>Scout</em><span>40 metal &middot; 220 HP</span></li><li class="uc"><b>Tinnitus</b><em>Raider</em><span>54 metal &middot; 360 HP</span></li><li class="uc"><b>Drummer</b><em>Assault</em><span>190 metal &middot; 1,500 HP</span></li><li class="uc"><b>Trumpeter</b><em>Long range</em><span>235 metal &middot; 620 HP</span></li><li class="uc"><b>Lullaby</b><em>Support</em><span>150 metal &middot; 720 HP</span></li><li class="uc"><b>Cacophon</b><em>Heavy</em><span>1600 metal &middot; 9,800 HP</span></li></ul></li>
+<li><div class="node up"><span class="tier">Upgrade</span><b>Tier 2</b><span class="m">2000 metal + 2800 energy &middot; 45 s, in place</span></div><ul>
+<li><div class="node lab t2"><span class="tier">Tier 2</span><b>Grand Echo Chamber</b><em>Factory</em><span class="m">2,450 metal in all (upgrade included)</span><a class="forgelink" href="./forge.html">Unlocks the unit forge &rarr;</a></div><ul>
+<li class="grp"><p class="gl">Keeps all of Tier 1, and adds 5 units</p><ul class="units"><li class="uc"><b>Banshee</b><em>Raider</em><span>140 metal &middot; 640 HP</span></li><li class="uc"><b>Malleus</b><em>Assault</em><span>520 metal &middot; 4,300 HP</span></li><li class="uc"><b>Foghorn</b><em>Artillery</em><span>650 metal &middot; 1,050 HP</span></li><li class="uc"><b>Siren</b><em>Support (fast builder)</em><span>380 metal &middot; 1,800 HP</span></li><li class="uc"><b>Organon</b><em>Heavy</em><span>4200 metal &middot; 35,000 HP</span></li></ul></li>
+<li><div class="node up"><span class="tier">Upgrade</span><b>Tier 3</b><span class="m">4500 metal + 7500 energy &middot; 70 s, in place</span></div><ul>
+<li><div class="node lab t3"><span class="tier">Tier 3</span><b>Sanctum Echo Chamber</b><em>Factory</em><span class="m">6,950 metal in all</span></div><ul>
+<li class="grp"><p class="gl">Keeps all of Tier 2, and adds one heavy</p><ul class="units"><li class="uc big"><b>Carillon</b><em>Tier 3 heavy</em><span>9,700 metal &middot; 88,000 HP</span><span class="w">Great Toll (beam, 900), Static Discharge (lightning, 540), Knell (1300)</span></li></ul></li>
+</ul></li></ul></li>
+</ul></li></ul></li>
+</ul></li>
+</ul></li></ul>
+</div></section>
+
+<section class="fac" id="miasma" style="--acc:#8bd16a"><div class="wrap">
+<div class="fhead"><h2>Miasma Bloom</h2><p class="sense">the nose</p><p class="blurb">Drifting snouts and flowers. Slow and tough; every hit poisons and scents its target.</p></div>
+<ul class="tree">
+<li><div class="node com"><span class="tier">Start</span><b>Rhinarch</b><em>Commander</em><span class="m">2500 metal &middot; 4,700 HP</span></div><ul>
+<li><div class="node"><span class="tier">Structures</span><b>Economy and defence</b><em>built by the commander and the builder</em></div>
+<ul class="structs"><li class="uc sc"><b>Truffle Snout</b><em>Metal extractor</em></li><li class="uc sc"><b>Sunlily</b><em>Energy</em></li><li class="uc sc"><b>Ambergris Core</b><em>Advanced energy</em></li><li class="uc sc"><b>Musk Sac</b><em>Storage</em></li><li class="uc sc"><b>Scent Stalk</b><em>Radar</em></li><li class="uc sc"><b>Reek Pod</b><em>Light defence</em></li><li class="uc sc"><b>Stench Tower</b><em>Heavy defence</em></li></ul></li>
+<li><div class="node lab t1"><span class="tier">Tier 1</span><b>Nostril Pit</b><em>Factory</em><span class="m">410 metal &middot; 1230 energy</span></div><ul>
+<li class="grp"><p class="gl">Builds 7 units, including the builder</p><ul class="units"><li class="uc"><b>Pollinator</b><em>Builder</em><span>88 metal &middot; 600 HP</span></li><li class="uc"><b>Sniffer</b><em>Scout</em><span>34 metal &middot; 260 HP</span></li><li class="uc"><b>Sneezer</b><em>Raider</em><span>52 metal &middot; 620 HP</span></li><li class="uc"><b>Bellows</b><em>Assault</em><span>170 metal &middot; 2,300 HP</span></li><li class="uc"><b>Stinkhorn</b><em>Long range</em><span>215 metal &middot; 700 HP</span></li><li class="uc"><b>Censer</b><em>Support</em><span>150 metal &middot; 820 HP</span></li><li class="uc"><b>Proboscis</b><em>Heavy</em><span>1500 metal &middot; 13,500 HP</span></li></ul></li>
+<li><div class="node up"><span class="tier">Upgrade</span><b>Tier 2</b><span class="m">2000 metal + 2800 energy &middot; 45 s, in place</span></div><ul>
+<li><div class="node lab t2"><span class="tier">Tier 2</span><b>Great Nostril</b><em>Factory</em><span class="m">2,400 metal in all (upgrade included)</span><a class="forgelink" href="./forge.html">Unlocks the unit forge &rarr;</a></div><ul>
+<li class="grp"><p class="gl">Keeps all of Tier 1, and adds 5 units</p><ul class="units"><li class="uc"><b>Pollenwing</b><em>Raider</em><span>128 metal &middot; 1,150 HP</span></li><li class="uc"><b>Bloomguard</b><em>Assault</em><span>470 metal &middot; 5,400 HP</span></li><li class="uc"><b>Fumigator</b><em>Artillery</em><span>610 metal &middot; 1,350 HP</span></li><li class="uc"><b>Perfumer</b><em>Support (fast builder)</em><span>350 metal &middot; 2,100 HP</span></li><li class="uc"><b>Titan Arum</b><em>Heavy</em><span>3800 metal &middot; 48,000 HP</span></li></ul></li>
+<li><div class="node up"><span class="tier">Upgrade</span><b>Tier 3</b><span class="m">4500 metal + 7500 energy &middot; 70 s, in place</span></div><ul>
+<li><div class="node lab t3"><span class="tier">Tier 3</span><b>Ancient Nostril</b><em>Factory</em><span class="m">6,900 metal in all</span></div><ul>
+<li class="grp"><p class="gl">Keeps all of Tier 2, and adds one heavy</p><ul class="units"><li class="uc big"><b>Rafflesia</b><em>Tier 3 heavy</em><span>9,200 metal &middot; 120,000 HP</span><span class="w">Corpse Ray (beam, 900), Spore Arc (lightning, 540), Putrid Mortar (1300), Spore Storm (rockets, 800)</span></li></ul></li>
+</ul></li></ul></li>
+</ul></li></ul></li>
+</ul></li>
+</ul></li></ul>
+</div></section>
+
+<section class="fac" id="haptic" style="--acc:#ff7a6b"><div class="wrap">
+<div class="fhead"><h2>Haptic Grasp</h2><p class="sense">the hand</p><p class="blurb">Hands and tentacles. The shortest sight and reach, but up to +75% damage point-blank and kamikaze raiders that grip.</p></div>
+<ul class="tree">
+<li><div class="node com"><span class="tier">Start</span><b>Manus</b><em>Commander</em><span class="m">2500 metal &middot; 4,400 HP</span></div><ul>
+<li><div class="node"><span class="tier">Structures</span><b>Economy and defence</b><em>built by the commander and the builder</em></div>
+<ul class="structs"><li class="uc sc"><b>Fingertip Probe</b><em>Metal extractor</em></li><li class="uc sc"><b>Warm Pad</b><em>Energy</em></li><li class="uc sc"><b>Pulse Point</b><em>Advanced energy</em></li><li class="uc sc"><b>Cupped Palms</b><em>Storage</em></li><li class="uc sc"><b>Whisker Mast</b><em>Radar</em></li><li class="uc sc"><b>Pinch Finger</b><em>Light defence</em></li><li class="uc sc"><b>Slam Fist</b><em>Heavy defence</em></li></ul></li>
+<li><div class="node lab t1"><span class="tier">Tier 1</span><b>Open Palm</b><em>Factory</em><span class="m">450 metal &middot; 1260 energy</span></div><ul>
+<li class="grp"><p class="gl">Builds 7 units, including the builder</p><ul class="units"><li class="uc"><b>Palp</b><em>Builder</em><span>90 metal &middot; 580 HP</span></li><li class="uc"><b>Whisker</b><em>Scout</em><span>36 metal &middot; 230 HP</span></li><li class="uc"><b>Clutch</b><em>Raider (kamikaze)</em><span>55 metal &middot; 300 HP</span></li><li class="uc"><b>Fist</b><em>Assault</em><span>190 metal &middot; 1,700 HP</span></li><li class="uc"><b>Reacher</b><em>Long range</em><span>225 metal &middot; 640 HP</span></li><li class="uc"><b>Caress</b><em>Support</em><span>150 metal &middot; 740 HP</span></li><li class="uc"><b>Polydactyl</b><em>Heavy</em><span>1600 metal &middot; 10,500 HP</span></li></ul></li>
+<li><div class="node up"><span class="tier">Upgrade</span><b>Tier 2</b><span class="m">2000 metal + 2800 energy &middot; 45 s, in place</span></div><ul>
+<li><div class="node lab t2"><span class="tier">Tier 2</span><b>Great Palm</b><em>Factory</em><span class="m">2,440 metal in all (upgrade included)</span><a class="forgelink" href="./forge.html">Unlocks the unit forge &rarr;</a></div><ul>
+<li class="grp"><p class="gl">Keeps all of Tier 1, and adds 5 units</p><ul class="units"><li class="uc"><b>Strangler</b><em>Raider (kamikaze)</em><span>150 metal &middot; 900 HP</span></li><li class="uc"><b>Gauntlet</b><em>Assault</em><span>500 metal &middot; 4,800 HP</span></li><li class="uc"><b>Lasso</b><em>Artillery</em><span>630 metal &middot; 1,150 HP</span></li><li class="uc"><b>Kneader</b><em>Support (fast builder)</em><span>370 metal &middot; 1,900 HP</span></li><li class="uc"><b>Hecatoncheir</b><em>Heavy</em><span>4050 metal &middot; 38,000 HP</span></li></ul></li>
+<li><div class="node up"><span class="tier">Upgrade</span><b>Tier 3</b><span class="m">4500 metal + 7500 energy &middot; 70 s, in place</span></div><ul>
+<li><div class="node lab t3"><span class="tier">Tier 3</span><b>Titan Palm</b><em>Factory</em><span class="m">6,940 metal in all</span></div><ul>
+<li class="grp"><p class="gl">Keeps all of Tier 2, and adds one heavy</p><ul class="units"><li class="uc big"><b>Atlas</b><em>Tier 3 heavy</em><span>9,800 metal &middot; 95,000 HP</span><span class="w">Grasping Beam (640), Nerve Storm (lightning, 380), Titan Fist (520)</span></li></ul></li>
+</ul></li></ul></li>
+</ul></li></ul></li>
+</ul></li>
+</ul></li></ul>
+</div></section>
+
+<section class="cta"><div class="wrap">
+<h2>Build something that is not on this page</h2>
+<p class="lead">Once a factory reaches Tier 2, the unit forge takes any unit above, changes its numbers, gives it a new
+3D body &ndash; and prices it. A stronger unit is never free.</p>
+<div class="btns" style="justify-content:flex-start"><a class="btn" href="./forge.html">How the forge works</a><a class="btn alt" href="https://github.com/bitopsy/voidborn">Read the source</a></div>
+</div></section>
+
+<footer><div class="wrap">
+<p><a href="./index.html">Voidborn</a> &middot; <a href="./play.html">Play</a> &middot; <a href="./maps.html">Maps</a> &middot; <a href="./units.html">Units</a> &middot; <a href="./forge.html">Unit Forge</a> &middot; <a href="./story.html">Story</a> &middot; <a href="./roadmap.html">Roadmap</a> &middot;
+<a href="https://github.com/bitopsy/voidborn">GitHub</a> &middot; <a href="https://github.com/bitopsy/BAR-Maps">Maps repo</a> &middot; <a href="https://hub.coilbox.org/games/VB" rel="noopener">Coilbox hub</a> &middot; <a href="https://discord.com/channels/1481771055063502925/">Discord</a></p>
+<p>Voidborn is a free, open-source game by <a href="https://github.com/bitopsy">bitopsy</a>.</p>
+</div></footer>
+</body></html>

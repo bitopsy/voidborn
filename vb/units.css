@@ -1,0 +1,65 @@
+/* Voidborn units page - additive stylesheet, loaded after style.css.
+   Pure CSS tree (no script, no images); every colour comes from --acc, set per faction. */
+
+section.tight{padding:40px 0 20px}
+.steps3{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin:18px 0 24px}
+.tablewrap{overflow-x:auto}
+table.glance td.num{white-space:nowrap}
+.jump{color:var(--dim);font-size:15px;margin:18px 0 0}
+.jump span{margin-right:8px}
+.jump a{margin-right:14px;font-weight:600;text-decoration:none}
+
+/* ---- one section per faction ------------------------------------------ */
+section.fac{--ln:color-mix(in srgb,var(--acc) 38%,transparent);padding:54px 0 30px;border-top:1px solid var(--line);scroll-margin-top:58px}
+.fhead h2{margin:0;color:var(--acc);font-size:clamp(28px,4vw,42px)}
+.fhead .sense{margin:0 0 6px;font:600 13px Oxanium,sans-serif;letter-spacing:.09em;text-transform:uppercase;color:var(--dim)}
+.fhead .blurb{max-width:64ch;color:var(--dim);margin:0 0 22px}
+
+/* ---- the tree: nested lists, connectors drawn with borders ------------- */
+.tree,.tree ul{list-style:none;margin:0;padding:0}
+.tree ul{margin-left:14px;padding-left:26px}
+.tree li{position:relative;padding:8px 0}
+.tree ul>li::before{content:"";position:absolute;left:-26px;top:30px;width:22px;border-top:2px solid var(--ln)}
+.tree ul>li::after{content:"";position:absolute;left:-26px;top:0;bottom:0;border-left:2px solid var(--ln)}
+.tree ul>li:last-child::after{bottom:auto;height:30px}
+.tree ul>li.grp::before{top:18px}
+.tree ul>li.grp:last-child::after{height:18px}
+
+.node{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px;background:linear-gradient(160deg,#150f2c,#0c0818);border:1px solid var(--line);border-left:3px solid var(--acc);border-radius:4px 16px 4px 4px;padding:11px 16px}
+.node b{color:#fff;font:700 19px Oxanium,sans-serif}
+.node em{color:var(--dim);font-style:normal;font-size:14px}
+.node .m{color:var(--bone);font-size:14px;font-variant-numeric:tabular-nums}
+.node .tier{font:600 11px Oxanium,sans-serif;letter-spacing:.09em;text-transform:uppercase;color:var(--acc);flex:0 0 100%}
+.node.com{border-color:var(--acc)}
+.node.up{background:transparent;border-style:dashed;border-left-style:dashed;padding:7px 14px}
+.node.up b{font-size:16px;color:var(--bone)}
+.node.t2{box-shadow:0 0 22px color-mix(in srgb,var(--acc) 22%,transparent)}
+.node.t3{border-color:var(--acc);box-shadow:0 0 30px color-mix(in srgb,var(--acc) 35%,transparent)}
+.forgelink{flex:0 0 100%;font:600 14px Oxanium,sans-serif;text-decoration:none;margin-top:2px}
+.forgelink:hover{text-decoration:underline}
+
+/* ---- unit chips -------------------------------------------------------- */
+.tree ul.units,.tree ul.structs{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px;margin:6px 0 0;padding:0;border:0}
+.tree ul.units>li::before,.tree ul.structs>li::before,.tree ul.units>li::after,.tree ul.structs>li::after{display:none}
+.tree ul.units>li.uc,.tree ul.structs>li.uc{padding:10px 12px}
+.gl{margin:0 0 4px;color:var(--dim);font-size:14px}
+li.uc{background:#0c0818;border:1px solid var(--line);border-top:3px solid var(--acc);border-radius:4px;padding:10px 12px;display:flex;flex-direction:column;gap:1px}
+li.uc b{color:#fff;font:700 17px Oxanium,sans-serif}
+li.uc em{color:var(--acc);font:600 13px Oxanium,sans-serif;font-style:normal}
+li.uc span{color:var(--dim);font-size:13.5px;font-variant-numeric:tabular-nums}
+li.uc.sc{border-top-color:#4a4470}
+li.uc.sc em{color:var(--dim)}
+li.uc.big{grid-column:1/-1;border-color:var(--acc);border-top-width:3px;background:linear-gradient(160deg,#1a1236,#0c0818)}
+li.uc.big b{font-size:22px}
+li.uc .w{margin-top:4px;font-size:13.5px;color:var(--bone)}
+
+section.cta{padding:56px 0 70px;border-top:1px solid var(--line)}
+
+@media(max-width:640px){
+  .tree ul{margin-left:6px;padding-left:16px}
+  .tree ul>li::before{left:-16px;width:12px}
+  .tree ul>li::after{left:-16px}
+  .node b{font-size:17px}
+  .tree ul.units,.tree ul.structs{grid-template-columns:1fr 1fr}
+}
+@media(max-width:400px){.tree ul.units,.tree ul.structs{grid-template-columns:1fr}}

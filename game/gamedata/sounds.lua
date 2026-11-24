@@ -15,8 +15,8 @@ local flat = { in3d = false, pitchmod = 0, gainmod = 0, maxconcurrent = 2 }
 for _, n in ipairs({ "ui_click", "ui_hover", "ui_select", "ui_open", "ui_close", "ui_error", "ui_place" }) do add(n, 0.7, flat) end
 add("ui_hover", 0.35, flat)
 -- alerts / jingles
-add("alarm_commander", 0.9, flat); add("unit_ready", 0.7, flat); add("struct_done", 0.8, flat)
-add("game_start", 0.9, flat); add("build_start", 0.7, { maxconcurrent = 3 }); add("nano_zap", 0.45, { maxconcurrent = 3 })
+add("alarm_commander", 0.9, flat); add("unit_ready", 0.2, flat); add("struct_done", 0.2, flat)
+add("game_start", 0.9, flat); add("build_start", 0.2, { maxconcurrent = 3 }); add("nano_zap", 0.45, { maxconcurrent = 3 })
 add("split_pop", 0.8, { maxconcurrent = 4 })
 -- unit voices
 add("select_choir", 0.7, { in3d = false, maxconcurrent = 2 }); add("ok_choir", 0.55, { in3d = false, maxconcurrent = 2 })

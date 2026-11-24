@@ -1116,9 +1116,15 @@ local function DrawDashboard(ctx)
 	end
 	D.Button(P[3] - sc(40), P[4] - topH + sc(8), P[3] - sc(8), P[4] - sc(8), "X", { color = C.bad, click = Close, tip = "Close (Esc)" })
 
-	-- the clock
+	-- the clock and unit count
 	local clockText = (ctx.cursor and "VIEWING " or "LIVE ") .. Stats.Time(ctx.frame)
-	D.Mono(clockText, P[3] - sc(60), P[4] - sc(30), sc(15), "or", ctx.cursor and C.warn or C.good)
+	-- compute total unit count across all visible teams
+	local totalUnits = 0
+	for _, t in ipairs(Stats.VisibleTeams()) do
+		local v = Stats.Value(t, "uc", ctx.idx[t.id])
+		if v then totalUnits = totalUnits + v end
+	end
+	D.Mono(clockText .. "  |  " .. totalUnits .. " units", P[3] - sc(60), P[4] - sc(30), sc(15), "or", ctx.cursor and C.warn or C.good)
 	if Stats.over then D.Text("GAME OVER", P[3] - sc(60), P[4] - sc(43), sc(8), "or", C.bad) end
 
 	-- the bottom bar: time and window

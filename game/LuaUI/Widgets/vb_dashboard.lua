@@ -68,6 +68,100 @@ local hudRect = nil
 local function Snd(name) if Spring.PlaySoundFile then Spring.PlaySoundFile("sounds/" .. name .. ".wav", 0.5, "ui") end end
 
 --------------------------------------------------------------------------------
+-- HUD columns and the per-player extras (unit count / limit, ping, fps, flag)
+--------------------------------------------------------------------------------
+local HUD_W = 420                 -- HUD width in sc() units (was 380); vb_layout's Place() uses the same number
+local HUD_COLS = {                -- w = column width in sc() units; columns are laid out from the right edge
+	{ id = "sc", head = "SCORE", w = 40 }, { id = "av", head = "ARMY", w = 36 }, { id = "mi", head = "M/S", w = 28 },
+	{ id = "ei", head = "E/S", w = 30 }, { id = "units", head = "UNITS", w = 56 },
+	{ id = "ping", head = "PING", w = 30 }, { id = "fps", head = "FPS", w = 26 },
+}
+local FLAG_DIR = "LuaUI/Images/flags/"      -- <cc>.png, lower case: "fr.png", "us.png" ... (BAR's flag set works as is)
+local fpsOf = {}                  -- [playerID] = { fps, os.clock() }, what the other clients broadcast
+local teamInfo = {}               -- [teamID] = { units, maxUnits, ping, fps, cc, ai, active }
+local flagOK = {}                 -- [path] = true / false (does the texture exist)
+local fpsTimer = 0
+
+local function RefreshTeamInfo()
+	local now = os.clock()
+	local myTeam, myPlayer = Spring.GetMyTeamID(), Spring.GetMyPlayerID()
+	-- the unit limit is one game-wide number; take it from our own team, else from the game
+	local gameMax = Game and Game.maxUnits
+	local okM, m = pcall(Spring.GetTeamMaxUnits, myTeam)
+	if okM and m and m > 0 then gameMax = m end
+	local out = {}
+	for _, t in ipairs(Stats.VisibleTeams()) do
+		local e = { maxUnits = gameMax }
+		local okU, n = pcall(Spring.GetTeamUnitCount, t.id)
+		if okU and n then e.units = n end
+		local okT, mx = pcall(Spring.GetTeamMaxUnits, t.id)
+		if okT and mx and mx > 0 then e.maxUnits = mx end
+		local _, leader, _, isAI = Spring.GetTeamInfo(t.id, false)
+		e.ai = isAI and true or false
+		local pid = leader
+		if not e.ai and (not pid or pid < 0) then
+			for _, p in ipairs(Spring.GetPlayerList(t.id, true) or {}) do pid = p; break end
+		end
+		if not e.ai and pid and pid >= 0 then
+			-- name, active, spectator, teamID, allyTeamID, pingTime (s), cpuUsage, country, rank
+			local _, active, _, _, _, ping, _, cc = Spring.GetPlayerInfo(pid, false)
+			e.active = active
+			e.ping = ping and floor(ping * 1000 + 0.5) or nil
+			e.cc = (cc and cc ~= "") and cc or nil
+			if pid == myPlayer then
+				e.fps = floor((Spring.GetFPS and Spring.GetFPS() or 0) + 0.5)
+			else
+				local f = fpsOf[pid]
+				if f and now - f[2] < 10 then e.fps = f[1] end
+			end
+		end
+		out[t.id] = e
+	end
+	teamInfo = out
+end
+
+-- the unit count: exact for allies and spectators, the statistics' sample for an enemy we may see
+local function UnitsOf(t, e, idx)
+	if Spring.GetSpectatingState() or Spring.AreTeamsAllied(Spring.GetMyTeamID(), t.id) then
+		if e and e.units then return e.units end
+	end
+	local v = Stats.Value(t, "uc", idx)
+	if v then return floor(v + 0.5) end
+end
+
+local function PingText(e)
+	if not e then return "-", C.faint end
+	if e.ai then return "AI", C.faint end
+	if e.active == false then return "OFF", C.bad end
+	if not e.ping then return "-", C.faint end
+	local ms = e.ping
+	local txt = ms >= 1000 and string.format("%.1fs", ms / 1000) or tostring(ms)
+	return txt, ms < 100 and C.good or (ms < 250 and C.warn or C.bad)
+end
+
+local function FpsText(e)
+	if not e then return "-", C.faint end
+	if e.ai then return "AI", C.faint end
+	if not e.fps then return "-", C.faint end
+	return tostring(e.fps), e.fps >= 30 and C.good or (e.fps >= 15 and C.warn or C.bad)
+end
+
+-- the flag of the player's country; two letters of text when the game has no picture for it
+local function DrawFlag(cc, x, y, w, h)
+	if not cc then return end
+	local path = FLAG_DIR .. cc:lower() .. ".png"
+	if flagOK[path] == nil then flagOK[path] = (VFS.FileExists(path) and true) or false end
+	if flagOK[path] then
+		gl.Color(1, 1, 1, 1)
+		gl.Texture(path)
+		gl.TexRect(x, y, x + w, y + h)
+		gl.Texture(false)
+	else
+		D.Mono(cc:upper(), x, y + sc(1), sc(7), "o", C.faint)
+	end
+end
+
+--------------------------------------------------------------------------------
 -- what is shown
 --------------------------------------------------------------------------------
 local function BuildCtx()
@@ -1072,7 +1166,7 @@ end
 -- the HUD
 --------------------------------------------------------------------------------
 local function DrawHud(ctx)
-	local W = sc(380)
+	local W = sc(HUD_W)
 	local head = sc(24)
 	local list = {}
 	for _, t in ipairs(ctx.all) do list[#list + 1] = t end
@@ -1123,10 +1217,12 @@ local function DrawHud(ctx)
 
 	-- the leaderboard: ranked by SCORE; a team hidden by the fog of war is scored from what has been seen (~)
 	local ty = y2 - head - sc(2)
-	local cols = { { "sc", "SCORE" }, { "av", "ARMY" }, { "mi", "M/S" } }
-	local nameW = sc(150)
-	local cw = (W - nameW - sc(8)) / #cols
-	for k, c in ipairs(cols) do D.Text(c[2], x1 + nameW + k * cw - sc(2), ty - rowH + sc(4), sc(8), "or", C.faint) end
+	local colR = {}                                   -- right edge of every column, laid out from the right
+	local edge = x2 - sc(6)
+	for k = #HUD_COLS, 1, -1 do colR[k] = edge; edge = edge - sc(HUD_COLS[k].w) end
+	local nameX = x1 + sc(48)
+	local nameW = edge - nameX - sc(4)
+	for k, c in ipairs(HUD_COLS) do D.Text(c.head, colR[k], ty - rowH + sc(4), sc(8), "or", C.faint) end
 	for r = 1, shownRows do
 		local row = board[r]
 		local t = row.team
@@ -1136,15 +1232,31 @@ local function DrawHud(ctx)
 		if mine then D.Rect(x1 + sc(2), ry, x2 - sc(2), ry + rowH - sc(2), C.accent, 0.08) end
 		D.Mono(tostring(row.rank), x1 + sc(16), ry + sc(3), sc(9), "or", C.faint)
 		D.Rect(x1 + sc(21), ry + sc(1), x1 + sc(25), ry + rowH - sc(3), c, 0.95)
-		D.Text(D.Fit(t.name, sc(9), nameW - sc(40)), x1 + sc(30), ry + sc(3), sc(9), "o", t.dead and C.faint or c)
-		for k, col in ipairs(cols) do
-			local txt, tc
-			if row.est then
-				if col[1] == "sc" and row.score then txt, tc = "~" .. Stats.Num(row.score), C.dim else txt, tc = "?", C.faint end
+		local e = teamInfo[t.id]
+		if e and e.ai then D.Mono("AI", x1 + sc(30), ry + sc(3), sc(7), "o", C.faint) else DrawFlag(e and e.cc, x1 + sc(30), ry + sc(3), sc(14), sc(10)) end
+		D.Text(D.Fit(t.name, sc(9), nameW), nameX, ry + sc(3), sc(9), "o", t.dead and C.faint or c)
+		for k, col in ipairs(HUD_COLS) do
+			local id = col.id
+			local txt, tc = "?", C.faint
+			if id == "ping" then
+				txt, tc = PingText(e)                 -- player data, not hidden by the fog of war
+			elseif id == "fps" then
+				txt, tc = FpsText(e)
+			elseif id == "units" then
+				if not row.est then
+					local u = UnitsOf(t, e, ctx.idx[t.id])
+					if u then
+						local mx = e and e.maxUnits
+						txt = mx and (u .. "/" .. mx) or tostring(u)
+						tc = (mx and u >= mx * 0.95) and C.bad or ((mx and u >= mx * 0.8) and C.warn or C.text)
+					end
+				end
+			elseif row.est then
+				if id == "sc" and row.score then txt, tc = "~" .. Stats.Num(row.score), C.dim end
 			else
-				txt, tc = Stats.Format(Stats.M[col[1]], Stats.Value(t, col[1], ctx.idx[t.id])), C.text
+				txt, tc = Stats.Format(Stats.M[id], Stats.Value(t, id, ctx.idx[t.id])), C.text
 			end
-			D.Mono(txt, x1 + nameW + k * cw - sc(2), ry + sc(3), sc(9), "or", tc)
+			D.Mono(txt, colR[k], ry + sc(3), sc(9), "or", tc)
 		end
 	end
 	if #board > shownRows then
@@ -1223,8 +1335,8 @@ WG.VBDashboardHud = {
 		return hudRect[1], hudRect[2], hudRect[3] - hudRect[1], hudRect[4] - hudRect[2]
 	end,
 	Place = function(x, y, w)
-		local base = max(0.7, min(1.6, vsy / 1080))                  -- D.S without the player's scale; the HUD is 380 wide
-		st.scale = max(0.6, min(2.0, w / (380 * base)))
+		local base = max(0.7, min(1.6, vsy / 1080))                  -- D.S without the player's scale; the HUD is HUD_W wide
+		st.scale = max(0.6, min(2.0, w / (HUD_W * base)))
 		local h = hudRect and (hudRect[4] - hudRect[2]) or 0
 		st.hudX, st.hudTop = x, y + h
 	end,
@@ -1238,6 +1350,22 @@ function widget:Update(dt)
 		intelTimer = 0
 		Stats.UpdateIntel(Spring.GetGameFrame())
 		counts = { Stats.PlayerCounts() }
+		RefreshTeamInfo()
+	end
+	-- tell the other clients our fps (the engine does not share it); they pick it up in RecvLuaMsg
+	fpsTimer = fpsTimer + dt
+	if fpsTimer > 3 then
+		fpsTimer = 0
+		if Spring.SendLuaUIMsg and Spring.GetFPS and not (Spring.IsReplay and Spring.IsReplay()) then
+			Spring.SendLuaUIMsg("vbfps:" .. floor(Spring.GetFPS() + 0.5), "all")
+		end
+	end
+end
+
+function widget:RecvLuaMsg(msg, playerID)
+	if type(msg) == "string" and msg:sub(1, 6) == "vbfps:" then
+		local f = tonumber(msg:sub(7))
+		if f and playerID then fpsOf[playerID] = { f, os.clock() } end
 	end
 end
 

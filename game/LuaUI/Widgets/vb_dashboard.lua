@@ -821,19 +821,36 @@ local function TabSettings(x1, y1, x2, y2, ctx)
 	local gh = sc(178)
 	GraphicsPanel(x1 + w3 + gap, y2 - gh, x1 + 2 * w3 + gap, y2)
 	local bx1, by1, bx2, by2 = D.Panel(x1 + w3 + gap, y1, x1 + 2 * w3 + gap, y2 - gh - gap, "THE GAME")
-	y = by2 - sc(34)
+	-- seven rows (six buttons and the sound switch): the spacing shrinks to fit the panel at big interface sizes
+	local pitch = min(sc(32), (by2 - sc(30) - by1) / 7)
+	local bh = max(sc(12), min(sc(24), pitch - sc(3)))
+	y = by2 - sc(30) - bh
 	local function Row(label, cmd, tip)
-		D.Button(bx1 + sc(6), y, bx2 - sc(6), y + sc(24), label, { click = Command(cmd), tip = tip }); y = y - sc(32)
+		D.Button(bx1 + sc(6), y, bx2 - sc(6), y + bh, label, { click = Command(cmd), tip = tip }); y = y - pitch
 	end
 	Row("UNIT GROWTH AND SPLITTING", "vbsettings", "/vbsettings: the experience at which units split, and how much they grow first")
 	Row("UNIT FORGE", "vbforge", "/vbforge: design your own units")
 	Row("UNIT CENSUS OF THE SELECTION", "vbstats", "/vbstats")
+	do
+		local Q = WG and WG.VBQueueMon
+		local shown = Q and Q.IsOpen and Q.IsOpen()
+		local label = "PRODUCTION QUEUE MONITOR" .. (Q and (shown and "  (SHOWN)" or "  (HIDDEN)") or "")
+		D.Button(bx1 + sc(6), y, bx2 - sc(6), y + bh, label, { active = shown and true or false,
+			tip = Q and "Shows / hides the production queue monitor (Alt+Q, /vbqueue)" or "The queue monitor widget (vb_queuemon.lua) is not running",
+			click = function()
+				local q = WG and WG.VBQueueMon
+				if q and q.Toggle then q.Toggle() else Spring.SendCommands("vbqueue") end
+				Close()
+			end })
+		y = y - pitch
+	end
 	Row("SENSOR RANGES", "vbranges", "/vbranges")
 	Row("DEV CONSOLE", "vbconsole", "/vbconsole")
-	D.Text("Sound", bx1 + sc(6), y + sc(5), sc(10), "o", C.text)
+	local sh = min(sc(20), bh)
+	D.Text("Sound", bx1 + sc(6), y + sh / 2 - sc(4), sc(10), "o", C.text)
 	local hw = (bx2 - bx1 - sc(12) - sc(60)) / 2
-	D.Button(bx2 - sc(6) - hw * 2 - sc(4), y, bx2 - sc(10) - hw, y + sc(20), "ON", { size = sc(8), click = function() Spring.SendCommands("vbsound on") end })
-	D.Button(bx2 - sc(6) - hw, y, bx2 - sc(6), y + sc(20), "OFF", { size = sc(8), click = function() Spring.SendCommands("vbsound off") end })
+	D.Button(bx2 - sc(6) - hw * 2 - sc(4), y, bx2 - sc(10) - hw, y + sh, "ON", { size = sc(8), click = function() Spring.SendCommands("vbsound on") end })
+	D.Button(bx2 - sc(6) - hw, y, bx2 - sc(6), y + sh, "OFF", { size = sc(8), click = function() Spring.SendCommands("vbsound off") end })
 
 	-- this game
 	local cx1, cy1, cx2, cy2 = D.Panel(x1 + 2 * w3 + 2 * gap, y1, x2, y2, "THIS MATCH")
@@ -897,7 +914,7 @@ local function TabKeys(x1, y1, x2, y2, ctx)
 		{ "Ctrl+D", "detonate the selected units" }, { "Tab", "select your commander" }, { "Ctrl+Shift+D", "statistics dashboard" }, { "Esc, 1-9", "close, switch page" },
 		{ "Left / Right", "step through time" }, { "Home / End", "start / back to live" }, { "Mouse wheel", "zoom the time axis" },
 		{ "Enter", "start (before the game)" }, { "/vbsettings", "unit growth and splitting" }, { "/vbforge", "unit forge" },
-		{ "/vbconsole or ~", "dev console" }, { "/vbstats", "census of the selection" }, { "/vbranges", "sensor ranges" },
+		{ "/vbconsole or ~", "dev console" }, { "/vbstats", "census of the selection" }, { "/vbqueue", "show / hide the queue monitor (Alt+Q)" }, { "/vbranges", "sensor ranges" },
 		{ "/vbsound", "on | off | vol 0-100" }, { "/vbkeys", "list the keys in the chat" }, { "/vbdash", "this dashboard" },
 	}
 	local rowH = min(sc(24), (iy2 - iy1) / #rows)
@@ -1206,7 +1223,12 @@ local function DrawHud(ctx)
 	D.Rect(x1, y2 - head, x2, y2, C.panel, 0.95)
 	D.Rect(x1, y2 - head, x1 + sc(4), y2, C.accent, 0.9)
 	D.Text("STATS", x1 + sc(12), y2 - head + sc(8), sc(10), "o", C.dim)
-	D.Mono(counts[1] .. " PLAYERS  " .. Stats.Time(ctx.last), x1 + sc(60), y2 - head + sc(7), sc(10), "o", C.faint)
+	local hudUnits = 0
+	for _, t in ipairs(ctx.all) do
+		local u = UnitsOf(t, teamInfo[t.id], ctx.idx[t.id])
+		if u then hudUnits = hudUnits + u end
+	end
+	D.Mono(counts[1] .. " PLAYERS  " .. Stats.Time(ctx.last) .. "  " .. hudUnits .. " UNITS", x1 + sc(60), y2 - head + sc(7), sc(10), "o", C.faint)
 	D.Region(x1, y2 - head, x2 - sc(100), y2, { tip = "Drag to move",
 		click = function(x, y) UserTookOver(); dragging = { x - st.hudX, y - st.hudTop }; return true end,
 		drag = function(x, y) if dragging then st.hudX, st.hudTop = x - dragging[1], y - dragging[2] end end })

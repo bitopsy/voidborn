@@ -114,6 +114,14 @@ voidborn 1.4 is a major release featuring three significant gameplay systems, ba
 - **Map archive**: `voidborn_rift.sd7` (1.7 MB)
 - **Source code**: [GitHub](https://github.com/bitopsy/voidborn)
 
+### 0.21
+
+- New arc and wave gadgets for enhanced battlefield effects
+- Additional sound effects (arc, beam thin, sonar, warble)
+- Expanded unit variety with new arc, beam, and special generation tools
+- Improved weapon effect systems and definition generators
+- Growth parameter revisions: split at 0.25 experience, growth before split doubled to 2.0x
+
 ---
 
 ### 0.20

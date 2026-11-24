@@ -7,7 +7,7 @@
 --   vbdgun   (key D)  -> the unit's FIRST  manualFire weapon  (Devour)
 --   vbdestab (key Q)  -> the unit's SECOND manualFire weapon  (Destabilisation Gun, "Q-Gun")
 --
--- The D-gun and the Q-gun are NEVER fired by the engine: not by an attack order, not as return
+-- The D-gun and the Q-Gun are NEVER fired by the engine: not by an attack order, not as return
 -- fire, not on hold-fire / fire-at-will, not as an automatic target.  Their weapondefs carry
 -- commandFire and noAutoTarget, and AllowWeaponTarget below vetoes every target the engine
 -- would pick for them.  The only shot they ever make is the projectile this gadget spawns when
@@ -72,11 +72,14 @@ function gadget:Initialize()
 			end
 		end
 	end
-	for _, uid in ipairs(Spring.GetAllUnits()) do gadget:UnitCreated(uid, Spring.GetUnitDefID(uid)) end
+	for _, uid in ipairs(Spring.GetAllUnits()) do
+		local defID = Spring.GetUnitDefID(uid)
+		if defID then gadget:UnitCreated(uid, defID) end
+	end
 end
 
 function gadget:UnitCreated(uid, defID)
-	local slots = unitSlots[defID]
+	local slots = defID and unitSlots[defID]
 	if not slots then return end
 	for slot in pairs(slots) do
 		Spring.InsertUnitCmdDesc(uid, {
@@ -90,14 +93,16 @@ function gadget:UnitDestroyed(uid) nextFire[uid] = nil; notify[uid] = nil end
 
 -- no target, ever, for the engine's own aiming of a manual gun (attack order, return fire, auto-target)
 function gadget:AllowWeaponTarget(attackerID, targetID, attackerWeaponNum, attackerWeaponDefID, defPriority)
-	local b = noEngineFire[Spring.GetUnitDefID(attackerID)]
+	local defID = attackerID and Spring.GetUnitDefID(attackerID)
+	local b = defID and noEngineFire[defID]
 	if b and b[attackerWeaponNum] then return false, 0 end
-	return true, defPriority
+	return true, defPriority or 0
 end
 
 local FACTION = { ch = "choir", mw = "maw", ty = "tympan", mi = "miasma", ha = "haptic" }
 local function GunSound(defID, slot)
-	local pre = (UnitDefs[defID].name or ""):match("^(%a%a)_")
+	local ud = defID and UnitDefs[defID]
+	local pre = (ud and ud.name or ""):match("^(%a%a)_")
 	local fac = pre and FACTION[pre]
 	if not fac then return nil end
 	return "vb_" .. (slot == 1 and "dgun_" or "qgun_") .. fac
@@ -106,9 +111,11 @@ end
 local function Denied(teamID) SendToUnsynced("vbGunDenied", teamID) end
 
 local function Fire(uid, defID, teamID, slot, tx, ty, tz)
-	local wn = unitSlots[defID][slot]
-	local wdID = UnitDefs[defID].weapons[wn].weaponDef
-	local wd = WeaponDefs[wdID]
+	local wn = unitSlots[defID] and unitSlots[defID][slot]
+	local wEntry = wn and UnitDefs[defID] and UnitDefs[defID].weapons and UnitDefs[defID].weapons[wn]
+	local wdID = wEntry and wEntry.weaponDef
+	local wd = wdID and WeaponDefs[wdID]
+	if not wd then return end
 	local frame = Spring.GetGameFrame()
 
 	if select(2, Spring.GetUnitIsStunned(uid)) then Denied(teamID) return end
@@ -124,12 +131,13 @@ local function Fire(uid, defID, teamID, slot, tx, ty, tz)
 	local pieces = Spring.GetUnitPieceMap(uid)
 	if pieces and pieces.muzzle then px, py, pz = Spring.GetUnitPiecePosDir(uid, pieces.muzzle) end
 	if not px then local _, _, _, mx, my, mz = Spring.GetUnitPosition(uid, true); px, py, pz = mx, my, mz end
+	if not px then return end
 
 	local dx, dy, dz = tx - px, ty - py, tz - pz
 	local dist = math.sqrt(dx * dx + dy * dy + dz * dz)
 	local range = wd.range or 300
 	local ux, _, uz = Spring.GetUnitPosition(uid)
-	if math.sqrt((tx - ux) ^ 2 + (tz - uz) ^ 2) > range then
+	if ux and uz and math.sqrt((tx - ux) ^ 2 + (tz - uz) ^ 2) > range then
 		Say(teamID, SLOTS[slot].name .. ": target out of range (" .. math.floor(range) .. ")")
 		Denied(teamID)
 		return
@@ -150,6 +158,7 @@ local function Fire(uid, defID, teamID, slot, tx, ty, tz)
 	-- speed in elmos per frame
 	local v = wd.projectilespeed or wd.projectileSpeed or ((wd.weaponVelocity or 300) / FPS)
 	if v > 30 then v = v / FPS end
+	if v <= 0 then v = 10 end
 	local ttl = wd.noExplode and math.ceil(range / v) or (math.ceil(dist / v) + 15)
 
 	if GG.VBCloak then GG.VBCloak.Off(uid) end   -- firing gives the commander away

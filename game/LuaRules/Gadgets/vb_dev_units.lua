@@ -225,6 +225,7 @@ local function HandleSpawn(spec, playerID)
 	local side = math.ceil(math.sqrt(count))
 
 	local applied, skipped, made = {}, {}, 0
+	local madeIDs = {}
 	for i = 0, count - 1 do
 		local gx, gz = i % side, math.floor(i / side)
 		local x = Clamp(cx + (gx - (side - 1) / 2) * step, 16, Game.mapSizeX - 16)
@@ -232,6 +233,7 @@ local function HandleSpawn(spec, playerID)
 		local unitID = Spring.CreateUnit(ud.id, x, Spring.GetGroundHeight(x, z), z, 0, teamID)
 		if unitID then
 			made = made + 1
+			madeIDs[#madeIDs + 1] = unitID
 			Customize(unitID, ud.id, teamID, spec, applied, skipped, luaFn)
 		end
 	end
@@ -250,6 +252,7 @@ local function HandleSpawn(spec, playerID)
 		msg = msg .. string.format(" | price: %d metal, %d energy, %ds build", cost.metal, cost.energy, cost.build)
 	end
 	Say(msg)
+	return madeIDs
 end
 
 -- Entry points for the production queue (vb_dev_queue.lua).  The console (/vbcreate) stays free and cheat-gated,
@@ -265,7 +268,7 @@ function GG.VB_QueueSpawn(t, playerID)
 	for _, k in ipairs(NUM_KEYS) do if type(t[k]) == "number" then spec[k] = t[k] end end
 	for _, k in ipairs(STR_KEYS) do if type(t[k]) == "string" then spec[k] = t[k] end end
 	if not Allowed(playerID) then spec.lua = nil end      -- no custom scripts in a real match
-	HandleSpawn(spec, playerID)
+	return HandleSpawn(spec, playerID)
 end
 
 function gadget:RecvLuaMsg(msg, playerID)

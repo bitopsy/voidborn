@@ -33,6 +33,7 @@ return {
 		},
 		mass = 100000,
 		canMove = true,
+		canRepeat = true,
 		canAttack = false,
 		blocking = true,
 		upright = true,

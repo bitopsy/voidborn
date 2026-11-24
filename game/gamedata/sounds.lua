@@ -43,6 +43,18 @@ add("gun_ready", 0.7, flat); add("gun_denied", 0.6, flat)
 for n, g in pairs({ cloak_on = 0.6, cloak_off = 0.6, commander_lost = 1.0, enemy_commander_down = 0.9, victory = 1.0,
                     defeat = 1.0, energy_low = 0.8, metal_low = 0.8, tier2_ready = 0.9, tier3_ready = 0.95, t3_unit_ready = 0.95 }) do add(n, g, flat) end
 
+-- 0.19: thin continuous beams: ~1 s hums that overlap into one unbroken tone while a beam is on
+add("beam_thin_light", 0.7, { maxconcurrent = 4, pitchmod = 0.03 }); add("beam_thin", 0.8, { maxconcurrent = 4, pitchmod = 0.03 })
+
+-- 0.19: the three special weapons: branching arc (Haptic), sonar pulse (Tympan), sine wave (Miasma)
+add("arc_zap", 0.8, { maxconcurrent = 4 }); add("arc_heavy", 0.95, { maxconcurrent = 3 })
+add("sonar_ping", 0.8, { maxconcurrent = 5 }); add("sonar_deep", 0.9, { maxconcurrent = 3 })
+add("warble_light", 0.8, { maxconcurrent = 4 }); add("warble_heavy", 0.9, { maxconcurrent = 3 })
+
+-- spoken announcements (vb_sounds widget / vb_factory_upgrade gadget)
+for _, n in ipairs({ "vox_energy_full", "vox_energy_stall", "vox_metal_full", "vox_metal_stall", "vox_factory_idle", "vox_queue_empty",
+                     "vox_t3_upgrade", "vox_t3_unit_ready" }) do add(n, 1.0, flat) end
+
 -- 0.16: Tympan Conclave (the Ear) and Miasma Bloom (the Nose)
 add("select_tympan", 0.7, { in3d = false, maxconcurrent = 2 });  add("ok_tympan", 0.55, { in3d = false, maxconcurrent = 2 })
 add("select_miasma", 0.75, { in3d = false, maxconcurrent = 2 }); add("ok_miasma", 0.6, { in3d = false, maxconcurrent = 2 })

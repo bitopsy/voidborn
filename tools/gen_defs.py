@@ -341,7 +341,7 @@ def unitdef(u):
     if bk in ('com', 'con'):      # cloakable: vb_cloak.lua toggles it and charges the energy (com 250 E/s, con 100 E/s)
         d.update(decloakDistance=0, canCloak=True, cloakCost=0, cloakCostMoving=0, cloakTimeout=30, initCloaked=False, minCloakDistance=0)
     if bk == 'fac':
-        d.update(builder=True, workerTime=u['bp'], buildDistance=100, canAssist=False, canReclaim=False, canMove=True, maxVelocity=0, buildOptions=u['build'],
+        d.update(builder=True, workerTime=u['bp'], buildDistance=100, canAssist=False, canReclaim=False, canMove=True, canRepeat=True, maxVelocity=0, buildOptions=u['build'],
                  yardMap='o' * (u['fp'] ** 2), onoffable=True, activateWhenBuilt=True, canAttack=False, maxSlope=60)
         d['canMove'] = True; d.pop('maxVelocity')
     if k == 'mex':

@@ -6,6 +6,8 @@ end
 -- /vbsound                 show settings
 -- /vbsound off | on        mute / unmute everything from this widget
 -- /vbsound ambient off|on  background drone only
+-- /vbsound test <name>     play one sound now, e.g. /vbsound test vox_energy_full  (checks the sound path works)
+-- /vbsound debug on|off    echo every announcement to the chat log as it is played
 -- /vbsound vol 0-100       master volume of this widget (unit voices/weapons use the engine's own sound sliders)
 local vol, ambientOn, enabled = 1.0, true, true
 local STREAM, STREAM_VOL = "sounds/ambient_void.ogg", 0.22
@@ -14,12 +16,19 @@ local lastAlarm = -1e9
 local streamStarted = false
 local nextStreamCheck = 0
 
-local function Play(name, v) if enabled then Spring.PlaySoundFile("sounds/" .. name .. ".wav", (v or 0.8) * vol, "ui") end end
+local debugOn = false
+local function Play(name, v)
+	if debugOn then Spring.Echo("[VB sound] play " .. name .. (enabled and "" or "  (muted: /vbsound on)")) end
+	if enabled then Spring.PlaySoundFile("sounds/" .. name .. ".wav", (v or 0.8) * vol, "ui") end
+end
 
 local function Mine(unitTeam) return unitTeam == Spring.GetMyTeamID() end
 local function Mobile(ud) return ud and ud.canMove and (ud.speed or 0) > 0 and not ud.isFactory end
 
-function widget:GameStart() Play("game_start", 0.8) end
+local startPlayed = false
+local function StartJingle() if not startPlayed then startPlayed = true; Play("game_start", 0.8) end end
+function widget:GameStart() StartJingle() end
+function widget:GameFrame(f) if not startPlayed and f >= 1 and f < 300 then StartJingle() end end
 
 function widget:UnitCreated(unitID, unitDefID, unitTeam, builderID)
 	if not Mine(unitTeam) then return end
@@ -33,9 +42,9 @@ function widget:UnitFinished(unitID, unitDefID, unitTeam)
 	if not Mine(unitTeam) then return end
 	if Spring.GetGameFrame() < 5 then return end   -- starting units
 	local cp = UnitDefs[unitDefID] and UnitDefs[unitDefID].customParams
-	if cp and cp.kind == "fac3" then Play("tier3_ready", 0.95) return end                     -- the Tier 3 upgrade is done
-	if cp and cp.kind == "fac2" then Play("tier2_ready", 0.9) return end                      -- the Tier 2 upgrade is done
-	if cp and cp.kind == "heavy3" then Play("t3_unit_ready", 0.95) return end                 -- a Tier 3 heavy is ready
+	if cp and cp.kind == "fac3" then return end -- played by vb_factory_upgrade                     -- the Tier 3 upgrade is done
+	if cp and cp.kind == "fac2" then return end -- played by vb_factory_upgrade                      -- the Tier 2 upgrade is done
+	if cp and cp.kind == "heavy3" then Play("vox_t3_unit_ready", 1.0) return end                 -- a Tier 3 heavy is ready
 	Play(Mobile(UnitDefs[unitDefID]) and "unit_ready" or "struct_done", 0.75)
 end
 
@@ -83,16 +92,76 @@ function widget:GameOver(winners)
 	elseif Spring.GetGameFrame() - lastLost > 10 * 30 then Play("defeat", 1.0) end
 end
 
--- energy / metal nearly out (storage below 3% once the game is under way)
+-- energy / metal: stall (storage nearly empty while spending more than coming in) and full (storage topped up)
+--   Each kind is "armed" again once the level has moved away (above 10% after a stall, below 90% after a full), so it is
+--   said once per event and not over and over, and not at the start when the storage begins full.
+local resState = {
+	energy = { stallArmed = true, fullArmed = false, fullTicks = 0, lastStall = -1e9, lastFull = -1e9 },
+	metal  = { stallArmed = true, fullArmed = false, fullTicks = 0, lastStall = -1e9, lastFull = -1e9 },
+}
+local FULL_TICKS = 3                           -- checks (1 per second) that the storage must stay full
+local function CheckKind(kind, team, f)
+	local cur, stor, pull, income = Spring.GetTeamResources(team, kind)
+	local st = resState[kind]
+	if not (cur and stor and stor > 0) then return end
+	local frac = cur / stor
+	if frac > 0.10 then st.stallArmed = true end
+	if frac < 0.90 then st.fullArmed = true; st.fullTicks = 0 end
+	if frac < 0.03 and st.stallArmed and (pull or 0) > (income or 0) and f - st.lastStall > RES_COOLDOWN then
+		st.stallArmed, st.lastStall = false, f
+		Play("vox_" .. kind .. "_stall", 1.0)
+	elseif frac >= 0.99 then
+		st.fullTicks = st.fullTicks + 1
+		if st.fullArmed and st.fullTicks >= FULL_TICKS and f - st.lastFull > 2 * RES_COOLDOWN then
+			st.fullArmed, st.lastFull = false, f
+			Play("vox_" .. kind .. "_full", 1.0)
+		end
+	end
+end
+
+-- labs: "queue empty" when a lab runs out of queued units, "factory idle" when one has stood idle for a while
+local labState = {}                            -- labID -> { had = bool, idleSince = frame, told = bool }
+local lastQueueMsg, lastIdleMsg = -1e9, -1e9
+local IDLE_AFTER, IDLE_COOLDOWN = 40 * 30, 90 * 30
+local function CheckLabs(team, f)
+	local busy = {}
+	for entry in (Spring.GetTeamRulesParam(team, "vbq") or ""):gmatch("[^;]+") do
+		local line = tonumber(entry:match("|(%d+)$"))
+		if line and line > 0 then busy[line] = true end
+	end
+	local seen = {}
+	for _, uid in ipairs(Spring.GetTeamUnits(team) or {}) do
+		local cp = UnitDefs[Spring.GetUnitDefID(uid)] and UnitDefs[Spring.GetUnitDefID(uid)].customParams
+		local kind = cp and cp.kind
+		if (kind == "fac" or kind == "fac2" or kind == "fac3") and not Spring.GetUnitIsBeingBuilt(uid) then
+			seen[uid] = true
+			local ls = labState[uid]
+			if not ls then ls = { used = false, idleSince = f, told = false }; labState[uid] = ls end
+			if busy[uid] then
+				ls.used, ls.idleSince, ls.told = true, f, false
+			elseif ls.used then
+				if not ls.wasEmpty then   -- the line has just run dry
+					ls.wasEmpty, ls.idleSince = true, f
+					if f - lastQueueMsg > 20 * 30 then lastQueueMsg = f; Play("vox_queue_empty", 1.0) end
+				elseif not ls.told and f - ls.idleSince > IDLE_AFTER and f - lastIdleMsg > IDLE_COOLDOWN then
+					ls.told, lastIdleMsg = true, f
+					Play("vox_factory_idle", 1.0)
+				end
+			end
+			if busy[uid] then ls.wasEmpty = false end
+		end
+	end
+	for uid in pairs(labState) do if not seen[uid] then labState[uid] = nil end end
+end
+
 local function CheckResources()
 	local f = Spring.GetGameFrame()
 	if f < 900 or f < nextResCheck or Spectating() then return end
 	nextResCheck = f + 30
 	local team = Spring.GetMyTeamID()
-	local e, es = Spring.GetTeamResources(team, "energy")
-	local m, ms = Spring.GetTeamResources(team, "metal")
-	if e and es and es > 0 and e < es * 0.03 and f - lastEnergy > RES_COOLDOWN then lastEnergy = f; Play("energy_low", 0.8)
-	elseif m and ms and ms > 0 and m < ms * 0.03 and f - lastMetal > RES_COOLDOWN then lastMetal = f; Play("metal_low", 0.8) end
+	CheckKind("energy", team, f)
+	CheckKind("metal", team, f)
+	CheckLabs(team, f)
 end
 
 function widget:UnitDamaged(unitID, unitDefID, unitTeam, damage)
@@ -136,6 +205,10 @@ local function Cmd(_, extra, args)
 	local a, b = args and args[1], args and args[2]
 	if a == "off" then enabled = false; pcall(Spring.StopSoundStream); Say("off")
 	elseif a == "on" then enabled = true; Say("on")
+	elseif a == "debug" and (b == "on" or b == "off") then debugOn = b == "on"; Say("debug " .. b)
+	elseif a == "test" and b then
+		local was = enabled; enabled = true; Play(b, 1.0); enabled = was
+		Say("test " .. b .. (VFS.FileExists("sounds/" .. b .. ".wav") and "" or "  - NO SUCH FILE sounds/" .. b .. ".wav"))
 	elseif a == "ambient" and (b == "off" or b == "on") then
 		ambientOn = b == "on"; if not ambientOn then pcall(Spring.StopSoundStream) end; Say("ambient " .. b)
 	elseif a == "vol" and tonumber(b) then vol = math.max(0, math.min(100, tonumber(b))) / 100; Say("volume " .. math.floor(vol * 100))

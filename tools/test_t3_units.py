@@ -61,8 +61,19 @@ for fac, (l2, l3, h3, h2) in FACS.items():
     check(f"{h3}: the unit def has sounds (select / ok / cant)", all(k in units[h3].get("sounds", {}) for k in ("select", "ok", "cant")))
     check(f"{l3}: the lab has its select sound", "select" in units[l3].get("sounds", {}))
 snd = open(os.path.join(game, "gamedata", "sounds.lua")).read(); wid = open(os.path.join(game, "LuaUI", "Widgets", "vb_sounds.lua")).read()
-for n, kind in (("tier3_ready", "fac3"), ("t3_unit_ready", "heavy3")):
-    check(f"announcement {n}: wav exists, is registered in sounds.lua, and vb_sounds plays it for kind {kind}",
-          os.path.isfile(os.path.join(game, "sounds", n + ".wav")) and n + " = " in snd and f'cp.kind == "{kind}" then Play("{n}"' in wid)
+upg = open(os.path.join(game, "LuaRules", "Gadgets", "vb_factory_upgrade.lua")).read()
+# the T3 lab upgrade is announced by the upgrade gadget, the T3 heavy by the widget (both with the spoken vox_ lines)
+for n, played, where in (("vox_t3_upgrade", f"sounds/vox_t3_upgrade.wav" in upg, "vb_factory_upgrade"),
+                         ("vox_t3_unit_ready", 'cp.kind == "heavy3" then Play("vox_t3_unit_ready"' in wid, "vb_sounds")):
+    check(f"announcement {n}: wav exists, is registered in sounds.lua, and is played by {where}",
+          os.path.isfile(os.path.join(game, "sounds", n + ".wav")) and n + '"' in snd and played)
+for n in ("vox_energy_full", "vox_energy_stall", "vox_metal_full", "vox_metal_stall", "vox_factory_idle", "vox_queue_empty"):
+    check(f"announcement {n}: wav exists, is registered, and the widget can play it",
+          os.path.isfile(os.path.join(game, "sounds", n + ".wav")) and n + '"' in snd
+          and (n in wid or n.replace("vox_", '" .. kind .. "_').replace("_stall", "_stall") != n and ('"vox_" .. kind .. "_' + n.split("_")[-1] + '"') in wid))
+check("tier2_ready is played by the upgrade gadget", "sounds/tier2_ready.wav" in upg)
+labs = [n for n, u in units.items() if (u.get("customParams") or {}).get("kind") in ("fac", "fac2", "fac3") or u.get("isFactory")]
+check("every lab has canRepeat (REPEAT toggle loops its line)", len(labs) >= 15 and all(units[n].get("canRepeat") is True for n in labs),
+      [n for n in labs if units[n].get("canRepeat") is not True])
 print("\nALL PASSED" if not fails else f"\n{fails} FAILED")
 sys.exit(1 if fails else 0)

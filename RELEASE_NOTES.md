@@ -116,6 +116,12 @@ voidborn 1.4 is a major release featuring three significant gameplay systems, ba
 
 ---
 
+### 0.20
+- Rally points for labs: units follow lab's rally orders (move/fight/patrol/guard, shift adds waypoints, stop clears, carries over through upgrades)
+- T2 upgrade sound: gadget plays tier2_ready.wav / tier3_ready.wav itself; widget lines removed to prevent double playing
+- Weapon graphics: new impact bursts and projectile trails for all five factions; thicker lasers, bigger plasma, cannon/missile trails
+- Repeat on labs: canRepeat = true added to all 15 lab defs; repeat loops production line, survives upgrade
+
 ## 📦 Installation
 
 ```bash

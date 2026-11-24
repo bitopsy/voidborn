@@ -3,7 +3,19 @@ function gadget:GetInfo()
 		author = "goddot info@bitopsy.com", date = "2026", license = "GPL", layer = -1, enabled = true }
 end
 
-if not gadgetHandler:IsSyncedCode() then return end
+if not gadgetHandler:IsSyncedCode() then
+	-- UNSYNCED: the upgrade sounds (played here so they do not depend on any widget being enabled)
+	local SND = { start = { "sounds/build_start.wav", 0.8 }, [2] = { "sounds/tier2_ready.wav", 1.0 }, [3] = { "sounds/vox_t3_upgrade.wav", 1.0 } }
+	function gadget:Initialize()
+		gadgetHandler:AddSyncAction("vbfacup", function(_, teamID, what)
+			local mine = (teamID == Spring.GetMyTeamID()) or Spring.GetSpectatingState()
+			local snd = SND[what]
+			if mine and snd then Spring.PlaySoundFile(snd[1], snd[2], "ui") end
+		end)
+	end
+	function gadget:Shutdown() gadgetHandler:RemoveSyncAction("vbfacup") end
+	return
+end
 
 --------------------------------------------------------------------------------
 -- What this does
@@ -147,6 +159,7 @@ local function Start(unitID, defID, teamID)
 	Spring.SetUnitRulesParam(unitID, "vbu", 0, { allied = true })
 	dirty[teamID] = true
 	SetLabel(unitID, upg[unitID])
+	SendToUnsynced("vbfacup", teamID, "start")
 	Say(teamID, string.format("upgrading %s to Tier %d (%d metal + %d energy over %d s)", rule.name, rule.tier, rule.metal, rule.energy, rule.seconds))
 end
 
@@ -172,6 +185,7 @@ local function Complete(unitID)
 	local frac = (hp and maxHp and maxHp > 0) and math.max(0.05, math.min(1, hp / maxHp)) or 1
 	upg[unitID] = nil
 	dirty[teamID] = true
+	local wasRepeat = GG.VB_LineRepeat and GG.VB_LineRepeat(unitID)
 
 	-- the old factory leaves without a wreck or a blast; the queue gadget must not refund its lines
 	GG.VB_swapping = unitID
@@ -190,10 +204,12 @@ local function Complete(unitID)
 		return
 	end
 	GG.VB_swapping = nil
+	if wasRepeat then Spring.GiveOrderToUnit(newID, CMD.REPEAT, { 1 }, 0) end      -- the repeat toggle survives the upgrade
 	local _, newMax = Spring.GetUnitHealth(newID)
 	if newMax then Spring.SetUnitHealth(newID, newMax * frac) end
 	if GG.VB_FactorySwap then GG.VB_FactorySwap(unitID, newID) end
 	local tier = st.rule.tier
+	SendToUnsynced("vbfacup", teamID, tier)
 	Say(teamID, string.format("%s online: %s", UnitDefs[newDef].humanName or UnitDefs[newDef].name,
 		tier >= 3 and "the T3 heavy is unlocked" or "T2 units and the unit forge are unlocked"))
 end

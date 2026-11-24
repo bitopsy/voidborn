@@ -11,9 +11,12 @@ UnitDefs = { [1] = { id = 1, name = "mw_hive", buildOptions = { 2 }, canMove = f
                      customParams = { tier = "2" } } }
 UnitDefNames = { mw_hive = UnitDefs[1], mw_gnasher = UnitDefs[2], mw_leviathan = UnitDefs[3] }
 Game = { mapSizeX = 8192, mapSizeZ = 8192 }
-CMD = { MOVE = 10 }
+CMD = { MOVE = 10, FIGHT = 16, STOP = 0, OPT_SHIFT = 32, REPEAT = 115 }
 VFS = { Include = function() return dofile(HDR) end }
 local forgeOn, cheats = true, false
+local orders = {}
+local repeatOn = {}          -- labID -> true/false: the state of the lab's REPEAT toggle
+UnitDefs[1].customParams = { kind = "fac" }; UnitDefs[4].customParams.kind = "fac2"
 Spring = {
 	GetPlayerInfo = function() return "p", true, false, 0 end,
 	SetTeamRulesParam = function(_, k, v) rules[k] = v end, SetGameRulesParam = function() end,
@@ -22,13 +25,15 @@ Spring = {
 	ValidUnitID = function(id) return alive[id] end, GetUnitTeam = function() return 0 end,
 	GetUnitPosition = function() return 1000, 0, 1000 end, GetUnitRadius = function() return 40 end,
 	GetUnitDefID = function(id) return defOf[id] or 1 end, GetGroundHeight = function() return 0 end,
-	CreateUnit = function(d) created[#created + 1] = d; return #created end,
-	GiveOrderToUnit = function() end, GetTeamStartPosition = function() return 500, 0, 500 end,
+	CreateUnit = function(d) created[#created + 1] = d; alive[#created] = true; return #created end,
+	GiveOrderToUnit = function(u, id, p, o) orders[#orders + 1] = { u = u, id = id, p = p, o = o } end, GetTeamStartPosition = function() return 500, 0, 500 end,
 	SendMessageToPlayer = function(_, m) msgs[#msgs + 1] = m end, Echo = function() end,
-	GetUnitIsBeingBuilt = function(id) return building[id] == true end }
+	GetUnitIsBeingBuilt = function(id) return building[id] == true end,
+	FindUnitCmdDesc = function(u, id) if id == CMD.REPEAT and repeatOn[u] ~= nil then return 1 end end,
+	GetUnitCmdDescs = function(u) return { { id = CMD.REPEAT, params = { repeatOn[u] and "1" or "0", "Repeat off", "Repeat on" } } } end }
 gadgetHandler = { IsSyncedCode = function() return true end }
 GG = { VB_ForgeAllowed = function() return forgeOn or cheats end, VB_DevAllowed = function() return cheats end,
-       VB_QueueSpawn = function(spec) spawned[#spawned + 1] = spec end }
+       VB_QueueSpawn = function(spec) spawned[#spawned + 1] = spec; return { 900 + #spawned } end }
 local g = {}; gadget = g
 dofile(GADGET)
 g:Initialize()
@@ -107,6 +112,105 @@ g:RecvLuaMsg("vbq:clear:1:dB", 0); run(1)
 forgeOn = false
 add(1, '{["base"]="mw_gnasher",["id"]="blocked"}')
 check("forge refused when vb_forge is off", (rules.vbq or ""):find("blocked") == nil and #msgs > 0, msgs[#msgs])
+
+-- 8. rally point: units that a lab finishes follow the orders given to that lab
+forgeOn = true
+alive[77] = true          -- lab 77 died in test 5: a new lab takes its id
+g:RecvLuaMsg("vbq:clear:1:d_mw_gnasher@77", 0); run(1)
+check("a lab order is let through", g:AllowCommand(77, 1, 0, CMD.MOVE, { 1500, 0, 1600 }, 0) == true)
+check("a non-lab unit is ignored", g:AllowCommand(55, 2, 0, CMD.MOVE, { 1, 0, 1 }, 0) == true)
+local o0, c0 = #orders, #created
+add(1, '{["base"]=\"mw_gnasher\",["fac"]=77,["id"]=\"d_rally\",["plain"]=1}')
+run(3000, function() return #created > c0 end)
+local o = orders[o0 + 1]
+check("a new unit gets the rally move order", #orders == o0 + 1 and o and o.id == CMD.MOVE and o.p[1] == 1500 and o.p[3] == 1600, #orders - o0)
+-- shift adds a waypoint
+g:AllowCommand(77, 1, 0, CMD.FIGHT, { 2000, 0, 2100 }, { shift = true })
+o0, c0 = #orders, #created
+add(1, '{["base"]=\"mw_gnasher\",["fac"]=77,["id"]=\"d_rally\",["plain"]=1}')
+run(3000, function() return #created > c0 end)
+check("shift keeps the first point and adds the second", #orders == o0 + 2 and orders[o0 + 2].id == CMD.FIGHT and orders[o0 + 2].o[1] == "shift", #orders - o0)
+-- another lab is not affected, and a lab without a rally point walks away from the lab as before
+o0, c0 = #orders, #created
+add(1, '{["base"]=\"mw_gnasher\",["fac"]=78,["id"]=\"d_rally\",["plain"]=1}')
+run(3000, function() return #created > c0 end)
+check("a lab without a rally point does not borrow another's", orders[o0 + 1] and orders[o0 + 1].p[1] ~= 1500)
+-- a plain order (no shift) replaces the rally point; stop clears it
+g:AllowCommand(77, 1, 0, CMD.MOVE, { 3000, 0, 3100 }, 0)
+o0, c0 = #orders, #created
+add(1, '{["base"]=\"mw_gnasher\",["fac"]=77,["id"]=\"d_rally\",["plain"]=1}')
+run(3000, function() return #created > c0 end)
+check("a new order without shift replaces the rally point", #orders == o0 + 1 and orders[o0 + 1].p[1] == 3000, #orders - o0)
+g:AllowCommand(77, 1, 0, CMD.STOP, {}, 0)
+o0, c0 = #orders, #created
+add(1, '{["base"]=\"mw_gnasher\",["fac"]=77,["id"]=\"d_rally\",["plain"]=1}')
+run(3000, function() return #created > c0 end)
+check("stop clears the rally point", orders[o0 + 1] and orders[o0 + 1].p[1] ~= 3000)
+-- the rally point survives the T2 upgrade swap
+g:AllowCommand(77, 1, 0, CMD.MOVE, { 777, 0, 888 }, 0)
+GG.VB_FactorySwap(77, 79)
+alive[79] = true; building[79] = nil
+o0 = #orders
+add(1, '{["base"]=\"mw_gnasher\",["fac"]=79,["id"]=\"d_rally\",["plain"]=1}')
+run(3000, function() return #orders > o0 end)
+check("rally point moves to the upgraded lab", orders[o0 + 1] and orders[o0 + 1].p[1] == 777, orders[o0 + 1] and orders[o0 + 1].p[1])
+
+-- 9. REPEAT on a lab loops the lab's production line
+local function clearAll() for _, id in ipairs({ "d_repA", "d_repB" }) do g:RecvLuaMsg("vbq:clear:1:" .. id .. "@77", 0) end; run(1) end
+clearAll()
+local function spec(id) return '{["base"]="mw_gnasher",["fac"]=77,["id"]="' .. id .. '",["plain"]=1}' end
+local function firstId() return (rules.vbq or ""):match("^([%w_]+)|") end
+check("queue is empty before the repeat tests", (rules.vbq or "") == "", rules.vbq)
+
+repeatOn[77] = true
+local c0 = #created
+add(2, spec("d_repA"))
+run(3000, function() return #created >= c0 + 2 end)
+check("repeat on: the finished entry is queued again with its original count", (rules.vbq or ""):find("d_repA|2|", 1, true) ~= nil, rules.vbq)
+local c1 = #created
+run(3000, function() return #created >= c1 + 2 end)
+check("  ... and the line keeps producing", #created >= c1 + 2 and (rules.vbq or ""):find("d_repA|2|", 1, true) ~= nil, #created - c1)
+clearAll()
+
+-- order A, B -> B, A (the finished entry goes to the end)
+add(1, spec("d_repA")); add(1, spec("d_repB"))
+c0 = #created
+run(3000, function() return #created > c0 end)
+check("repeat on: A finished, the line is now B then A", firstId() == "d_repB" and (rules.vbq or ""):find("d_repA|1|", 1, true) ~= nil, rules.vbq)
+clearAll()
+
+-- adding more mid-run raises the loop count
+add(2, spec("d_repA"))
+add(3, spec("d_repA"))
+c0 = #created
+run(3000, function() return #created >= c0 + 5 end)
+check("repeat on: units added mid-run raise the loop count (2 + 3)", (rules.vbq or ""):find("d_repA|5|", 1, true) ~= nil, rules.vbq)
+clearAll()
+
+-- removing some lowers it again
+add(4, spec("d_repA"))
+g:RecvLuaMsg("vbq:rem:1:d_repA@77", 0); run(1)
+c0 = #created
+run(3000, function() return #created >= c0 + 3 end)
+check("repeat on: units removed from the queue lower the loop count (4 - 1)", (rules.vbq or ""):find("d_repA|3|", 1, true) ~= nil, rules.vbq)
+clearAll()
+
+-- repeat off: the line drains
+repeatOn[77] = false
+add(2, spec("d_repA"))
+c0 = #created
+run(3000, function() return #created >= c0 + 2 end)
+run(5)
+check("repeat off: the line drains", (rules.vbq or "") == "" and #created == c0 + 2, rules.vbq)
+local c2 = #created
+run(300)
+check("  ... and nothing more is built", #created == c2)
+
+-- a lab without a REPEAT toggle (nil) never loops, and neither does the team line of designs
+repeatOn[77] = nil
+add(1, spec("d_repA")); c0 = #created
+run(3000, function() return #created > c0 end); run(5)
+check("a lab with no repeat toggle does not loop", (rules.vbq or "") == "", rules.vbq)
 
 print(fails == 0 and "\nALL PASSED" or ("\n" .. fails .. " FAILED"))
 if fails > 0 then error("queue test failed") end

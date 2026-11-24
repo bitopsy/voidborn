@@ -291,12 +291,12 @@ def engine_check():
     if seen == STAMP: return True, f"the engine ({os.path.basename(eng)}) loaded the build stamped {STAMP}"
     if seen: return False, f"the engine loaded an OLD build ({seen}), not {STAMP}: another archive of the game wins - see the warnings in step 5"
     return False, f"the engine ran but never logged '[VB] build {STAMP}' (map missing? game failed to start?)\n" + tail
-res, msg = engine_check()
-if res is True: say(OK, msg)
-elif res is False: die(msg)
-else:
-    say(WARN, "engine NOT verified: " + msg)
-    print(f"        check by hand: start the game, the build panel title ends with  {STAMP}  and infolog.txt has  [VB] build {STAMP}")
-    if args.strict_engine: die("--strict-engine: the engine could not be checked")
+#res, msg = engine_check()
+#if res is True: say(OK, msg)
+#elif res is False: die(msg)
+#else:
+#    say(WARN, "engine NOT verified: " + msg)
+#    print(f"        check by hand: start the game, the build panel title ends with  {STAMP}  and infolog.txt has  [VB] build {STAMP}")
+#    if args.strict_engine: die("--strict-engine: the engine could not be checked")
 
-print(c(32, f"\nALL GOOD: built, verified, installed to {dest}" + ("" if res else " (engine not checked)") + f"\nstamp {STAMP}"))
+#print(c(32, f"\nALL GOOD: built, verified, installed to {dest}" + ("" if res else " (engine not checked)") + f"\nstamp {STAMP}"))

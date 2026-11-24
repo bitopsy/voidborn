@@ -20,6 +20,8 @@ Spring = {
 	DestroyUnit = function(id) alive[id] = nil; destroyed[#destroyed + 1] = id; gadget:UnitDestroyed(id, 1, 0) end,
 	CreateUnit = function(d) created[#created + 1] = d; alive[100 + #created] = true; return 100 + #created end,
 	SetUnitHealth = function() end, IsCheatingEnabled = function() return cheats end }
+unsyncedMsgs = {}
+SendToUnsynced = function(...) unsyncedMsgs[#unsyncedMsgs + 1] = { ... } end
 gadgetHandler = { IsSyncedCode = function() return true end }
 GG = { VB_FactorySwap = function(o, n) swaps[#swaps + 1] = { o, n } end }
 gadget = {}
@@ -50,6 +52,10 @@ check("no resources: stalled", rules.vbu_list:find(":s") ~= nil, rules.vbu_list)
 res.metal, res.energy = 1e6, 1e6
 run(30 * 46)
 check("T2 factory created at the same spot", created[1] == 2 and destroyed[1] == 10, #created)
+local sndStart, sndDone = false, false
+for _, m in ipairs(unsyncedMsgs) do if m[1] == "vbfacup" and m[3] == "start" then sndStart = true end; if m[1] == "vbfacup" and m[3] == 2 then sndDone = true end end
+check("upgrade start sound is sent", sndStart)
+check("T2 ready sound is sent when the upgrade finishes", sndDone)
 check("queue lines handed over", swaps[1] and swaps[1][1] == 10 and swaps[1][2] == 101)
 check("total paid = the price", math.abs((1e6 - res.metal) - 2000) < 5 and math.abs((1e6 - res.energy) - 2800) < 5, (1e6 - res.metal) .. "/" .. (1e6 - res.energy))
 gadget:UnitFinished(101, 2, 0)

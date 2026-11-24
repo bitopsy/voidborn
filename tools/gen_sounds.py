@@ -52,7 +52,38 @@ def norm(x, peak=0.9): m = np.max(np.abs(x)) or 1.0; return x / m * peak
 def sat(x, k=2.0): return np.tanh(k * x) / np.tanh(k)
 
 
+# ------------------------------------------------------------------ 0.19: lower, alien weapon sounds
+# Every weapon fire / hit sound listed here goes through alienize() on its way to disk: pitched down (and so a little longer), an
+# octave-lower body underneath, a slow pitch waver, a low ring-modulation sideband and a detuned double.  No rng is used, so the
+# recipes above and every other file stay exactly as they were.
+ALIEN = {"laser_choir_light": 0.70, "laser_choir": 0.74, "laser_choir_heavy": 0.80, "beam_choir": 0.80, "hit_beam": 0.82, "hit_laser": 0.80,
+         "acid_light": 0.70, "acid_spit": 0.74, "acid_heavy": 0.80, "acid_glob": 0.80, "hit_acid": 0.82, "hit_glob": 0.82, "spore_launch": 0.78,
+         "flame_breath": 0.80, "sonic_light": 0.70, "sonic_pulse": 0.74, "sonic_wave": 0.78, "sonic_boom": 0.82, "hit_sonic": 0.82,
+         "gas_dart": 0.70, "gas_lob": 0.76, "gas_heavy": 0.80, "gas_hiss": 0.80, "hit_gas": 0.82,
+         "touch_light": 0.70, "touch_lash": 0.74, "touch_pound": 0.80, "touch_heavy": 0.82, "hit_touch": 0.82}
+SPECIAL = ("arc_zap", "arc_heavy", "sonar_ping", "sonar_deep", "warble_light", "warble_heavy")
+NEW_BEAMS = ("beam_thin_light", "beam_thin") + SPECIAL
+ONLY = None            # `python3 tools/gen_sounds.py alien` writes only the weapon sounds (see __main__)
+
+def alienize(name, x):
+    r = ALIEN[name]; n = len(x)
+    y = np.interp(np.linspace(0, n - 1, int(n / r)), np.arange(n), x)                      # lower and longer
+    m = len(y); t = np.arange(m) / SR
+    idx = np.cumsum(1 + 0.02 * np.sin(2 * np.pi * 6.3 * t)); idx *= (m - 1) / idx[-1]       # slow pitch waver
+    y = np.interp(idx, np.arange(m), y)
+    body = lp(np.interp(np.linspace(0, n - 1, int(n / (r * 0.5))), np.arange(n), x)[:m], 650)   # an octave lower again, as a body
+    body = pad(body, m)
+    ring = y * np.sin(2 * np.pi * 47 * t)                                                    # metallic sidebands
+    dd = int(0.009 * SR)
+    double = np.interp(np.arange(m) * 0.985, np.arange(m), np.concatenate([np.zeros(dd), y[:-dd]]))   # 9 ms late, ~26 cents flat
+    z = 0.75 * y + 0.35 * ring + 0.35 * double + 0.55 * body
+    z = echo(z, 0.05, 0.32, 3)                                                               # a short, eerie tail
+    return sat(lp(z, 6500), 1.3)
+
+
 def save(name, x, peak=0.9, stereo=None):
+    if ONLY is not None and name not in ONLY: return
+    if name in ALIEN: x = alienize(name, x)
     x = release(attack(norm(x, peak), 0.002), 0.012)
     pcm = (np.clip(x, -1, 1) * 32767).astype(np.int16)
     os.makedirs(OUT, exist_ok=True)
@@ -413,8 +444,70 @@ def tier3():
     save("t3_unit_ready", mix(gong, at(horn(196, 0.8), 0.15), at(horn(294, 1.2), 0.5), 0.9 * sat(sweep(90, 34, 0.5), 2) * env_exp(int(0.5 * SR), 0.18)), 0.9)
 
 
+# ------------------------------------------------------------------ 0.19: thin continuous beams
+def thin_beams():
+    """A beam weapon restarts its sound every reload cycle, so each file is ~1 s with soft ends: overlapping starts read as one
+    unbroken hum.  Low sub drone, a detuned pair a little above it, and a thin 'singing' formant that drifts and trembles (the alien
+    part); the lighter beam is higher and faster."""
+    for name, base, sing, trem in (("beam_thin_light", 96, 1250, 9.0), ("beam_thin", 68, 880, 6.0)):
+        d = 1.0; n = int(d * SR); t = t_(d)
+        env = np.minimum(1, t / 0.07) * np.minimum(1, (d - t) / 0.2)
+        drone = sat(sine(base / 2, d) * 0.9 + sine(base, d) + 0.55 * sine(base * 2.012, d) + 0.35 * sine(base * 3.0, d), 1.6)
+        drift = sing * (1 + 0.04 * np.sin(2 * np.pi * 1.7 * t))
+        voice = np.sin(2 * np.pi * np.cumsum(drift) / SR + 2.6 * np.sin(2 * np.pi * 3.7 * t)) * 0.30
+        voice += 0.18 * np.sin(2 * np.pi * np.cumsum(drift * 1.505) / SR + 1.9 * np.sin(2 * np.pi * 5.1 * t))
+        shimmer = bp(noise(d), 1800, 5200) * 0.07 * (1 + np.sin(2 * np.pi * 23 * t))
+        x = env * (1 + 0.28 * np.sin(2 * np.pi * trem * t)) * (drone + voice + shimmer)
+        save(name, lp(x, 5200), 0.7)
+
+
+# ------------------------------------------------------------------ 0.19: the three special weapons (low and alien from the start)
+def special_weapons():
+    def ring(x, f, depth=0.4):                      # low ring modulation: the metallic, not-of-this-world sideband
+        return (1 - depth) * x + depth * x * np.sin(2 * np.pi * f * t_(len(x) / SR))
+    # --- HAPTIC branching arc: a low thump, a falling zap and short branching crackles
+    for name, d, f0, f1, thump, crk in (("arc_zap", 0.55, 900, 140, 62, 0.8), ("arc_heavy", 0.95, 620, 70, 42, 1.0)):
+        n = int(d * SR); body = sweep(f0, f1, d) * env_exp(n, d * 0.28)
+        gate_ = lp((noise(d) > 0.55).astype(float), 1800)
+        zap = lp(bp(noise(d), 300, 3800) * gate_, 2600) * env_exp(n, d * 0.3)
+        branches = mix(*[at(0.7 ** i * lp(bp(noise(0.12), 400, 3000), 2400) * env_exp(int(0.12 * SR), 0.04), 0.07 * (i + 1)) for i in range(1, 4)])
+        sub = sat(sine(thump, d), 1.8) * env_exp(n, d * 0.3)
+        save(name, lp(ring(mix(0.8 * body, crk * zap, pad(branches, n), 0.9 * sub), 53, 0.35), 5200), 0.85)
+    # --- TYMPAN sonar: an inharmonic ping that glides down a little, with one soft echo
+    for name, d, f0, tau in (("sonar_ping", 0.8, 360, 0.22), ("sonar_deep", 1.2, 170, 0.34)):
+        n = int(d * SR); t = t_(d); gl = f0 * (1 - 0.06 * (1 - np.exp(-t / 0.15)))
+        ph = 2 * np.pi * np.cumsum(gl) / SR
+        ping = sum(a * np.sin(ph * r + 0.4 * np.sin(2 * np.pi * 3.1 * t)) for r, a in ((1, 1.0), (2.41, 0.45), (3.87, 0.22), (0.5, 0.7)))
+        x = lp(ping * env_exp(n, tau) * np.minimum(1, t / 0.006), 3200)
+        save(name, lp(echo(ring(x, 29, 0.25), 0.16, 0.38, 2), 3600), 0.85)
+    # --- MIASMA sine wave: a gooey, wobbling tone that slides down, with bubbling
+    for name, d, f0, f1, vib in (("warble_light", 0.75, 240, 130, 7.0), ("warble_heavy", 1.15, 120, 62, 5.0)):
+        n = int(d * SR); t = t_(d)
+        f = (f0 * (f1 / f0) ** (t / d)) * (1 + 0.28 * np.sin(2 * np.pi * vib * t))
+        tone = np.sin(2 * np.pi * np.cumsum(f) / SR) + 0.5 * np.sin(2 * np.pi * np.cumsum(f * 1.5) / SR + 1.1) + 0.3 * sat(np.sin(2 * np.pi * np.cumsum(f * 0.5) / SR), 2)
+        bub = bp(noise(d), 150, 900) * np.clip(np.sin(2 * np.pi * 21 * t), 0, 1) * 0.5
+        env = np.minimum(1, t / 0.05) * env_exp(n, d * 0.45)
+        save(name, lp((tone + bub) * env, 2600), 0.8)
+
+
+def from_sources():
+    """sounds that are not made by a recipe in this file (the Haptic touch set) keep their original in tools/sound_src/ and are
+    alienized from there, so rerunning never alienizes a file twice"""
+    src = os.path.join(os.path.dirname(os.path.abspath(__file__)), "sound_src")
+    for name in sorted(ALIEN):
+        p = os.path.join(src, name + ".wav")
+        if os.path.isfile(p):
+            with wave.open(p) as w:
+                x = np.frombuffer(w.readframes(w.getnframes()), dtype=np.int16).astype(float) / 32768
+            save(name, x, 0.8)
+
+
 if __name__ == "__main__":
-    for fn in (ui, alerts, voices, weapons, impacts, economy, evolve, ambient, cmd_weapons, announcements, new_factions, tier3):
+    fns = [ui, alerts, voices, weapons, impacts, economy, evolve, ambient, cmd_weapons, announcements, new_factions, tier3, thin_beams, special_weapons, from_sources]
+    if "alien" in sys.argv[1:]:        # only the weapon sounds (alienized) + the new beams; nothing else on disk is touched
+        ONLY = set(ALIEN) | set(NEW_BEAMS)
+        fns = [weapons, impacts, cmd_weapons, new_factions, thin_beams, special_weapons, from_sources]
+    for fn in fns:
         fn()
     files = sorted(os.listdir(OUT))
     print("wrote %d files to %s" % (len(files), os.path.abspath(OUT)))

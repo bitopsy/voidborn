@@ -19,6 +19,8 @@ Spring = {
 	DestroyUnit = function(id) alive[id] = nil; destroyed[#destroyed + 1] = id; gadget:UnitDestroyed(id, 1, 0) end,
 	CreateUnit = function(d) created[#created + 1] = d; alive[100 + #created] = true; return 100 + #created end,
 	SetUnitHealth = function() end, IsCheatingEnabled = function() return false end }
+unsyncedMsgs = {}
+SendToUnsynced = function(...) unsyncedMsgs[#unsyncedMsgs + 1] = { ... } end
 gadgetHandler = { IsSyncedCode = function() return true end }
 GG = { VB_FactorySwap = function() end }
 gadget = {}

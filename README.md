@@ -182,7 +182,7 @@ Spring cannot register new unit *types* while a game runs, so `/vbcreate` clones
 /vbexec vb.create{ id="x", base="mw_nurse", hp=99, lua="Spring.Echo(unitID)" }
 ```
 
-Options: `name hp metal energy buildtime sight alt count team x z png pngsize shape fire move repeat`, and multipliers `speed range dmg reload`. `lua=` (last option) runs on every spawned unit with `unitID` set. `png=` floats an image above each spawned unit (a bare name means `unitpics/<name>.png`; `png=icons/x.png` is used as given, `pngsize=` is in elmos). Put the file in `game/unitpics/` or loose in `<data dir>/unitpics/` (no rebuild needed). `shape=` gives the unit a **new 3D body** (see the unit forge below). `fire=`, `move=` and `repeat=` set the starting stance. Units appear at the mouse cursor unless `x=`/`z=` are given. Results are echoed in the chat log.
+Options: `name hp metal energy buildtime sight alt count team x z png pngsize shape fire move repeat`, and multipliers `speed range dmg reload`. `lua=` (last option) runs on every spawned unit with `unitID` set. `png=` floats an image above each spawned unit (a bare name means `unitpics/<name>.png`; `png=icons/x.png` is used as given, `pngsize=` is in elmos). Put the file in `game/unitpics/` or loose in `<data dir>/unitpics/` (no rebuild needed). `shape=` gives the unit a **new 3D body** (see the unit forge below). `fire=`, `move=` and `repeat=` set the starting stance. Units appear at the mouse cursor unless `x=`/`z=` are given. Results are echoed in the chat log. On a lab, **REPEAT** loops that lab's production line: a finished queue entry goes to the back of the line with the count it was queued with (the team line of forge designs, which has no lab, never loops).
 
 The console autocompletes: type `/vbcre` and press `TAB` for `/vbcreate`, `base=ch_` and `TAB` for a unit name, and the whole line is syntax highlighted. The **unit forge** (`/vbforge`) is the graphical version of all of this.
 
@@ -294,7 +294,7 @@ The other numbers (`SEED_FRAC`, `MAX_FUNGI` = 250 patches, `RECLAIM_PER_E`, ...)
 Four tabs:
 
 * **BASE** - pick the unit to build on (every buildable unit, with its stats).
-* **NUMBERS** - sliders for health, metal, energy, build time, sight, speed, range, damage, reload, altitude, count and team, plus toggle buttons for the starting stance (fire state, move state, repeat).
+* **NUMBERS** - sliders for health, metal, energy, build time, sight, speed, range, damage, reload, altitude, count and team, plus toggle buttons for the starting stance (fire state, move state, repeat). (On a lab, REPEAT loops its production line.)
 * **IMAGE** - pick one of the PNGs in `unitpics/` (or `icons/`); it is shown above the unit and can be mapped onto the 3D shape.
 * **SHAPE** - build a **new 3D body** out of primitives (box, sphere, cylinder, cone). Per primitive: size, position, rotation, colour, which PNG is mapped onto it and the part of that PNG (the UV rectangle). A live 3D preview shows the result.
 

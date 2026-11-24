@@ -154,6 +154,64 @@ local function SplitRef(ref)
 end
 
 --------------------------------------------------------------------------------
+-- repeat: the REPEAT toggle of a lab loops that lab's production line
+--   Units are not built by the engine's factory queue, so the engine flag is read here.  When the last
+--   unit of an entry is finished and the lab's REPEAT is on, the entry goes to the end of the line again
+--   with the count it was queued with (the engine's own behaviour: a finished build order is pushed to the
+--   back of the queue).  The team line of forge designs (line 0) has no lab and never loops.
+--------------------------------------------------------------------------------
+local function LineRepeat(fac)
+	fac = tonumber(fac)
+	if not fac or fac == 0 or not Spring.ValidUnitID(fac) then return false end
+	local idx = Spring.FindUnitCmdDesc and Spring.FindUnitCmdDesc(fac, CMD.REPEAT)
+	local d
+	if idx and Spring.GetUnitCmdDescs then
+		local t = Spring.GetUnitCmdDescs(fac, idx, idx)
+		d = t and t[1]
+	elseif Spring.GetUnitCmdDescs then
+		for _, c in ipairs(Spring.GetUnitCmdDescs(fac) or {}) do if c.id == CMD.REPEAT then d = c; break end end
+	end
+	return d ~= nil and d.params ~= nil and tostring(d.params[1]) == "1"
+end
+GG.VB_LineRepeat = LineRepeat
+
+--------------------------------------------------------------------------------
+-- rally points
+--   Units made by the queue are created with Spring.CreateUnit, so they never inherit the engine's factory
+--   orders.  The gadget therefore remembers the orders given to every lab itself (a right-click on the ground
+--   with a lab selected, shift = add a waypoint, stop = clear) and gives them to each unit the lab finishes.
+--------------------------------------------------------------------------------
+local rally = {}           -- labID -> list of { id, params, }  (in the order they were given)
+local RALLY_CMDS = {}
+for _, name in ipairs({ "MOVE", "FIGHT", "PATROL", "GUARD", "ATTACK", "RECLAIM", "REPAIR", "RESURRECT", "LOAD_UNITS", "UNLOAD_UNITS", "AREA_ATTACK" }) do
+	if CMD[name] then RALLY_CMDS[CMD[name]] = true end
+end
+local OPT_SHIFT = CMD.OPT_SHIFT or 32
+
+local function IsLab(unitDefID)
+	local ud = UnitDefs[unitDefID]
+	local kind = ud and ud.customParams and ud.customParams.kind
+	return kind == "fac" or kind == "fac2" or kind == "fac3"
+end
+
+local function HasShift(opts)
+	if type(opts) == "table" then return opts.shift and true or false end
+	opts = tonumber(opts) or 0
+	return math.floor(opts / OPT_SHIFT) % 2 == 1
+end
+
+local function GiveRally(unitID, labID)
+	local list = labID and rally[labID]
+	if not list or #list == 0 or not Spring.ValidUnitID(unitID) then return false end
+	for i, o in ipairs(list) do
+		local params = {}
+		for k, v in ipairs(o.params) do params[k] = v end
+		Spring.GiveOrderToUnit(unitID, o.id, params, i == 1 and 0 or { "shift" })
+	end
+	return true
+end
+
+--------------------------------------------------------------------------------
 -- where finished units appear: next to the factory that ordered them, otherwise at the team start
 --------------------------------------------------------------------------------
 local function OwnFactory(teamID, fac)
@@ -250,11 +308,12 @@ local function Add(teamID, playerID, spec, n)
 	local e = Find(teamID, tid, line)
 	if e then
 		e.n = math.min(MAX_QUEUE, e.n + n)
+		e.n0 = math.min(MAX_QUEUE, (e.n0 or e.n) + n)
 		if e.prog == 0 then          -- nothing paid yet: take the newest version of the design
 			e.spec, e.price = spec, Price(spec, ud)
 		end
 	else
-		q[#q + 1] = { tid = tid, line = line, spec = spec, price = Price(spec, ud), n = n, prog = 0, spentM = 0, spentE = 0,
+		q[#q + 1] = { tid = tid, line = line, spec = spec, price = Price(spec, ud), n = n, n0 = n, prog = 0, spentM = 0, spentE = 0,
 			hold = false, state = "w", lastOk = 0, playerID = playerID }
 	end
 	dirty[teamID] = true
@@ -268,6 +327,7 @@ local function Remove(teamID, tid, n, all, line)
 		table.remove(queues[teamID], i)
 	else
 		e.n = e.n - n
+		e.n0 = math.max(1, (e.n0 or e.n) - n)
 	end
 	dirty[teamID] = true
 end
@@ -282,6 +342,11 @@ local function Finish(teamID, e, frame)
 	if e.n <= 0 then
 		local _, i = Find(teamID, e.tid, e.line)
 		if i then table.remove(queues[teamID], i) end
+		if LineRepeat(e.line) then     -- REPEAT is on: the finished entry goes to the end of the line again
+			local q = queues[teamID]
+			q[#q + 1] = { tid = e.tid, line = e.line, spec = e.spec, price = e.price, n = e.n0 or 1, n0 = e.n0 or 1, prog = 0,
+				spentM = 0, spentE = 0, hold = false, state = "w", lastOk = frame, playerID = e.playerID }
+		end
 	end
 	dirty[teamID] = true
 	local x, z = SpawnPoint(teamID, spec.fac)
@@ -293,7 +358,9 @@ local function Finish(teamID, e, frame)
 			Spring.Echo("[VB] queue: could not create " .. tostring(spec.base) .. " (unit limit or blocked spot)")
 		else
 			local fac = OwnFactory(teamID, spec.fac)
-			if fac then   -- walk a little away from the factory so the next unit has room
+			if fac and GiveRally(unitID, fac) then
+				-- the lab has a rally point: the unit goes there
+			elseif fac then   -- no rally point: walk a little away from the factory so the next unit has room
 				local fx, _, fz = Spring.GetUnitPosition(fac)
 				local dx, dz = x - fx, z - fz
 				local d = math.max(1, math.sqrt(dx * dx + dz * dz))
@@ -304,8 +371,11 @@ local function Finish(teamID, e, frame)
 	end
 	spec.x, spec.z = x, z
 	-- the existing creation gadget does the actual spawning (the queue already charged for the unit)
-	local ok, err = pcall(GG.VB_QueueSpawn, spec, e.playerID)
-	if not ok then Spring.Echo("[VB] queue: could not hand the unit to vb_dev_units: " .. tostring(err)) end
+	local ok, made = pcall(GG.VB_QueueSpawn, spec, e.playerID)
+	if not ok then Spring.Echo("[VB] queue: could not hand the unit to vb_dev_units: " .. tostring(made))
+	elseif type(made) == "table" and spec.fac then
+		for _, uid in ipairs(made) do GiveRally(uid, spec.fac) end
+	end
 end
 
 --------------------------------------------------------------------------------
@@ -321,6 +391,7 @@ end
 
 -- a factory that is replaced by its tier 2 version (vb_factory_upgrade.lua) keeps its lines: they move to the new unit
 function GG.VB_FactorySwap(oldID, newID)
+	if rally[oldID] then rally[newID] = rally[oldID]; rally[oldID] = nil end
 	for teamID, q in pairs(queues) do
 		for _, e in ipairs(q) do
 			if (e.line or 0) == oldID then e.line = newID end
@@ -333,11 +404,27 @@ end
 -- a factory that dies takes its line with it: refund what was paid
 function gadget:UnitDestroyed(unitID, unitDefID, teamID)
 	if GG.VB_swapping == unitID then return end          -- only being replaced by its tier 2 version
+	rally[unitID] = nil
 	local q = queues[teamID]
 	if not q then return end
 	for i = #q, 1, -1 do
 		if (q[i].line or 0) == unitID then Refund(teamID, q[i]); table.remove(q, i); dirty[teamID] = true end
 	end
+end
+
+-- orders given to a lab are its rally point: remember them for the units it finishes
+function gadget:AllowCommand(unitID, unitDefID, teamID, cmdID, cmdParams, cmdOptions)
+	if not IsLab(unitDefID) then return true end
+	if cmdID == CMD.STOP then rally[unitID] = nil; return true end
+	if not RALLY_CMDS[cmdID] or type(cmdParams) ~= "table" or #cmdParams == 0 then return true end
+	local list = rally[unitID]
+	if not list or not HasShift(cmdOptions) then list = {}; rally[unitID] = list end
+	if #list < 20 then
+		local p = {}
+		for i, v in ipairs(cmdParams) do p[i] = v end
+		list[#list + 1] = { id = cmdID, params = p }
+	end
+	return true
 end
 
 function gadget:RecvLuaMsg(msg, playerID)

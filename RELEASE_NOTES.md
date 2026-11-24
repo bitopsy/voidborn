@@ -114,6 +114,12 @@ voidborn 1.4 is a major release featuring three significant gameplay systems, ba
 - **Map archive**: `voidborn_rift.sd7` (1.7 MB)
 - **Source code**: [GitHub](https://github.com/bitopsy/voidborn)
 
+### 0.22
+
+- HUD overhaul: added SCORE, ARMY, M/S (metal/energy sec), E/S (energy/sec), UNITS, PING, and FPS columns to the player list
+- Version bump to 0.22
+- Build system updated
+
 ### 0.21
 
 - New arc and wave gadgets for enhanced battlefield effects

@@ -1,0 +1,73 @@
+[GAME]
+{
+	GameType=Voidborn 0.23;
+	MapName=Voidborn Rift 1.0;
+	IsHost=1;
+	OnlyLocal=1;
+	MyPlayerName=Observer;
+	StartPosType=1;
+	MinSpeed=20;
+	MaxSpeed=20;
+	NumPlayers=1;
+	NumTeams=2;
+	NumAllyTeams=2;
+
+	[MODOPTIONS]
+	{
+		bot_skill=2;
+		lrn_attack_interval=1200;
+		lrn_attack_value=2500;
+		lrn_con_rate=1;
+		lrn_def_ratio=0.15;
+		lrn_eco_priority=0.5;
+		lrn_expand_interval=600;
+		lrn_game_id=L1125150704_00001;
+		lrn_max_frames=54000;
+		lrn_retreat_hp=0.25;
+		lrn_scout_rate=0.2;
+		lrn_tech2_frame=12000;
+		lrn_tech3_frame=30000;
+		lrn_w_art=0.25;
+		lrn_w_assault=0.3;
+		lrn_w_heavy=0.5;
+		lrn_w_raider=0.3;
+		lrn_w_support=0.1;
+	}
+
+	[PLAYER0]
+	{
+		Name=Observer;
+		Spectator=1;
+	}
+
+	[TEAM0]
+	{
+		TeamLeader=0;
+		AllyTeam=0;
+		Side=Voidborn;
+		Handicap=0;
+		RGBColor=1.0 0.3 0.2;
+		LuaAI=Voidbot;
+	}
+
+	[TEAM1]
+	{
+		TeamLeader=0;
+		AllyTeam=1;
+		Side=Voidborn;
+		Handicap=0;
+		RGBColor=0.2 0.4 1.0;
+		LuaAI=Learner;
+	}
+
+	[ALLYTEAM0]
+	{
+		NumAllies=0;
+	}
+
+	[ALLYTEAM1]
+	{
+		NumAllies=0;
+	}
+
+}

@@ -1,3 +1,6 @@
+-- Developer tool: only loaded when the "Developer tools" game option (vb_dev, see modoptions.lua) is on.
+if (Spring.GetModOptions() or {}).vb_dev ~= "1" then return false end
+
 -- Voidborn developer console (rewritten)
 -- Open with the key left of "1" (` on QWERTY, ² on AZERTY) or type /vbconsole in chat.
 -- Unit creation:  /vbcreate <id> base=<unit> [name= hp= speed= range= dmg= reload= metal= energy= sight= count= team= lua=...]

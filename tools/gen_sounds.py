@@ -113,10 +113,12 @@ def alerts():
     seq = np.concatenate([pad(pulse(540), int(0.2 * SR)), pad(pulse(405), int(0.2 * SR))] * 3)
     save("alarm_commander", seq * (1 + 0.3 * np.sin(2 * np.pi * 9 * t_(len(seq) / SR))), 0.85)
     # unit ready: two ascending bells
-    save("unit_ready", mix(bell(660, 0.5, 0.18), at(bell(990, 0.6, 0.22), 0.13)), 0.75)
+    #save("unit_ready", mix(bell(660, 0.5, 0.18), at(bell(990, 0.6, 0.22), 0.13)), 0.75)
+    d = 0.9; g = sat(sweep(60, 220, d) + 0.4 * sweep(120, 440, d), 2) * np.sin(np.linspace(0, np.pi, int(d * SR))) ** 1.5
+    save("unit_ready", mix(sine(88, 0.3) * env_exp(int(0.3 * SR), 0.1), 0.8 * g, 0.5 * hp(noise(d), 2000) * env_exp(int(d * SR), 0.1)), 0.95)
     # structure complete: low thump + three-note arpeggio
     thump = sine(70, 0.3) * env_exp(int(0.3 * SR), 0.08)
-    save("struct_done", mix(thump, at(bell(392, 0.7, 0.22), 0.05), at(bell(523, 0.7, 0.22), 0.17), at(bell(784, 0.9, 0.3), 0.29)), 0.8)
+    save("struct_done", mix(thump, at(bell(133, 0.7, 0.22), 0.05), at(bell(324, 0.7, 0.22), 0.17), at(bell(423, 0.9, 0.3), 0.29)), 0.8)
     # construction started: thump + rising grind
     d = 0.4; g = sat(sweep(60, 220, d) + 0.4 * sweep(120, 440, d), 2) * np.sin(np.linspace(0, np.pi, int(d * SR))) ** 1.5
     save("build_start", mix(sine(55, 0.3) * env_exp(int(0.3 * SR), 0.1), 0.6 * g, 0.2 * hp(noise(d), 2000) * env_exp(int(d * SR), 0.1)), 0.85)

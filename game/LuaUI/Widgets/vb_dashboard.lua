@@ -38,6 +38,7 @@ D.Stats = Stats
 widget.Stats = Stats          -- (for the smoke test)
 local C = D.C
 local sc = D.sc
+local DEV = (Spring.GetModOptions() or {}).vb_dev == "1"   -- "Developer tools" game option (modoptions.lua)
 local floor, ceil, max, min, abs = math.floor, math.ceil, math.max, math.min, math.abs
 local FPS = 30
 
@@ -821,8 +822,8 @@ local function TabSettings(x1, y1, x2, y2, ctx)
 	local gh = sc(178)
 	GraphicsPanel(x1 + w3 + gap, y2 - gh, x1 + 2 * w3 + gap, y2)
 	local bx1, by1, bx2, by2 = D.Panel(x1 + w3 + gap, y1, x1 + 2 * w3 + gap, y2 - gh - gap, "THE GAME")
-	-- seven rows (six buttons and the sound switch): the spacing shrinks to fit the panel at big interface sizes
-	local pitch = min(sc(32), (by2 - sc(30) - by1) / 7)
+	-- six rows (five buttons and the sound switch), seven with the developer console: the spacing shrinks to fit the panel at big interface sizes
+	local pitch = min(sc(32), (by2 - sc(30) - by1) / (DEV and 7 or 6))
 	local bh = max(sc(12), min(sc(24), pitch - sc(3)))
 	y = by2 - sc(30) - bh
 	local function Row(label, cmd, tip)
@@ -845,7 +846,7 @@ local function TabSettings(x1, y1, x2, y2, ctx)
 		y = y - pitch
 	end
 	Row("SENSOR RANGES", "vbranges", "/vbranges")
-	Row("DEV CONSOLE", "vbconsole", "/vbconsole")
+	if DEV then Row("DEV CONSOLE", "vbconsole", "/vbconsole") end
 	local sh = min(sc(20), bh)
 	D.Text("Sound", bx1 + sc(6), y + sh / 2 - sc(4), sc(10), "o", C.text)
 	local hw = (bx2 - bx1 - sc(12) - sc(60)) / 2
@@ -914,9 +915,10 @@ local function TabKeys(x1, y1, x2, y2, ctx)
 		{ "Ctrl+D", "detonate the selected units" }, { "Tab", "select your commander" }, { "Ctrl+Shift+D", "statistics dashboard" }, { "Esc, 1-9", "close, switch page" },
 		{ "Left / Right", "step through time" }, { "Home / End", "start / back to live" }, { "Mouse wheel", "zoom the time axis" },
 		{ "Enter", "start (before the game)" }, { "/vbsettings", "unit growth and splitting" }, { "/vbforge", "unit forge" },
-		{ "/vbconsole or ~", "dev console" }, { "/vbstats", "census of the selection" }, { "/vbqueue", "show / hide the queue monitor (Alt+Q)" }, { "/vbranges", "sensor ranges" },
+		{ "/vbstats", "census of the selection" }, { "/vbqueue", "show / hide the queue monitor (Alt+Q)" }, { "/vbranges", "sensor ranges" },
 		{ "/vbsound", "on | off | vol 0-100" }, { "/vbkeys", "list the keys in the chat" }, { "/vbdash", "this dashboard" },
 	}
+	if DEV then table.insert(rows, 11, { "/vbconsole or ~", "dev console" }) end
 	local rowH = min(sc(24), (iy2 - iy1) / #rows)
 	for i, r in ipairs(rows) do
 		local ry = iy2 - i * rowH

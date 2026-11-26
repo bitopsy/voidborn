@@ -9,7 +9,7 @@ local ORDER_KEYS = {
 	a = "attack", s = "stop", m = "move", f = "fight", p = "patrol", g = "guard",
 	-- d / q: the flying commander's weapons. The engine gives flying units no "manualfire" command, so
 	-- the gadget vb_manualfire.lua adds these two custom ones (d = Devour, q = Destabilisation Gun).
-	r = "repair", e = "reclaim", t = "resurrect", d = "vbdgun", q = "vbdestab", k = "vbcloak", w = "wait", y = "capture",
+	r = "repair", e = "reclaim", t = "repeat", d = "vbdgun", q = "vbdestab", k = "vbcloak", w = "wait",
 }
 -- build keys, used when a BUILDER is selected: letter -> customParams.kind of the unit to build
 local BUILD_KEYS = {

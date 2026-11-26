@@ -67,7 +67,7 @@ for n, played, where in (("vox_t3_upgrade", f"sounds/vox_t3_upgrade.wav" in upg,
                          ("vox_t3_unit_ready", 'cp.kind == "heavy3" then Play("vox_t3_unit_ready"' in wid, "vb_sounds")):
     check(f"announcement {n}: wav exists, is registered in sounds.lua, and is played by {where}",
           os.path.isfile(os.path.join(game, "sounds", n + ".wav")) and n + '"' in snd and played)
-for n in ("vox_energy_full", "vox_energy_stall", "vox_metal_full", "vox_metal_stall", "vox_factory_idle", "vox_queue_empty"):
+for n in ("vox_energy_full", "vox_metal_full", "vox_factory_idle", "vox_queue_empty"):
     check(f"announcement {n}: wav exists, is registered, and the widget can play it",
           os.path.isfile(os.path.join(game, "sounds", n + ".wav")) and n + '"' in snd
           and (n in wid or n.replace("vox_", '" .. kind .. "_').replace("_stall", "_stall") != n and ('"vox_" .. kind .. "_' + n.split("_")[-1] + '"') in wid))

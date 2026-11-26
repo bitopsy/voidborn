@@ -1,5 +1,5 @@
--- Developer tool: only loaded when the "Developer tools" game option (vb_dev, see modoptions.lua) is on.
-if (Spring.GetModOptions() or {}).vb_dev ~= "1" then return false end
+-- Developer tool: only loaded when the "Developer tools" game option (vb_dev, see modoptions.lua) is on, or the dashboard button "DEV MODE" was pressed.
+if (Spring.GetModOptions() or {}).vb_dev ~= "1" and not (WG and WG.VBDevMode) then return false end   -- game option, or the DEV MODE button of the dashboard
 
 function widget:GetInfo()
 	return { name = "VB Debug", desc = "/vbdbg dumps the selected unit's weapon and attack state", layer = 0, enabled = true }

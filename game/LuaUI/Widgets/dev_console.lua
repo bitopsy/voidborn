@@ -1,5 +1,5 @@
--- Developer tool: only loaded when the "Developer tools" game option (vb_dev, see modoptions.lua) is on.
-if (Spring.GetModOptions() or {}).vb_dev ~= "1" then return false end
+-- Developer tool: only loaded when the "Developer tools" game option (vb_dev, see modoptions.lua) is on, or the dashboard button "DEV MODE" was pressed.
+if (Spring.GetModOptions() or {}).vb_dev ~= "1" and not (WG and WG.VBDevMode) then return false end   -- game option, or the DEV MODE button of the dashboard
 
 -- Voidborn developer console (rewritten)
 -- Open with the key left of "1" (` on QWERTY, ² on AZERTY) or type /vbconsole in chat.

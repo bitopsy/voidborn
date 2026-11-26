@@ -109,7 +109,7 @@ local function CheckKind(kind, team, f)
 	if frac < 0.90 then st.fullArmed = true; st.fullTicks = 0 end
 	if frac < 0.03 and st.stallArmed and (pull or 0) > (income or 0) and f - st.lastStall > RES_COOLDOWN then
 		st.stallArmed, st.lastStall = false, f
-		Play("vox_" .. kind .. "_stall", 1.0)
+		Play(kind .. "_low", 1.0)                 -- sounds/energy_low.wav, sounds/metal_low.wav
 	elseif frac >= 0.99 then
 		st.fullTicks = st.fullTicks + 1
 		if st.fullArmed and st.fullTicks >= FULL_TICKS and f - st.lastFull > 2 * RES_COOLDOWN then

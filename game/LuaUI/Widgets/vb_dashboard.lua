@@ -40,7 +40,35 @@ D.Stats = Stats
 widget.Stats = Stats          -- (for the smoke test)
 local C = D.C
 local sc = D.sc
-local DEV = (Spring.GetModOptions() or {}).vb_dev == "1"   -- "Developer tools" game option (modoptions.lua)
+local DEV_OPTION = (Spring.GetModOptions() or {}).vb_dev == "1"   -- "Developer tools" game option (modoptions.lua)
+
+-- DEV MODE: on from the start with the game option, or switched on in the game with the button of THE GAME panel (settings tab).
+-- The button turns cheats on (/cheat: the forge, the free console and dev units need them), sets WG.VBDevMode (the dev widgets load
+-- when it is set) and loads the dev widgets that were skipped at the start.
+local DEV_WIDGETS = {      -- { widget name, file }
+	{ "Developer Console", "LuaUI/Widgets/dev_console.lua" },
+	{ "VB Debug",          "LuaUI/Widgets/vb_debug.lua" },
+}
+local function DevOn() return DEV_OPTION or (WG and WG.VBDevMode) == true end
+
+local function ActivateDev()
+	if DevOn() then return end
+	WG.VBDevMode = true
+	if Spring.IsCheatingEnabled and not Spring.IsCheatingEnabled() then Spring.SendCommands("cheat") end   -- "cheat" toggles: only when it is off
+	local wh = widgetHandler
+	local loaded = 0
+	for _, w in ipairs(DEV_WIDGETS) do
+		local ki = wh.knownWidgets and wh.knownWidgets[w[1]]
+		if not (ki and ki.active) then
+			wh.orderList[w[1]] = 1                                       -- the widget is "enabled = false": make it active
+			local ok, inst = pcall(wh.LoadWidget, wh, w[2], true)
+			if ok and inst then wh:InsertWidget(inst); loaded = loaded + 1
+			else Spring.Echo("[VB] dev mode: could not load " .. w[2] .. (ok and "" or (": " .. tostring(inst)))) end
+		end
+	end
+	if wh.SaveConfigData then pcall(wh.SaveConfigData, wh) end
+	Spring.Echo("[VB] DEV MODE on (cheats enabled, " .. loaded .. " dev widgets loaded). Console: /vbconsole")
+end
 local floor, ceil, max, min, abs = math.floor, math.ceil, math.max, math.min, math.abs
 local FPS = 30
 
@@ -861,8 +889,8 @@ local function TabSettings(x1, y1, x2, y2, ctx)
 	local gh = sc(178)
 	GraphicsPanel(x1 + w3 + gap, y2 - gh, x1 + 2 * w3 + gap, y2)
 	local bx1, by1, bx2, by2 = D.Panel(x1 + w3 + gap, y1, x1 + 2 * w3 + gap, y2 - gh - gap, "THE GAME")
-	-- six rows (five buttons and the sound switch), seven with the developer console: the spacing shrinks to fit the panel at big interface sizes
-	local pitch = min(sc(32), (by2 - sc(30) - by1) / (DEV and 7 or 6))
+	-- seven rows (the dev mode button, five buttons and the sound switch), eight with the developer console: the spacing shrinks to fit the panel at big interface sizes
+	local pitch = min(sc(32), (by2 - sc(30) - by1) / (DevOn() and 8 or 7))
 	local bh = max(sc(12), min(sc(24), pitch - sc(3)))
 	y = by2 - sc(30) - bh
 	local function Row(label, cmd, tip)
@@ -885,7 +913,13 @@ local function TabSettings(x1, y1, x2, y2, ctx)
 		y = y - pitch
 	end
 	Row("SENSOR RANGES", "vbranges", "/vbranges")
-	if DEV then Row("DEV CONSOLE", "vbconsole", "/vbconsole") end
+	if DevOn() then
+		Row("DEV CONSOLE", "vbconsole", "/vbconsole")
+		D.Button(bx1 + sc(6), y, bx2 - sc(6), y + bh, "DEV MODE ACTIVE", { active = true, tip = "Cheats are on and the developer tools are loaded" }); y = y - pitch
+	else
+		D.Button(bx1 + sc(6), y, bx2 - sc(6), y + bh, "ACTIVATE DEV MODE", { tip = "Turns cheats on (/cheat) and loads the developer tools: console, forge without the tier 2 lab, free unit creation. Host or single player only",
+			click = function() ActivateDev(); Snd("ui_click") end }); y = y - pitch
+	end
 	local sh = min(sc(20), bh)
 	D.Text("Sound", bx1 + sc(6), y + sh / 2 - sc(4), sc(10), "o", C.text)
 	local hw = (bx2 - bx1 - sc(12) - sc(60)) / 2
@@ -920,7 +954,7 @@ local KIND_NAMES = {
 	art = "Artillery", support = "Support unit", heavy = "Heavy unit",
 }
 local DEFAULT_KEYS = {
-	orders = { a = "attack", s = "stop", m = "move", f = "fight", p = "patrol", g = "guard", r = "repair", e = "reclaim", t = "resurrect", d = "vbdgun", q = "vbdestab", k = "vbcloak", w = "wait", y = "capture" },
+	orders = { a = "attack", s = "stop", m = "move", f = "fight", p = "patrol", g = "guard", r = "repair", e = "reclaim", t = "repeat", d = "vbdgun", q = "vbdestab", k = "vbcloak", w = "wait" },
 	build = { z = "mex", x = "solar", c = "fac", v = "radar", b = "store", n = "def1", j = "def2", u = "heart" },
 	factory = { z = "con", x = "scout", c = "raider", v = "assault", b = "art", n = "support", j = "heavy" },
 }
@@ -957,7 +991,7 @@ local function TabKeys(x1, y1, x2, y2, ctx)
 		{ "/vbstats", "census of the selection" }, { "/vbqueue", "show / hide the queue monitor (Alt+Q)" }, { "/vbranges", "sensor ranges" },
 		{ "/vbsound", "on | off | vol 0-100" }, { "/vbkeys", "list the keys in the chat" }, { "/vbdash", "this dashboard" },
 	}
-	if DEV then table.insert(rows, 11, { "/vbconsole or ~", "dev console" }) end
+	if DevOn() then table.insert(rows, 11, { "/vbconsole or ~", "dev console" }) end
 	local rowH = min(sc(24), (iy2 - iy1) / #rows)
 	for i, r in ipairs(rows) do
 		local ry = iy2 - i * rowH

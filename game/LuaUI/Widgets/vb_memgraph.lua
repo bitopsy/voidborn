@@ -1,5 +1,5 @@
--- Developer tool: only loaded when the "Developer tools" game option (vb_dev, see modoptions.lua) is on.
-if (Spring.GetModOptions() or {}).vb_dev ~= "1" then return false end
+-- Developer tool: only loaded when the "Developer tools" game option (vb_dev, see modoptions.lua) is on, or the dashboard button "DEV MODE" was pressed.
+if (Spring.GetModOptions() or {}).vb_dev ~= "1" and not (WG and WG.VBDevMode) then return false end   -- game option, or the DEV MODE button of the dashboard
 
 function widget:GetInfo()
 	return { name = "Voidborn Memory Graph", desc = "Dotted histogram of Lua memory consumption over time (widget / Spring engine / Lua heap)",

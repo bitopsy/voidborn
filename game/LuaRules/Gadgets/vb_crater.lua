@@ -29,6 +29,8 @@ local RIM_WIDTH       = 1.45    -- the rim ends at crater radius * this
 local PER_FRAME       = 1       -- craters dug per game frame
 local MAX_QUEUE       = 40      -- when more are waiting, the oldest are dropped
 local DEATH_WEAPONS   = { "vb_med", "vb_big" }
+local DEBUG           = true    -- prints what the gadget does to the console / infolog; set false once it works
+local function Dbg(...) if DEBUG then Spring.Echo("[vb_crater] " .. string.format(...)) end end
 
 local SQ = Game.squareSize or 8
 local spGetGroundHeight = Spring.GetGroundHeight
@@ -45,6 +47,7 @@ local function Dig(x, z, blast)
 	local z0 = math.max(0, math.floor((z - rimR) / SQ) * SQ)
 	local z1 = math.min(mz, math.ceil((z + rimR) / SQ) * SQ)
 	local rim = depth * RIM_FRACTION
+	Dbg("digging: radius %.0f depth %.1f rim %.1f", R, depth, rim)
 	Spring.SetHeightMapFunc(function()
 		for gx = x0, x1, SQ do
 			for gz = z0, z1, SQ do
@@ -64,9 +67,12 @@ local function Dig(x, z, blast)
 end
 
 function GG.VB_Crater(x, y, z, blast)
-	if not x or not z or (blast or 0) < MIN_BLAST then return end
+	if not x or not z or (blast or 0) < MIN_BLAST then
+		Dbg("rejected: blast %s is below MIN_BLAST %.0f", tostring(blast), MIN_BLAST); return
+	end
 	local gh = spGetGroundHeight(x, z)
-	if not gh or gh < -20 then return end               -- under water: nothing to dig
+	if not gh or gh < -20 then Dbg("rejected: ground height %s (under water)", tostring(gh)); return end               -- under water: nothing to dig
+	Dbg("queued crater at %.0f,%.0f blast %.0f (ground %.1f)", x, z, blast, gh)
 	if #pending >= MAX_QUEUE then table.remove(pending, 1) end
 	pending[#pending + 1] = { x = x, z = z, blast = blast }
 end
@@ -78,15 +84,33 @@ function gadget:Initialize()
 			watched[wd.id] = wd.damageAreaOfEffect or wd.areaOfEffect or 0
 			if Script.SetWatchExplosion then Script.SetWatchExplosion(wd.id, true)
 			elseif Script.SetWatchWeapon then Script.SetWatchWeapon(wd.id, true) end
+			Dbg("watching weapon %s (id %.0f), blast radius %s%s", name, wd.id, tostring(watched[wd.id]),
+				watched[wd.id] < MIN_BLAST and "  <-- BELOW MIN_BLAST, will never dig" or "")
+		else
+			Dbg("weapon '%s' NOT FOUND: no unit death will dig a crater (check the weapondef name)", name)
 		end
 	end
+	if next(watched) == nil then Dbg("no death weapon found; only Ctrl+D blasts (GG.VB_Crater) can dig") end
+end
+
+-- test: /cheat, then  /luarules vbcrater [blast]   digs one 200 elmos east of your first unit
+function gadget:RecvLuaMsg(msg, playerID)
+	local blast = msg:match("^vbcrater%s*(%d*)$")
+	if not blast or not Spring.IsCheatingEnabled() then return end
+	local _, _, _, teamID = Spring.GetPlayerInfo(playerID, false)
+	local u = teamID and Spring.GetTeamUnits(teamID)[1]
+	if not u then return end
+	local x, _, z = Spring.GetUnitPosition(u)
+	GG.VB_Crater(x + 200, 0, z, tonumber(blast) or 300)
+	return true
 end
 
 function gadget:Explosion(weaponDefID, px, py, pz)
 	local aoe = watched[weaponDefID]
 	if aoe and px then
 		local gh = spGetGroundHeight(px, pz)
-		if gh and py - gh < aoe * 0.7 then GG.VB_Crater(px, gh, pz, aoe) end   -- not for blasts high in the air
+		if gh and py - gh < aoe * 0.7 then GG.VB_Crater(px, gh, pz, aoe)   -- not for blasts high in the air
+		else Dbg("death blast ignored: %.0f elmos above ground (limit %.0f)", (py or 0) - (gh or 0), aoe * 0.7) end
 	end
 	return false      -- never suppress the engine's own explosion
 end

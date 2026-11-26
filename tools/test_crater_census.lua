@@ -11,6 +11,11 @@ Script = { SetWatchExplosion = function(id) watched[id] = true end }
 GG = {}
 gadgetHandler = { IsSyncedCode = function() return true end }
 Spring = { GetGroundHeight = function() return 100 end,
+	Echo = noop,                                   -- vb_crater.lua prints diagnostics while its DEBUG flag is on
+	IsCheatingEnabled = function() return true end,
+	GetPlayerInfo = function() return "p", true, false, 0 end,
+	GetTeamUnits = function() return { 55 } end,
+	GetUnitPosition = function() return 1000, 100, 1000 end,
 	SetHeightMapFunc = function(f) f() end,
 	AddHeightMap = function(x, z, h) heights[#heights + 1] = { x = x, z = z, h = h } end }
 local g = {}; gadget = g
@@ -35,6 +40,16 @@ for i = 1, 5 do GG.VB_Crater(500 * i, 100, 500, 1900) end
 heights = {}; g:GameFrame()
 local n1 = #heights; g:GameFrame()
 check("a mass detonation is spread over frames (one crater per frame)", n1 > 0 and #heights > n1)
+
+-- the /cheat test command digs next to the player's first unit; without cheats it does nothing
+for _ = 1, 10 do g:GameFrame() end                 -- drain the queue left by the mass detonation above
+heights = {}
+g:RecvLuaMsg("vbcrater 300", 0); g:GameFrame()
+check("/luarules vbcrater digs a crater (cheats on)", #heights > 0, #heights)
+heights = {}
+Spring.IsCheatingEnabled = function() return false end
+g:RecvLuaMsg("vbcrater 300", 0); g:GameFrame()
+check("/luarules vbcrater is ignored without cheats", #heights == 0)
 
 -- ---------------------------------------------------------------- census drawer
 gl = setmetatable({}, { __index = function() return noop end }); GL = setmetatable({}, { __index = function() return 0 end })

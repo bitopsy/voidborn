@@ -1,0 +1,33 @@
+{
+ "version": 1,
+ "generation": 0,
+ "sigma": 0.1,
+ "game_counter": 1,
+ "total_games": 0,
+ "next_id": 1,
+ "elo_peak": 1500.0,
+ "champion": {
+  "id": "g0001",
+  "genome": {
+   "w_raider": 0.3,
+   "w_assault": 0.3,
+   "w_art": 0.25,
+   "w_heavy": 0.5,
+   "w_support": 0.1,
+   "eco_priority": 0.5,
+   "def_ratio": 0.15,
+   "expand_interval": 600,
+   "con_rate": 1.0,
+   "attack_value": 2500,
+   "attack_interval": 1200,
+   "tech2_frame": 12000,
+   "tech3_frame": 30000,
+   "scout_rate": 0.2,
+   "retreat_hp": 0.25
+  },
+  "elo": 1500.0,
+  "games": 0,
+  "fit": [],
+  "lessons": []
+ }
+}

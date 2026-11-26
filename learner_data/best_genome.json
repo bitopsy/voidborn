@@ -1,0 +1,22 @@
+{
+ "id": "g0001",
+ "elo": 1500.0,
+ "generation": 0,
+ "genome": {
+  "w_raider": 0.3,
+  "w_assault": 0.3,
+  "w_art": 0.25,
+  "w_heavy": 0.5,
+  "w_support": 0.1,
+  "eco_priority": 0.5,
+  "def_ratio": 0.15,
+  "expand_interval": 600,
+  "con_rate": 1.0,
+  "attack_value": 2500,
+  "attack_interval": 1200,
+  "tech2_frame": 12000,
+  "tech3_frame": 30000,
+  "scout_rate": 0.2,
+  "retreat_hp": 0.25
+ }
+}

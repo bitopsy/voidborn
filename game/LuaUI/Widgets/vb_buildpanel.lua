@@ -246,6 +246,8 @@ local MIN_SCALE, MAX_SCALE = 0.6, 2.2
 local ICON, GAP, PAD, TITLE, COLS = 54, 4, 6, 18, 5
 
 local vsx, vsy = Spring.GetViewGeometry()
+local okUI, UI = pcall(VFS.Include, "LuaUI/Headers/vb_uiscale.h.lua")
+local function TextBoost() return (okUI and type(UI) == "table") and UI.TextBoost(vsy, WG.VBTextBoostOverride) or 1 end
 local drag, scaling = nil, nil
 local builds, toggles, orders = {}, {}, {}
 local rects, panelBox, hover, hoverRect, lastH, frame = {}, nil, nil, nil, 120, 0
@@ -253,7 +255,61 @@ local hoverTpl, hoverTplRect = nil, nil   -- saved design under the mouse
 local hoverRu, hoverRuRect = nil, nil      -- roster tile (stock unit) under the mouse
 local hoverPlus, hoverPlusRect = false, nil   -- the [+] tile is under the mouse
 
+-- order buttons that are left out of the panel: every wait variant, and load units
+local HIDE_ORDER = {}
+for _, k in ipairs({ "WAIT", "TIMEWAIT", "DEATHWAIT", "SQUADWAIT", "GATHERWAIT", "LOAD_UNITS" }) do
+	if CMD[k] then HIDE_ORDER[CMD[k]] = true end
+end
+local function HiddenOrder(c)
+	if HIDE_ORDER[c.id] then return true end
+	local n = string.lower(c.name or "")
+	return n:find("wait", 1, true) ~= nil or n == "load units" or n == "load"
+end
+
+-- Developer tools ("vb_dev" game option): the buttons show their hotkey
+local DEV = (Spring.GetModOptions() or {}).vb_dev == "1"
+local hintCache = {}
+local function CmdAction(c)
+	local a = string.lower(c.action or "")
+	if a == "" then a = (string.lower(c.name or ""):gsub("%s", "")) end
+	return a
+end
+-- the key of a command: the Voidborn order keys first (vb_hotkeys.lua), then whatever the engine has bound
+local function KeyHint(c)
+	if not DEV then return nil end
+	local act = CmdAction(c)
+	local h = hintCache[act]
+	if h == nil then
+		h = false
+		local HK = WG.VBHotkeys and WG.VBHotkeys.orders
+		if HK then for k, v in pairs(HK) do if v == act then h = k:upper() end end end
+		if not h and Spring.GetActionHotKeys then
+			local t = Spring.GetActionHotKeys(act)
+			if t and t[1] then h = (tostring(t[1]):gsub("^[Aa]ny%+", "")):upper() end
+		end
+		hintCache[act] = h
+	end
+	return h or nil
+end
+
+-- order buttons are coloured by what they do: combat red, movement blue, work green, the rest violet
+local TINT_COMBAT = { 1.00, 0.35, 0.25 }
+local TINT_MOVE   = { 0.35, 0.60, 1.00 }
+local TINT_WORK   = { 0.30, 0.85, 0.45 }
+local TINT_OTHER  = { 0.70, 0.50, 0.95 }
+local ORDER_TINT = {
+	attack = TINT_COMBAT, areaattack = TINT_COMBAT, fight = TINT_COMBAT, manualfire = TINT_COMBAT, dgun = TINT_COMBAT,
+	vbdgun = TINT_COMBAT, vbdestab = TINT_COMBAT, selfd = TINT_COMBAT,
+	move = TINT_MOVE, patrol = TINT_MOVE, guard = TINT_MOVE, stop = TINT_MOVE,
+	repair = TINT_WORK, reclaim = TINT_WORK, resurrect = TINT_WORK, capture = TINT_WORK, restore = TINT_WORK,
+}
+local function OrderTint(c) return ORDER_TINT[CmdAction(c)] or TINT_OTHER end
+
+-- shorter captions for the toggles that would not fit
+local TOGGLE_LABEL = { ["fire state"] = "Fire", ["move state"] = "Move" }
+
 local function Refresh()
+	hintCache = {}
 	local cmds = Spring.GetActiveCmdDescs() or {}
 	-- layout.lua flags every command as hidden to blank the engine's stock panel, so the engine's own
 	-- "hidden" flag is useless here. The untouched list handed to LayoutButtons is kept in
@@ -272,8 +328,11 @@ local function Refresh()
 		if type(c) == "table" and c.id and not realHidden[c.id] then
 			if c.id < 0 then builds[#builds + 1] = { c = c, i = i }
 			elseif c.name and c.name ~= "" and c.id ~= CMD.OPT_SHIFT then
-				if c.type == CMDTYPE.ICON_MODE and c.params and #c.params >= 2 then toggles[#toggles + 1] = { c = c, i = i }
-				else orders[#orders + 1] = { c = c, i = i } end
+				if c.type == CMDTYPE.ICON_MODE and c.params and #c.params >= 2 then
+					-- "Land mode" and "Repair level" are left out of the panel on purpose
+					local nm = string.lower(c.name)
+					if not (nm:find("land mode") or nm:find("repair level")) then toggles[#toggles + 1] = { c = c, i = i } end
+				elseif not HiddenOrder(c) then orders[#orders + 1] = { c = c, i = i } end
 			end
 		end
 	end
@@ -629,8 +688,9 @@ function widget:DrawScreen()
 	local queue = F.ReadQueue()
 
 	local s = scale
-	local icon, gap, pad, title = ICON * s, GAP * s, PAD * s, math.max(16, TITLE * s)
-	local fs = math.max(9, 10 * s)
+	local tb = TextBoost()                                   -- 116 % on HD screens: bigger text and buttons, same panel width
+	local icon, gap, pad, title = ICON * s, GAP * s, PAD * s, math.max(16, TITLE * s * tb)
+	local fs = math.max(9, 10 * s * tb)
 	local gridW = COLS * (icon + gap) - gap
 	-- sort every tile into its category; the four sections are all shown at once
 	local act = ActiveLab()
@@ -651,15 +711,15 @@ function widget:DrawScreen()
 		c[#c + 1] = { kind = "tpl", tid = tid }
 	end
 	local combat = cats.C; combat[#combat + 1] = { kind = "plus" }          -- the [+] tile opens the forge: designs are fighters
-	local LEG, chipH = 12 * s, 17 * s
+	local LEG, chipH = 12 * s * tb, 17 * s * tb
 	local labsH = #labs > 0 and (math.ceil(#labs / 3) * (chipH + gap) + 2 * s) or 0
 	local nflat = 0
 	for _, c in ipairs(CATS) do nflat = nflat + #cats[c.id] end
 	local gridH = LEG + math.ceil(nflat / COLS) * (icon + gap) + 3 * s      -- ONE grid: a one-line legend + the tiles
 	local tcols, ocols = 2, 3
 	local trows, orows = math.ceil(#toggles / tcols), math.ceil(#orders / ocols)
-	local tbW, tbH = (gridW - (tcols - 1) * gap) / tcols, 20 * s
-	local obW, obH = (gridW - (ocols - 1) * gap) / ocols, 18 * s
+	local tbW, tbH = (gridW - (tcols - 1) * gap) / tcols, 20 * s * tb
+	local obW, obH = (gridW - (ocols - 1) * gap) / ocols, 18 * s * tb
 	local w = gridW + pad * 2
 	local h = title + pad + labsH + gridH
 		+ (orows > 0 and (orows * (obH + gap) + 4 * s) or 0)
@@ -730,8 +790,8 @@ function widget:DrawScreen()
 	for k, c in ipairs(CATS) do
 		local col, lx = c.col, x1 + pad + (k - 1) * cw4
 		Box(lx, cursor - LEG + 2, lx + 5 * s, cursor - 2, col[1], col[2], col[3], 1)
-		VBFont.Text(c.name, lx + 8 * s, cursor - LEG + 3 * s, math.max(8, 8 * s), "o", col[1], col[2], col[3], 1)
-		VBFont.Text(tostring(#cats[c.id]), lx + cw4 - 4 * s, cursor - LEG + 3 * s, math.max(8, 8 * s), "or", 0.75, 0.78, 0.85, 1)
+		VBFont.Text(c.name, lx + 8 * s, cursor - LEG + 3 * s, math.max(8, 8 * s * tb), "o", col[1], col[2], col[3], 1)
+		VBFont.Text(tostring(#cats[c.id]), lx + cw4 - 4 * s, cursor - LEG + 3 * s, math.max(8, 8 * s * tb), "or", 0.75, 0.78, 0.85, 1)
 		for _, t in ipairs(cats[c.id]) do t.cat = c; flat[#flat + 1] = t end
 	end
 	cursor = cursor - LEG
@@ -866,9 +926,16 @@ function widget:DrawScreen()
 		rects[#rects + 1] = r
 		local over = Inside(mx, my, r); if over then hover = o end
 		if o.c.id == activeID then Box(bx, by, bx + obW, by + obH, 0.5, 0.4, 0.1, 1)
-		elseif over then Box(bx, by, bx + obW, by + obH, 0.25, 0.25, 0.35, 1)
-		else Box(bx, by, bx + obW, by + obH, 0.15, 0.15, 0.22, 1) end
-		VBFont.Text(string.sub(o.c.name, 1, 13), bx + 4 * s, by + obH * 0.3, fs, "o", 1, 1, 1, o.c.disabled and 0.4 or 1)
+		else
+			local tn = OrderTint(o.c)
+			local k = over and 0.32 or 0.20
+			Box(bx, by, bx + obW, by + obH, (over and 0.14 or 0.10) + tn[1] * k, (over and 0.14 or 0.10) + tn[2] * k, (over and 0.18 or 0.12) + tn[3] * k, 1)
+		end
+		local tn = OrderTint(o.c)
+		Box(bx, by, bx + 3 * s, by + obH, tn[1], tn[2], tn[3], o.c.disabled and 0.4 or 1)      -- colour bar on the left edge
+		VBFont.Text(string.sub(o.c.name, 1, 13), bx + 7 * s, by + obH * 0.3, fs, "o", 1, 1, 1, o.c.disabled and 0.4 or 1)
+		local hk = KeyHint(o.c)
+		if hk then VBFont.Text(hk, bx + obW - VBFont.Width(hk, fs * 0.85) - 4 * s, by + obH * 0.3, fs * 0.85, "o", 1, 0.9, 0.5, 0.9) end
 	end
 	-- toggle buttons (fire state, move state, repeat, on/off, land...) with state LEDs
 	local ty = oy - (orows > 0 and (orows * (obH + gap)) or 0) - 4 * s
@@ -916,8 +983,11 @@ function widget:DrawScreen()
 		if cur > nstates - 1 then cur = nstates - 1 end
 		-- caption: "<NAME>: <STATE>", coloured by the state that is active
 		local curLbl, cr, cg, cb = StateStyle(cur)
-		VBFont.Text(string.sub(t.c.name or "", 1, 12) .. ": " .. curLbl,
+		local label = TOGGLE_LABEL[nm] or string.sub(t.c.name or "", 1, 12)
+		VBFont.Text(label .. ": " .. curLbl,
 			bx + 4 * s, by + tbH * 0.42, fs, "o", cr, cg, cb, 1)
+		local hk = KeyHint(t.c)
+		if hk then VBFont.Text(hk, bx + tbW - VBFont.Width(hk, fs * 0.85) - 4 * s, by + tbH * 0.42, fs * 0.85, "o", 1, 0.9, 0.5, 0.9) end
 		-- one LED per state, coloured by what that state means; the active one is
 		-- bright, the others are dimmed
 		local lw = 7 * s

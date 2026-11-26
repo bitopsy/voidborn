@@ -30,6 +30,8 @@ end
 
 local okS, Stats = pcall(VFS.Include, "LuaUI/Headers/vb_stats_data.h.lua")
 local okD, D = pcall(VFS.Include, "LuaUI/Headers/vb_stats_draw.h.lua")
+local okC, COUNTRY = pcall(VFS.Include, "LuaUI/Headers/vb_countries.h.lua")
+if not okC or type(COUNTRY) ~= "table" then COUNTRY = {} end
 if not (okS and okD and type(Stats) == "table" and type(D) == "table") then
 	Spring.Echo("[VB] dashboard: could not load its headers: " .. tostring(okS and D or Stats))
 	return
@@ -52,7 +54,7 @@ local WINDOWS = { { 0, "ALL" }, { 20, "20 MIN" }, { 10, "10 MIN" }, { 5, "5 MIN"
 
 local st = {
 	open = false, tab = "overview", hud = true, hudCollapsed = false, hudX = nil, hudTop = nil,
-	menu = true, hudRadar = 1, focus = "av", cursor = nil, window = 0, hidden = {}, focusTeam = nil,
+	menu = true, specOpen = false, hudRadar = 1, focus = "av", cursor = nil, window = 0, hidden = {}, focusTeam = nil,
 	sort = { col = "sc", desc = true }, scale = 2.2, autoOpened = false,
 	share = { metal = 0.25, energy = 0.25 }, shareTeam = nil, resignArmed = nil,
 }
@@ -81,7 +83,27 @@ local FLAG_DIR = "LuaUI/Images/flags/"      -- <cc>.png, lower case: "fr.png", "
 local fpsOf = {}                  -- [playerID] = { fps, os.clock() }, what the other clients broadcast
 local teamInfo = {}               -- [teamID] = { units, maxUnits, ping, fps, cc, ai, active }
 local flagOK = {}                 -- [path] = true / false (does the texture exist)
+local specList = {}               -- the spectators: { { name, cc, skill, ping, active } ... }, sorted by name
+local anySkill = false            -- at least one listed player has a skill rating: make room for it in the rows
+local SPEC_MAX = 8                -- spectator rows shown when the list is expanded
 local fpsTimer = 0
+
+-- the skill rating (OpenSkill) a lobby hands over as a player custom key: "skill" is a number or text like "[25.43]"
+local function KeyNumber(v)
+	if v == nil then return nil end
+	if type(v) == "string" then v = tonumber((v:gsub("[%[%]%s]", ""))) end
+	if type(v) ~= "number" or v ~= v then return nil end
+	return v
+end
+local function SkillOf(opts)
+	if type(opts) ~= "table" then return nil end
+	return KeyNumber(opts.skill or opts.openskill)
+end
+local function SigmaOf(opts)          -- the rating's uncertainty, when the lobby sends it
+	if type(opts) ~= "table" then return nil end
+	return KeyNumber(opts.skilluncertainty or opts.openskilluncertainty)
+end
+local function SkillText(v) return v and string.format("%.0f", v) or nil end
 
 local function RefreshTeamInfo()
 	local now = os.clock()
@@ -105,7 +127,8 @@ local function RefreshTeamInfo()
 		end
 		if not e.ai and pid and pid >= 0 then
 			-- name, active, spectator, teamID, allyTeamID, pingTime (s), cpuUsage, country, rank
-			local _, active, _, _, _, ping, _, cc = Spring.GetPlayerInfo(pid, false)
+			local _, active, _, _, _, ping, _, cc, _, _, opts = Spring.GetPlayerInfo(pid, true)
+			e.skill, e.sigma = SkillOf(opts), SigmaOf(opts)
 			e.active = active
 			e.ping = ping and floor(ping * 1000 + 0.5) or nil
 			e.cc = (cc and cc ~= "") and cc or nil
@@ -119,6 +142,22 @@ local function RefreshTeamInfo()
 		out[t.id] = e
 	end
 	teamInfo = out
+
+	-- the spectators (players who are not on a team)
+	local specs, skillSeen = {}, false
+	for _, pid in ipairs(Spring.GetPlayerList() or {}) do
+		local name, active, spec, _, _, ping, _, cc, _, _, opts = Spring.GetPlayerInfo(pid, true)
+		if spec then
+			local sk = SkillOf(opts)
+			specs[#specs + 1] = { name = name or "?", cc = (cc and cc ~= "") and cc or nil, skill = sk, sigma = SigmaOf(opts), active = active,
+				ping = ping and floor(ping * 1000 + 0.5) or nil, me = (pid == myPlayer) }
+		end
+	end
+	table.sort(specs, function(a, b) return a.name:lower() < b.name:lower() end)
+	specList = specs
+	for _, e in pairs(out) do if e.skill then skillSeen = true end end
+	for _, sp in ipairs(specs) do if sp.skill and st.specOpen then skillSeen = true end end
+	anySkill = skillSeen
 end
 
 -- the unit count: exact for allies and spectators, the statistics' sample for an enemy we may see
@@ -1190,6 +1229,70 @@ end
 --------------------------------------------------------------------------------
 -- the HUD
 --------------------------------------------------------------------------------
+-- the player's commander (the names widget keeps the list; without it, ask the engine)
+local function CommanderOf(teamID)
+	local V = WG.VBCommanders
+	if V and V.Find then
+		local u = V.Find(teamID)
+		if u then return u end
+	end
+	local ok, units = pcall(Spring.GetTeamUnits, teamID)
+	if ok and units then
+		for _, u in ipairs(units) do
+			local ud = UnitDefs[Spring.GetUnitDefID(u) or -1]
+			local cp = ud and ud.customParams
+			if cp and cp.iscommander == "true" and not Spring.GetUnitIsDead(u) then return u end
+		end
+	end
+end
+
+local function JumpToTeam(teamID, name)
+	local x, y, z
+	local u = CommanderOf(teamID)
+	if u then x, y, z = Spring.GetUnitPosition(u) end
+	if not x then                                   -- no commander in sight: where the team started, if we may know
+		local ok, sx, sy, sz = pcall(Spring.GetTeamStartPosition, teamID)
+		if ok and sx and sx > 0 and sz and sz > 0 then x, y, z = sx, sy or 0, sz end
+	end
+	if not x then Spring.Echo("[VB] no commander of " .. tostring(name or teamID) .. " in sight"); return end
+	Spring.SetCameraTarget(x, y, z, 0.6)
+	Snd("ui_click")
+end
+
+-- tooltip over a player's flag, rating or name
+local function PlayerTip(name, color, p, jump)
+	local lines = { { name, color } }
+	if p and p.ai then
+		lines[#lines + 1] = { "Computer player", C.dim }
+	elseif p then
+		lines[#lines + 1] = { "Country", C.dim, p.cc and (COUNTRY[p.cc:lower()] or p.cc:upper()) or "unknown" }
+		if p.skill then
+			lines[#lines + 1] = { "Skill (OpenSkill)", C.dim, string.format("%.1f", p.skill) .. (p.sigma and string.format("  +/- %.1f", p.sigma) or "") }
+		else
+			lines[#lines + 1] = { "Skill (OpenSkill)", C.faint, "not rated" }
+		end
+	end
+	if jump then lines[#lines + 1] = { "Click: jump to the commander", C.faint } end
+	return lines
+end
+
+-- scale handle in the bottom-right corner, like the build panel's: drag right/down to grow, left/up to shrink.
+-- st.scale drives D.S, so the text, the rows and the charts all follow.  The top-left corner stays put.
+local hudScaling = nil
+local function DrawScaleHandle(x2, y1)
+	local hs = sc(12)
+	local hot = D.Inside(x2 - hs, y1, x2, y1 + hs) or hudScaling ~= nil
+	local a = hot and 1 or 0.7
+	for k = 1, 3 do D.Rect(x2 - sc(2) - k * sc(3), y1 + sc(2), x2 - sc(2), y1 + sc(2) + k * sc(3) - sc(2), C.warn, a) end
+	D.Region(x2 - hs, y1, x2, y1 + hs, { tip = "Drag to scale the HUD (text included)",
+		click = function(x, y) UserTookOver(); hudScaling = { x0 = x, y0 = y, s0 = st.scale } end,
+		drag = function(x, y)
+			if hudScaling then
+				st.scale = max(0.6, min(2.0, hudScaling.s0 + ((x - hudScaling.x0) - (y - hudScaling.y0)) / 350))
+			end
+		end })
+end
+
 local function DrawHud(ctx)
 	local W = sc(HUD_W)
 	local head = sc(24)
@@ -1198,8 +1301,13 @@ local function DrawHud(ctx)
 	table.sort(list, function(a, b) return Stats.Value(a, "av", ctx.idx[a.id]) > Stats.Value(b, "av", ctx.idx[b.id]) end)
 	local board = Stats.Leaderboard()
 	local shownRows = min(#board, 6)
+	local rowRegions = {}                             -- registered after the table's own region, so they win
 	local rowH = sc(16)
-	local tableH = (shownRows + 1) * rowH + (#board > shownRows and rowH or 0) + sc(6)
+	local playersH = (shownRows + 1) * rowH + (#board > shownRows and rowH or 0) + sc(6)
+	local nSpec = #specList
+	local specRows = (nSpec > 0 and st.specOpen) and (min(nSpec, SPEC_MAX) + (nSpec > SPEC_MAX and 1 or 0)) or 0
+	local specH = nSpec > 0 and (rowH + specRows * rowH) or 0
+	local tableH = playersH + specH
 	local bodyH = sc(132)
 	local H = st.hudCollapsed and head or (head + tableH + bodyH + sc(8))
 	if not st.hudX then st.hudX = vsx - W - sc(12) end
@@ -1243,14 +1351,15 @@ local function DrawHud(ctx)
 	HeadButton("X", sc(18), function() st.hud = false; Snd("ui_close") end, "Hide the HUD (/vbdash hud brings it back)", C.bad)
 	HeadButton(st.hudCollapsed and "+" or "-", sc(18), function() st.hudCollapsed = not st.hudCollapsed; Snd("ui_click") end, "Fold the HUD")
 	HeadButton("OPEN", sc(44), function() Open() end, "Open the full dashboard (Ctrl+Shift+D)", C.good)
-	if st.hudCollapsed then return end
+	if st.hudCollapsed then DrawScaleHandle(x2, y1) return end
 
 	-- the leaderboard: ranked by SCORE; a team hidden by the fog of war is scored from what has been seen (~)
 	local ty = y2 - head - sc(2)
 	local colR = {}                                   -- right edge of every column, laid out from the right
 	local edge = x2 - sc(6)
 	for k = #HUD_COLS, 1, -1 do colR[k] = edge; edge = edge - sc(HUD_COLS[k].w) end
-	local nameX = x1 + sc(48)
+	local skillX = x1 + sc(46)
+	local nameX = x1 + sc(48) + (anySkill and sc(22) or 0)
 	local nameW = edge - nameX - sc(4)
 	for k, c in ipairs(HUD_COLS) do D.Text(c.head, colR[k], ty - rowH + sc(4), sc(8), "or", C.faint) end
 	for r = 1, shownRows do
@@ -1264,7 +1373,17 @@ local function DrawHud(ctx)
 		D.Rect(x1 + sc(21), ry + sc(1), x1 + sc(25), ry + rowH - sc(3), c, 0.95)
 		local e = teamInfo[t.id]
 		if e and e.ai then D.Mono("AI", x1 + sc(30), ry + sc(3), sc(7), "o", C.faint) else DrawFlag(e and e.cc, x1 + sc(30), ry + sc(3), sc(14), sc(10)) end
+		if e and e.skill then D.Mono(SkillText(e.skill), skillX, ry + sc(3), sc(8), "o", C.dim) end
 		D.Text(D.Fit(t.name, sc(9), nameW), nameX, ry + sc(3), sc(9), "o", t.dead and C.faint or c)
+		do
+			local zx1, zx2 = x1 + sc(28), nameX + nameW
+			if D.Inside(zx1, ry, zx2, ry + rowH - sc(2)) and not D.modalBlocked then
+				D.Tooltip(PlayerTip(t.name, c, e, not t.dead))
+			end
+			if not t.dead then
+				rowRegions[#rowRegions + 1] = { zx1, ry, zx2, ry + rowH - sc(2), id = t.id, name = t.name }
+			end
+		end
 		for k, col in ipairs(HUD_COLS) do
 			local id = col.id
 			local txt, tc = "?", C.faint
@@ -1292,7 +1411,43 @@ local function DrawHud(ctx)
 	if #board > shownRows then
 		D.Text("+" .. (#board - shownRows) .. " more", x1 + sc(30), ty - (shownRows + 2) * rowH + sc(7), sc(8), "o", C.faint)
 	end
-	D.Region(x1, y2 - head - tableH, x2, y2 - head, { tip = "Open the dashboard", click = function() Open() end })
+	D.Region(x1, y2 - head - playersH, x2, y2 - head, { tip = "Open the dashboard", click = function() Open() end })
+	for _, r in ipairs(rowRegions) do
+		local tid, tname = r.id, r.name
+		D.Region(r[1], r[2], r[3], r[4], { click = function(_, _, b) if b == 1 or b == nil then JumpToTeam(tid, tname) else Open() end end })
+	end
+
+	-- the spectators: a folded line that opens the list (flag, skill, name, ping)
+	if nSpec > 0 then
+		local sy2 = y2 - head - playersH
+		local hy1 = sy2 - rowH
+		local hot = D.Inside(x1, hy1, x2, sy2)
+		D.Rect(x1 + sc(2), hy1, x2 - sc(2), sy2 - sc(1), hot and C.panel2 or C.panel, 0.7)
+		D.Mono(st.specOpen and "-" or "+", x1 + sc(10), hy1 + sc(3), sc(9), "o", C.accent)
+		D.Text("SPECTATORS", x1 + sc(22), hy1 + sc(3), sc(8), "o", C.dim)
+		D.Mono(tostring(nSpec), x2 - sc(8), hy1 + sc(3), sc(9), "or", C.faint)
+		D.Region(x1, hy1, x2, sy2, { tip = st.specOpen and "Fold the spectator list" or "Show the spectators",
+			click = function() st.specOpen = not st.specOpen; Snd("ui_click") end })
+		if st.specOpen then
+			for r = 1, min(nSpec, SPEC_MAX) do
+				local sp = specList[r]
+				local ry = hy1 - r * rowH + sc(2)
+				if sp.me then D.Rect(x1 + sc(2), ry - sc(1), x2 - sc(2), ry + rowH - sc(3), C.accent, 0.08) end
+				DrawFlag(sp.cc, x1 + sc(30), ry + sc(3), sc(14), sc(10))
+				if D.Inside(x1 + sc(28), ry, nameX + nameW, ry + rowH - sc(2)) and not D.modalBlocked then
+					D.Tooltip(PlayerTip(sp.name, C.dim, sp, false))
+				end
+				if sp.skill then D.Mono(SkillText(sp.skill), skillX, ry + sc(3), sc(8), "o", C.dim) end
+				D.Text(D.Fit(sp.name, sc(9), nameW), nameX, ry + sc(3), sc(9), "o", sp.active == false and C.faint or C.dim)
+				local ping = sp.active == false and "OFF" or (sp.ping and (sp.ping >= 1000 and string.format("%.1fs", sp.ping / 1000) or tostring(sp.ping)) or "-")
+				local pc = sp.active == false and C.bad or (not sp.ping and C.faint or (sp.ping < 100 and C.good or (sp.ping < 250 and C.warn or C.bad)))
+				D.Mono(ping, colR[6], ry + sc(3), sc(9), "or", pc)
+			end
+			if nSpec > SPEC_MAX then
+				D.Text("+" .. (nSpec - SPEC_MAX) .. " more", x1 + sc(30), hy1 - (SPEC_MAX + 1) * rowH + sc(5), sc(8), "o", C.faint)
+			end
+		end
+	end
 
 	-- the radar and the sparklines
 	local by2 = y2 - head - tableH
@@ -1327,6 +1482,7 @@ local function DrawHud(ctx)
 		D.LineChart(sx1, sy1, x2 - sc(6), sy2 - sc(11), { teams = ctx.all, metric = id, f0 = 0, f1 = max(ctx.last, 900), fill = true, minimal = true })
 		D.Region(sx1, sy1, x2, sy2, { tip = m.label .. ": open the graph", click = function() st.focus = id; Open("graphs") end })
 	end
+	DrawScaleHandle(x2, y1)      -- last, so it wins over the regions below it
 end
 
 --------------------------------------------------------------------------------
@@ -1453,7 +1609,7 @@ function widget:MouseMove(x, y)
 	end
 end
 
-function widget:MouseRelease() dragging = nil; return false end
+function widget:MouseRelease() dragging = nil; hudScaling = nil; return false end
 
 function widget:MouseWheel(up, value)
 	if not st.open then return false end
@@ -1506,13 +1662,14 @@ function widget:TextCommand(cmd)
 end
 
 function widget:GetConfigData()
-	return { menu = st.menu, hud = st.hud, hudCollapsed = st.hudCollapsed, hudX = st.hudX, hudTop = st.hudTop, scale = st.scale, hudRadar = st.hudRadar, window = st.window }
+	return { menu = st.menu, hud = st.hud, hudCollapsed = st.hudCollapsed, specOpen = st.specOpen, hudX = st.hudX, hudTop = st.hudTop, scale = st.scale, hudRadar = st.hudRadar, window = st.window }
 end
 function widget:SetConfigData(d)
 	if type(d) ~= "table" then return end
 	if d.hud ~= nil then st.hud = d.hud end
 	if d.menu ~= nil then st.menu = d.menu end
 	if d.hudCollapsed ~= nil then st.hudCollapsed = d.hudCollapsed end
+	if d.specOpen ~= nil then st.specOpen = d.specOpen end
 	st.hudX, st.hudTop = d.hudX, d.hudTop
 	if d.scale then st.scale = max(0.6, min(2.0, d.scale)) end
 	if d.hudRadar then st.hudRadar = d.hudRadar end

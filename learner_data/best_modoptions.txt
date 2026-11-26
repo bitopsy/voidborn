@@ -1,0 +1,15 @@
+lrn_w_raider=0.3
+lrn_w_assault=0.3
+lrn_w_art=0.25
+lrn_w_heavy=0.5
+lrn_w_support=0.1
+lrn_eco_priority=0.5
+lrn_def_ratio=0.15
+lrn_expand_interval=600
+lrn_con_rate=1
+lrn_attack_value=2500
+lrn_attack_interval=1200
+lrn_tech2_frame=12000
+lrn_tech3_frame=30000
+lrn_scout_rate=0.2
+lrn_retreat_hp=0.25

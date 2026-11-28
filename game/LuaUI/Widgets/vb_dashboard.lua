@@ -18,8 +18,15 @@ end
   (pick a moment: the radar charts and tables then show that moment), the events (jump to them).
   When the game ends the dashboard opens on the REPORT by itself, in place of the engine's end screen.
 
-  Keys:  Esc close   1-9 tabs   left / right step through time   Home start   End back to live   wheel zoom the time axis
-  Commands:  /vbdash [open|close|hud|tab <name>|scale <n>]
+  Keys:  Esc close   F11 game window fullscreen / windowed   Space pause (replays)   1-9 tabs   left / right step through time   Home start   End back to live   wheel zoom the time axis
+  Commands:  /vbdash [open|close|hud|screen <fullscreen|windowed|borderless>|speed <0.1-12|pause>|tab <name>|scale <n>]
+
+  FRONT tab: where each side's army stands on the map: territory, the frontline, who is stronger at the front, and the
+  territory over time. ELO~ (HUD, scoreboard, team cards): a performance rating estimated from the match so far.
+  SPEED (replays and single player): buttons at the top right of the timeline, 0.5x to 12x, and /vbdash speed <n>.
+
+  THE GAME WINDOW: SETTINGS > GRAPHICS switches the whole game between fullscreen, windowed and borderless, and sets the window
+  size (springsettings.cfg: Fullscreen, WindowBorderless, XResolution, YResolution, WindowPosX, WindowPosY). F11, /vbdash screen <fullscreen|windowed|borderless>.
 
   SETTINGS has a GRAPHICS panel: the screen resolution (the HUD is stacked again in the default layout column) and the
   graphics quality, lowest to ultra, which is an FPS-OPS preset (LuaUI/Widgets/vb_graphics.lua, gui_fps_ops.lua).
@@ -74,10 +81,10 @@ local FPS = 30
 
 local TABS = {
 	{ "overview", "OVERVIEW" }, { "graphs", "GRAPHS" }, { "economy", "ECONOMY" },
-	{ "combat", "COMBAT" }, { "army", "ARMY" }, { "report", "REPORT" },
+	{ "combat", "COMBAT" }, { "army", "ARMY" }, { "front", "FRONT" }, { "report", "REPORT" },
 	{ "share", "SHARE" }, { "settings", "SETTINGS" }, { "keys", "KEYS" }, { "about", "ABOUT" },
 }
-local FIRST_MENU_TAB = 7      -- the tabs from here on are the menu pages, not statistics
+local FIRST_MENU_TAB = 8      -- the tabs from here on are the menu pages, not statistics
 local WINDOWS = { { 0, "ALL" }, { 20, "20 MIN" }, { 10, "10 MIN" }, { 5, "5 MIN" } }
 
 local st = {
@@ -103,10 +110,12 @@ local function Snd(name) if Spring.PlaySoundFile then Spring.PlaySoundFile("soun
 --------------------------------------------------------------------------------
 local HUD_W = 420                 -- HUD width in sc() units (was 380); vb_layout's Place() uses the same number
 local HUD_COLS = {                -- w = column width in sc() units; columns are laid out from the right edge
-	{ id = "sc", head = "SCORE", w = 40 }, { id = "av", head = "ARMY", w = 36 }, { id = "mi", head = "M/S", w = 28 },
-	{ id = "ei", head = "E/S", w = 30 }, { id = "units", head = "UNITS", w = 56 },
-	{ id = "ping", head = "PING", w = 30 }, { id = "fps", head = "FPS", w = 26 },
+	{ id = "sc", head = "SCORE", w = 40 }, { id = "elo", head = "ELO~", w = 34 }, { id = "av", head = "ARMY", w = 36 }, { id = "mi", head = "M/S", w = 28 },
+	{ id = "ei", head = "E/S", w = 30 }, { id = "units", head = "UNITS", w = 52 },
+	{ id = "ping", head = "PING", w = 28 }, { id = "fps", head = "FPS", w = 24 },
 }
+local HUD_PING = 1
+for k, c in ipairs(HUD_COLS) do if c.id == "ping" then HUD_PING = k end end
 local FLAG_DIR = "LuaUI/Images/flags/"      -- <cc>.png, lower case: "fr.png", "us.png" ... (BAR's flag set works as is)
 local fpsOf = {}                  -- [playerID] = { fps, os.clock() }, what the other clients broadcast
 local teamInfo = {}               -- [teamID] = { units, maxUnits, ping, fps, cc, ai, active }
@@ -248,6 +257,63 @@ local function BuildCtx()
 end
 
 local function ValueOf(ctx, team, id) return Stats.Value(team, id, ctx.idx[team.id]) end
+
+--------------------------------------------------------------------------------
+-- ELO~: a performance rating
+-- A real ELO needs a history of matches; one match cannot give it. This is the rating that the match so far "looks like":
+-- every team is compared with its opponents on army, income, damage dealt / taken and value killed / lost (the same things the
+-- SCORE adds up), the log of the ratios becomes a rating difference (400 points = 10:1), and the result is added to the average
+-- lobby rating of the field (OpenSkill: 47 ELO per point from 25; 1500 when the lobby sends none). It starts at the field average and
+-- only gains confidence over the first 10 minutes.
+--------------------------------------------------------------------------------
+local eloNow = {}                    -- [teamID] = rating, of the frame being drawn
+local ELO_W = { { "av", 0.30, false }, { "mi", 0.20, false }, { "dd", 0.20, false }, { "dt", 0.10, true }, { "kv", 0.10, false }, { "lv", 0.10, true } }
+local ELO_PER_LN = 380               -- rating points per unit of log ratio (a 2:1 lead on everything is about +260)
+local ELO_PER_SKILL = 47            -- OpenSkill points to ELO points (logistic fit around an even match)
+local function EloOf(ctx)
+	if ctx.elo then return ctx.elo end
+	local elo = {}
+	ctx.elo = elo
+	ctx.eloInfo = { conf = 0, anchored = false, field = 1500 }
+	local teams = {}
+	for _, row in ipairs(Stats.Leaderboard()) do
+		if not row.est and row.team then teams[#teams + 1] = row.team end
+	end
+	if #teams < 2 then return elo end
+	local vals = {}
+	for _, t in ipairs(teams) do
+		vals[t.id] = {}
+		for k, w in ipairs(ELO_W) do vals[t.id][k] = max(0, Stats.Value(t, w[1], ctx.idx[t.id]) or 0) end
+	end
+	local conf = max(0, min(1, (ctx.frame or 0) / (10 * 60 * FPS)))
+	local diff, mean = {}, 0
+	for _, t in ipairs(teams) do
+		local foes = {}
+		for _, o in ipairs(teams) do if o.ally ~= t.ally then foes[#foes + 1] = o end end
+		if #foes == 0 then for _, o in ipairs(teams) do if o ~= t then foes[#foes + 1] = o end end end
+		local L = 0
+		for k, w in ipairs(ELO_W) do
+			local sum = 0
+			for _, o in ipairs(foes) do sum = sum + vals[o.id][k] end
+			local m = sum / #foes
+			local eps = 1 + 0.02 * m
+			local r = (vals[t.id][k] + eps) / (m + eps)
+			if w[3] then r = 1 / r end
+			L = L + w[2] * math.log(max(0.1, min(10, r)))
+		end
+		diff[t.id] = max(-700, min(700, L * ELO_PER_LN)) * conf
+		mean = mean + diff[t.id] / #teams
+	end
+	local known, nk = 0, 0
+	for _, t in ipairs(teams) do
+		local e = teamInfo[t.id]
+		if e and e.skill then known = known + 1500 + ELO_PER_SKILL * (e.skill - 25); nk = nk + 1 end
+	end
+	local field = nk > 0 and known / nk or 1500
+	for _, t in ipairs(teams) do elo[t.id] = max(0, field + diff[t.id] - mean) end
+	ctx.eloInfo = { conf = conf, anchored = nk > 0, field = field }
+	return elo
+end
 
 local function SetTab(tab) st.tab = tab; D.dd = nil; Snd("ui_click") end
 local function Open(tab) st.open = true; if tab then st.tab = tab end; Snd("ui_open") end
@@ -408,6 +474,8 @@ end
 
 local SCORE_COLS = {
 	{ id = "sc", head = "SCORE" },
+	{ id = "elo", head = "ELO~", tip = "Estimated performance rating: how strong this team has played so far (click to sort)",
+		get = function(t) return eloNow[t.id] or 0 end, text = function(v) return v > 0 and tostring(floor(v + 0.5)) or "-" end },
 	{ id = "av", head = "ARMY" }, { id = "dv", head = "DEFENSE" }, { id = "mi", head = "METAL/S" }, { id = "ei", head = "ENERGY/S" },
 	{ id = "dd", head = "DMG DEALT" }, { id = "dt", head = "DMG TAKEN", low = true }, { id = "kv", head = "KILLED" },
 	{ id = "lv", head = "LOST", low = true }, { id = "kd", head = "TRADE" }, { id = "bc", head = "BUILT" },
@@ -718,6 +786,380 @@ local function TextBlock(x1, y2, width, text, size, color, lead)
 	return y2 - #lines * lead
 end
 
+
+--------------------------------------------------------------------------------
+-- THE FRONTLINE
+-- Every 15 s (5 s while the FRONT tab is open) the units in sight are weighed on a grid: armed units count with their metal cost,
+-- everything else a fifth of it. Each side's weight is blurred over the neighbouring cells; a cell belongs to the side with the most
+-- weight around it, and a cell where two sides meet is the frontline. What you cannot see (fog of war) does not count, a spectator
+-- sees everything. The snapshots are kept for the territory graph; they start when the widget starts.
+--------------------------------------------------------------------------------
+local FR = { snaps = {}, lastFrame = -1e9, GX = 0, GZ = 0, allies = {}, allyIdx = {} }
+local FR_EVERY, FR_EVERY_OPEN, FR_MAX = 450, 150, 900
+local FR_SIGMA, FR_RADIUS = 1.6, 4
+local frontTimer = 0
+
+local function FrontAllyIndex(a)
+	local i = FR.allyIdx[a]
+	if not i then i = #FR.allies + 1; FR.allies[i] = a; FR.allyIdx[a] = i end
+	return i
+end
+
+local function FrontCompute(frame)
+	local mapX, mapZ = Game.mapSizeX, Game.mapSizeZ
+	if not mapX or not mapZ or mapX <= 0 or mapZ <= 0 then return end
+	local GX = 40
+	local GZ = max(8, min(64, floor(GX * mapZ / mapX + 0.5)))
+	if GX ~= FR.GX or GZ ~= FR.GZ then FR.snaps = {} end
+	FR.GX, FR.GZ = GX, GZ
+	local N = GX * GZ
+	local cellW = mapX / GX
+	local cellH = mapZ / GZ
+	for _, team in pairs(Stats.teams) do if team.ally ~= nil then FrontAllyIndex(team.ally) end end
+	local na = #FR.allies
+	FR.lastFrame = frame
+	if na < 2 then return end
+
+	local mass, sx, sz, tot = {}, {}, {}, {}
+	for a = 1, na do
+		local m = {}
+		for c = 1, N do m[c] = 0 end
+		mass[a], sx[a], sz[a], tot[a] = m, 0, 0, 0
+	end
+	local okL, list = pcall(Spring.GetUnitsInRectangle, 0, 0, mapX, mapZ)
+	if okL and list then
+		for _, uid in ipairs(list) do
+			local tid = Spring.GetUnitTeam(uid)
+			local team = tid and Stats.teams[tid]
+			local a = team and team.ally ~= nil and FR.allyIdx[team.ally]
+			if a then
+				local x, _, z = Spring.GetUnitPosition(uid)
+				if x then
+					local defID = Spring.GetUnitDefID(uid)
+					local ud = defID and UnitDefs[defID]
+					local cost = ud and ud.metalCost or 80
+					local w = (ud and ud.weapons and #ud.weapons > 0) and cost or cost * 0.2
+					local i = max(0, min(GX - 1, floor(x / cellW)))
+					local j = max(0, min(GZ - 1, floor(z / cellH)))
+					local c = j * GX + i + 1
+					mass[a][c] = mass[a][c] + w
+					sx[a], sz[a], tot[a] = sx[a] + x * w, sz[a] + z * w, tot[a] + w
+				end
+			end
+		end
+	end
+
+	local K = {}
+	for d = 0, FR_RADIUS do K[d] = math.exp(-(d * d) / (2 * FR_SIGMA * FR_SIGMA)) end
+	local function Blur(src)
+		local tmp, dst = {}, {}
+		for j = 0, GZ - 1 do
+			for i = 0, GX - 1 do
+				local v = 0
+				for d = -FR_RADIUS, FR_RADIUS do
+					local ii = i + d
+					if ii >= 0 and ii < GX then v = v + src[j * GX + ii + 1] * K[abs(d)] end
+				end
+				tmp[j * GX + i + 1] = v
+			end
+		end
+		for j = 0, GZ - 1 do
+			for i = 0, GX - 1 do
+				local v = 0
+				for d = -FR_RADIUS, FR_RADIUS do
+					local jj = j + d
+					if jj >= 0 and jj < GZ then v = v + tmp[jj * GX + i + 1] * K[abs(d)] end
+				end
+				dst[j * GX + i + 1] = v
+			end
+		end
+		return dst
+	end
+	local infl, peak = {}, 0
+	for a = 1, na do
+		infl[a] = Blur(mass[a])
+		for c = 1, N do if infl[a][c] > peak then peak = infl[a][c] end end
+	end
+	if peak <= 0 then
+		local snap = { f = frame, n = na, share = {}, bal = {}, cx = {}, cz = {}, frontN = 0, grid = string.rep("\0", N) }
+		FR.snaps[#FR.snaps + 1] = snap
+		return snap
+	end
+
+	local thr = peak * 0.05
+	local own, mixed = {}, {}
+	for c = 1, N do
+		local best, bi, sec = 0, 0, 0
+		for a = 1, na do
+			local v = infl[a][c]
+			if v > best then sec = best; best, bi = v, a elseif v > sec then sec = v end
+		end
+		own[c] = best > thr and bi or 0
+		mixed[c] = best > thr and sec > thr * 2 and sec > best * 0.6
+	end
+	local front, frontN = {}, 0
+	for j = 0, GZ - 1 do
+		for i = 0, GX - 1 do
+			local c = j * GX + i + 1
+			local o = own[c]
+			if o ~= 0 then
+				local hit = mixed[c]
+				if not hit then
+					local no
+					if i > 0 then no = own[c - 1]; if no ~= 0 and no ~= o then hit = true end end
+					if not hit and i < GX - 1 then no = own[c + 1]; if no ~= 0 and no ~= o then hit = true end end
+					if not hit and j > 0 then no = own[c - GX]; if no ~= 0 and no ~= o then hit = true end end
+					if not hit and j < GZ - 1 then no = own[c + GX]; if no ~= 0 and no ~= o then hit = true end end
+				end
+				if hit then front[c] = true; frontN = frontN + 1 end
+			end
+		end
+	end
+
+	local count, owned = {}, 0
+	for a = 1, na do count[a] = 0 end
+	local balSum, balTot = {}, 0
+	for a = 1, na do balSum[a] = 0 end
+	local parts = {}
+	for c = 1, N do
+		local o = own[c]
+		if o ~= 0 then count[o] = count[o] + 1; owned = owned + 1 end
+		if front[c] then
+			for a = 1, na do balSum[a] = balSum[a] + infl[a][c]; balTot = balTot + infl[a][c] end
+		end
+		parts[c] = string.char(o + (front[c] and 100 or 0))
+	end
+	local snap = { f = frame, n = na, share = {}, bal = {}, cx = {}, cz = {}, frontN = frontN, grid = table.concat(parts) }
+	for a = 1, na do
+		snap.share[a] = owned > 0 and count[a] / owned or 0
+		snap.bal[a] = balTot > 0 and balSum[a] / balTot or 0
+		if tot[a] > 0 then snap.cx[a], snap.cz[a] = sx[a] / tot[a] / mapX, sz[a] / tot[a] / mapZ end
+	end
+	local first, second
+	for a = 1, na do
+		if tot[a] > 0 then
+			if not first or tot[a] > tot[first] then second = first; first = a
+			elseif not second or tot[a] > tot[second] then second = a end
+		end
+	end
+	if first and second then
+		local dx, dz = (snap.cx[first] - snap.cx[second]) * mapX, (snap.cz[first] - snap.cz[second]) * mapZ
+		snap.dist = math.sqrt(dx * dx + dz * dz) / mapX
+	end
+	FR.snaps[#FR.snaps + 1] = snap
+	if #FR.snaps > FR_MAX then table.remove(FR.snaps, 1) end
+	return snap
+end
+
+local function FrontUpdate()
+	local f = Spring.GetGameFrame()
+	if f < FR.lastFrame then FR.snaps = {}; FR.lastFrame = -1e9 end       -- the game was restarted
+	local every = (st.open and st.tab == "front") and FR_EVERY_OPEN or FR_EVERY
+	if f - FR.lastFrame >= every then
+		local ok, err = pcall(FrontCompute, f)
+		if not ok then FR.lastFrame = f; Spring.Echo("[VB] dashboard: frontline: " .. tostring(err)) end
+	end
+end
+
+local function FrontSnapAt(frame)
+	for k = #FR.snaps, 1, -1 do if FR.snaps[k].f <= frame then return FR.snaps[k] end end
+	return FR.snaps[1]
+end
+
+local function AllyName(a)
+	local names = {}
+	for _, t in pairs(Stats.teams) do if t.ally == a then names[#names + 1] = t.name end end
+	table.sort(names)
+	if #names == 0 then return "ALLY " .. tostring(a) end
+	return names[1] .. (#names > 1 and (" +" .. (#names - 1)) or "")
+end
+local function AllyColor(a)
+	local best
+	for _, t in pairs(Stats.teams) do if t.ally == a and (not best or t.id < best.id) then best = t end end
+	return best and Stats.ViewColor(best) or C.dim
+end
+
+local function TabFront(x1, y1, x2, y2, ctx)
+	local gap = sc(8)
+	local snap = FrontSnapAt(ctx.frame)
+	local na = #FR.allies
+	local rw = min(sc(340), (x2 - x1) * 0.36)
+	local lx2 = x2 - rw - gap
+	local histH = min(sc(120), (y2 - y1) * 0.24)
+	local colors = {}
+	for a = 1, na do colors[a] = AllyColor(FR.allies[a]) end
+	local mapX, mapZ = Game.mapSizeX or 1, Game.mapSizeZ or 1
+
+	-- the territory over time
+	local hx1, hy1, hx2, hy2 = D.Panel(x1, y1, lx2, y1 + histH, "TERRITORY OVER TIME", { right = "click or drag to pick a moment" })
+	local span = max(ctx.last, 900)
+	local function X(f) return hx1 + sc(4) + (hx2 - hx1 - sc(8)) * min(1, f / span) end
+	local ns = #FR.snaps
+	if ns > 1 and na >= 2 then
+		local step = max(1, ceil(ns / max(20, floor((hx2 - hx1) / 3))))
+		for k = 1, ns, step do
+			local s = FR.snaps[k]
+			local nx = FR.snaps[k + step]
+			local xa, xb = X(s.f), X(nx and nx.f or ctx.last)
+			if xb - xa < 1 then xb = xa + 1 end
+			local y = hy1
+			for a = 1, na do
+				local sh = s.share[a] or 0
+				if sh > 0 then
+					D.Rect(xa, y, xb, y + (hy2 - hy1) * sh, colors[a], 0.75)
+					y = y + (hy2 - hy1) * sh
+				end
+			end
+		end
+	else
+		D.Text("collecting positions ...", (hx1 + hx2) / 2, (hy1 + hy2) / 2, sc(9), "oc", C.faint)
+	end
+	if ctx.cursor then D.VLine(X(ctx.cursor), hy1, hy2, C.text, 0.9) end
+	local function Pick(x) return max(0, min(ctx.last, (x - hx1 - sc(4)) / max(1, hx2 - hx1 - sc(8)) * span)) end
+	D.Region(hx1, hy1, hx2, hy2, { tip = "Share of the controlled ground. Click or drag to pick a moment, right click: back to live",
+		click = function(x, _, b) if b == 3 then st.cursor = nil else st.cursor = Pick(x) end end,
+		drag = function(x) st.cursor = Pick(x) end })
+
+	-- the map
+	local px1, py1, px2, py2 = D.Panel(x1, y1 + histH + gap, lx2, y2, "FRONTLINE MAP", { right = snap and (ctx.cursor and ("at " .. Stats.Time(snap.f)) or ("live - " .. Stats.Time(snap.f))) or nil })
+	if na < 2 then
+		D.Text("A frontline needs two sides.", (px1 + px2) / 2, (py1 + py2) / 2, sc(11), "oc", C.faint)
+	elseif not snap then
+		D.Text("collecting positions ...", (px1 + px2) / 2, (py1 + py2) / 2, sc(11), "oc", C.faint)
+	else
+		local aspect = mapX / mapZ
+		local aw, ah = px2 - px1 - sc(8), py2 - py1 - sc(8)
+		local w, h = aw, aw / aspect
+		if h > ah then h = ah; w = ah * aspect end
+		local mx1, my1 = px1 + (px2 - px1 - w) / 2, py1 + (py2 - py1 - h) / 2
+		D.Rect(mx1, my1, mx1 + w, my1 + h, { 0, 0, 0 }, 0.45)
+		local GX, GZ = FR.GX, FR.GZ
+		local cw, ch = w / GX, h / GZ
+		for j = 0, GZ - 1 do
+			local cy2 = my1 + h - j * ch
+			for i = 0, GX - 1 do
+				local b = string.byte(snap.grid, j * GX + i + 1) or 0
+				if b > 0 then
+					local isFront = b >= 100
+					local a = b % 100
+					if isFront then D.Rect(mx1 + i * cw, cy2 - ch, mx1 + (i + 1) * cw, cy2, C.warn, 0.8)
+					elseif colors[a] then D.Rect(mx1 + i * cw, cy2 - ch, mx1 + (i + 1) * cw, cy2, colors[a], 0.38) end
+				end
+			end
+		end
+		for a = 1, na do
+			if snap.cx[a] then
+				local mx, my = mx1 + snap.cx[a] * w, my1 + h - snap.cz[a] * h
+				D.Rect(mx - sc(5), my - sc(5), mx + sc(5), my + sc(5), { 0, 0, 0 }, 0.9)
+				D.Rect(mx - sc(3), my - sc(3), mx + sc(3), my + sc(3), colors[a], 1)
+				D.Text(D.Fit(AllyName(FR.allies[a]), sc(8), sc(110)), mx + sc(8), my - sc(3), sc(8), "o", colors[a])
+			end
+		end
+		D.Region(mx1, my1, mx1 + w, my1 + h, { tip = { "Coloured: the side with the most force around. Yellow: the frontline.", "The square marks the centre of each army. Only what you can see counts." } })
+	end
+
+	-- the right column
+	local ph = (y2 - y1 - gap * 2) / 3
+	local tx1, ty1, tx2, ty2 = D.Panel(x2 - rw, y2 - ph, x2, y2, "TERRITORY", { right = "share of the controlled ground" })
+	local prev
+	if snap then
+		for k = #FR.snaps, 1, -1 do if FR.snaps[k].f <= snap.f - 1500 then prev = FR.snaps[k]; break end end
+	end
+	local mins = prev and (snap.f - prev.f) / (60 * FPS)
+	if snap and na >= 2 then
+		local order = {}
+		for a = 1, na do order[a] = a end
+		table.sort(order, function(p, q) return (snap.share[p] or 0) > (snap.share[q] or 0) end)
+		local rowH = min(sc(34), (ty2 - ty1) / max(na, 1))
+		for r, a in ipairs(order) do
+			local ry2 = ty2 - (r - 1) * rowH
+			local ry1 = ry2 - rowH
+			if ry1 < ty1 - 1 then break end
+			local sh = snap.share[a] or 0
+			D.Rect(tx1, ry1 + sc(3), tx1 + sc(4), ry2 - sc(3), colors[a], 0.95)
+			D.Text(D.Fit(AllyName(FR.allies[a]), sc(10), (tx2 - tx1) * 0.5), tx1 + sc(10), ry2 - sc(13), sc(10), "o", colors[a])
+			D.Mono(string.format("%.0f%%", sh * 100), tx2 - sc(6), ry2 - sc(13), sc(11), "or", C.text)
+			if mins then
+				local d = (sh - (prev.share[a] or 0)) * 100 / mins
+				D.Mono(string.format("%+.1f / min", d), tx2 - sc(54), ry2 - sc(13), sc(8), "or", d > 0.4 and C.good or (d < -0.4 and C.bad or C.faint))
+			end
+			D.Rect(tx1 + sc(10), ry1 + sc(5), tx1 + sc(10) + (tx2 - tx1 - sc(16)) * sh, ry1 + sc(9), colors[a], 0.8)
+		end
+	end
+
+	local fx1, fy1, fx2, fy2 = D.Panel(x2 - rw, y2 - ph * 2 - gap, x2, y2 - ph - gap, "THE FRONT")
+	if snap and na >= 2 then
+		local y = fy2 - sc(14)
+		local function Line(label, value, col)
+			D.Text(label, fx1 + sc(6), y, sc(9), "o", C.dim)
+			D.Mono(value, fx2 - sc(6), y, sc(10), "or", col or C.text)
+			y = y - sc(18)
+		end
+		Line("Front length", string.format("%.0f%% of the map width", snap.frontN / FR.GX * 100))
+		Line("Distance between the armies", snap.dist and string.format("%.0f%% of the map width", snap.dist * 100) or "-")
+		D.Text("STRENGTH AT THE FRONT", fx1 + sc(6), y, sc(8), "o", C.faint)
+		y = y - sc(14)
+		local bx = fx1 + sc(6)
+		local bw = fx2 - fx1 - sc(12)
+		D.Rect(bx, y, bx + bw, y + sc(10), { 0, 0, 0 }, 0.4)
+		if snap.frontN > 0 then
+			for a = 1, na do
+				local seg = bw * (snap.bal[a] or 0)
+				if seg > 0 then D.Rect(bx, y, bx + seg, y + sc(10), colors[a], 0.85); bx = bx + seg end
+			end
+		end
+		y = y - sc(16)
+		local lead, leadV = nil, 0
+		for a = 1, na do if (snap.bal[a] or 0) > leadV then lead, leadV = a, snap.bal[a] end end
+		local verdict, vc = "No contact yet: the armies have not met.", C.faint
+		if snap.frontN > 0 and lead then
+			if leadV > 0.58 then
+				verdict, vc = AllyName(FR.allies[lead]) .. " has the upper hand at the front", colors[lead]
+				if prev and mins and ((snap.share[lead] or 0) - (prev.share[lead] or 0)) * 100 / mins > 0.8 then verdict = verdict .. " and is pushing" end
+				verdict = verdict .. "."
+			else
+				verdict, vc = "An even fight at the front.", C.text
+			end
+		end
+		TextBlock(fx1 + sc(6), y + sc(8), fx2 - fx1 - sc(12), verdict, sc(9), vc)
+	end
+
+	local ox1, oy1, ox2, oy2 = D.Panel(x2 - rw, y1, x2, y1 + ph, "OUTLOOK", { right = "from the ELO~ rating" })
+	local elo, info = EloOf(ctx), ctx.eloInfo
+	local R, cnt = {}, {}
+	for _, t in pairs(Stats.teams) do
+		local a = FR.allyIdx[t.ally]
+		if a and elo[t.id] then R[a] = (R[a] or 0) + elo[t.id]; cnt[a] = (cnt[a] or 0) + 1 end
+	end
+	local sum, rows = 0, {}
+	for a = 1, na do
+		if R[a] then
+			local r = R[a] / cnt[a]
+			rows[#rows + 1] = { a = a, rating = r, e = 10 ^ (r / 400) }
+			sum = sum + 10 ^ (r / 400)
+		end
+	end
+	if #rows >= 2 then
+		table.sort(rows, function(p, q) return p.rating > q.rating end)
+		local rowH = min(sc(30), (oy2 - oy1 - sc(40)) / #rows)
+		for r, row in ipairs(rows) do
+			local ry2 = oy2 - (r - 1) * rowH
+			local pct = row.e / sum
+			D.Rect(ox1, ry2 - rowH + sc(3), ox1 + sc(4), ry2 - sc(3), colors[row.a], 0.95)
+			D.Text(D.Fit(AllyName(FR.allies[row.a]), sc(10), (ox2 - ox1) * 0.45), ox1 + sc(10), ry2 - sc(13), sc(10), "o", colors[row.a])
+			D.Mono(string.format("ELO~ %d", floor(row.rating + 0.5)), ox2 - sc(54), ry2 - sc(13), sc(9), "or", C.dim)
+			D.Mono(string.format("%.0f%%", pct * 100), ox2 - sc(6), ry2 - sc(13), sc(11), "or", C.text)
+			D.Rect(ox1 + sc(10), ry2 - rowH + sc(5), ox1 + sc(10) + (ox2 - ox1 - sc(16)) * pct, ry2 - rowH + sc(9), colors[row.a], 0.8)
+		end
+		local note = (info.conf < 0.2 and "Too early to tell: the rating needs a few minutes of play. " or "")
+			.. (info.anchored and "Added to the lobby ratings of the players." or "No lobby ratings: around 1500, relative only.")
+			.. " An estimate from this match only, not a ranking."
+		TextBlock(ox1 + sc(6), oy1 + sc(30), ox2 - ox1 - sc(12), note, sc(8), C.faint)
+	else
+		D.Text("not enough data yet", (ox1 + ox2) / 2, (oy1 + oy2) / 2, sc(9), "oc", C.faint)
+	end
+end
+
 local function Toggle(x1, y, w, label, on, fn, tip)
 	D.Text(label, x1, y + sc(5), sc(10), "o", C.text)
 	D.Button(x1 + w - sc(60), y, x1 + w, y + sc(20), on and "ON" or "OFF", { active = on, color = on and C.good or C.faint, click = fn, tip = tip })
@@ -838,34 +1280,114 @@ local function TabShare(x1, y1, x2, y2, ctx)
 	TextBlock(ux1 + sc(6), uy2 - sc(96), ux2 - ux1 - sc(12), "Select the units in the game first, then click SHARE in the top menu bar. Your commander can be given away too, so be careful.", sc(9), C.faint)
 end
 
--- GRAPHICS: resolution and quality (the logic is in vb_graphics.lua, the quality is an FPS-OPS preset)
+-- THE GAME WINDOW: fullscreen / windowed / borderless. These are the settings of springsettings.cfg (Fullscreen, WindowBorderless,
+-- XResolution, YResolution, WindowPosX, WindowPosY): they are written there, and applied at once when the engine allows it.
+local WIN_SIZES = { { 1280, 720 }, { 1600, 900 }, { 1920, 1080 }, { 2560, 1440 }, { 3200, 1800 } }
+local deskW, deskH = 0, 0               -- the largest view seen, in case the engine cannot tell the desktop size
+local winNote = nil
+local function Desktop()
+	if Spring.GetScreenGeometry then
+		local ok, w, h = pcall(Spring.GetScreenGeometry)
+		if ok and type(w) == "number" and w > 0 then return w, h end
+	end
+	return deskW, deskH
+end
+local function WindowMode()
+	if Spring.GetConfigInt("Fullscreen", 1) == 1 then return "fullscreen" end
+	return Spring.GetConfigInt("WindowBorderless", 0) == 1 and "borderless" or "windowed"
+end
+local function WindowSizes()                 -- the sizes that fit on the desktop (smaller than it)
+	local dw, dh = Desktop()
+	local list = {}
+	for _, sz in ipairs(WIN_SIZES) do
+		if dw <= 0 or (sz[1] < dw and sz[2] < dh) then list[#list + 1] = sz end
+	end
+	return list
+end
+local function ApplyWindow(mode, w, h)
+	local dw, dh = Desktop()
+	local fullscreen, borderless = mode == "fullscreen", mode == "borderless"
+	local px, py = 100, 100
+	if mode == "windowed" then
+		if not w then
+			w, h = 1280, 720
+			if dw > 0 then
+				for _, sz in ipairs(WIN_SIZES) do if sz[1] <= dw * 0.85 and sz[2] <= dh * 0.85 then w, h = sz[1], sz[2] end end
+			end
+		end
+		if dw > 0 then px, py = max(0, floor((dw - w) / 2)), max(0, floor((dh - h) / 2)) end
+	else                                     -- fullscreen and borderless fill the desktop
+		if dw > 0 then w, h = dw, dh else w, h = vsx, vsy end
+		px, py = 0, 0
+	end
+	Spring.SetConfigInt("Fullscreen", fullscreen and 1 or 0)
+	Spring.SetConfigInt("WindowBorderless", borderless and 1 or 0)
+	Spring.SetConfigInt("XResolution", w)
+	Spring.SetConfigInt("YResolution", h)
+	if not fullscreen then
+		Spring.SetConfigInt("XResolutionWindowed", w)
+		Spring.SetConfigInt("YResolutionWindowed", h)
+		Spring.SetConfigInt("WindowPosX", px)
+		Spring.SetConfigInt("WindowPosY", py)
+	end
+	local applied = false
+	if Spring.SetWindowGeometry then applied = pcall(Spring.SetWindowGeometry, 0, px, py, w, h, fullscreen, borderless) and true or false end
+	winNote = applied and "Applied." or "Saved in springsettings.cfg: restart the game to apply it."
+	Spring.Echo(string.format("[VB] game window: %s %dx%d%s", mode, w, h, applied and "" or " (saved, restart to apply)"))
+	Snd("ui_click")
+end
+local function ToggleGameWindow()
+	if WindowMode() == "fullscreen" then ApplyWindow("windowed") else ApplyWindow("fullscreen") end
+end
+
+-- GRAPHICS: the game window, resolution and quality (the resolution and quality logic is in vb_graphics.lua; the quality is an FPS-OPS preset)
 local function GraphicsPanel(x1, y1, x2, y2)
 	local ax1, ay1, ax2, ay2 = D.Panel(x1, y1, x2, y2, "GRAPHICS")
 	local G = WG and WG.VBGraphics
-	if not G then
-		TextBlock(ax1 + sc(6), ay2 - sc(4), ax2 - ax1 - sc(12), "The graphics widget (vb_graphics.lua) is not running.", sc(9), C.faint)
-		return
-	end
-	local bw = min(sc(200), (ax2 - ax1) * 0.5)
+	local bw = min(sc(210), (ax2 - ax1) * 0.55)
 	local y = ay2 - sc(30)
 
-	local labels = {}
-	for i, r in ipairs(G.Resolutions()) do labels[i] = r.label end
-	D.Text("Resolution", ax1 + sc(6), y + sc(6), sc(10), "o", C.text)
-	D.Dropdown(ax2 - bw, y, ax2, y + sc(22), { id = "resolution", options = labels, selected = G.Resolution(),
-		text = "CUSTOM", onSelect = function(i) G.SetResolution(i); Snd("ui_click") end,
-		tip = { "Resizes the window; the HUD is stacked again", "in one column at the new size" } })
+	-- the game window
+	local mode = WindowMode()
+	D.Text("Game window", ax1 + sc(6), y + sc(6), sc(10), "o", C.text)
+	local modes = { { "fullscreen", "FULLSCREEN", "Exclusive fullscreen" }, { "windowed", "WINDOWED", "A window with a title bar" },
+		{ "borderless", "BORDERLESS", "A window without borders that fills the screen" } }
+	local mw = bw / 3
+	for k, m in ipairs(modes) do
+		D.Button(ax2 - bw + (k - 1) * mw, y, ax2 - bw + k * mw - sc(2), y + sc(22), m[2],
+			{ size = sc(7), active = mode == m[1], tip = m[3] .. " (F11 switches between fullscreen and windowed)", click = function() ApplyWindow(m[1]) end })
+	end
 	y = y - sc(34)
+	if mode == "windowed" then
+		local sizes, labels, sel = WindowSizes(), {}, nil
+		for i, sz in ipairs(sizes) do labels[i] = sz[1] .. " x " .. sz[2]; if sz[1] == vsx and sz[2] == vsy then sel = i end end
+		D.Text("Window size", ax1 + sc(6), y + sc(6), sc(10), "o", C.text)
+		D.Dropdown(ax2 - bw, y, ax2, y + sc(22), { id = "winsize", options = labels, selected = sel, text = vsx .. " x " .. vsy,
+			onSelect = function(i) ApplyWindow("windowed", sizes[i][1], sizes[i][2]) end, tip = "The window is centred on the screen" })
+		y = y - sc(34)
+	end
 
-	local names, tips = {}, {}
-	for i, q in ipairs(G.Qualities()) do names[i] = q.label; tips[i] = q.tip end
-	D.Text("Graphics quality", ax1 + sc(6), y + sc(6), sc(10), "o", C.text)
-	D.Dropdown(ax2 - bw, y, ax2, y + sc(22), { id = "quality", options = names, tips = tips, selected = G.Quality(),
-		text = "CUSTOM (FPS-OPS)", onSelect = function(i) G.SetQuality(i); Snd("ui_click") end,
-		tip = { "Lowest to ultra: turns settings down through FPS-OPS" } })
-	y = y - sc(36)
+	if G then
+		local labels = {}
+		for i, r in ipairs(G.Resolutions()) do labels[i] = r.label end
+		D.Text("Resolution", ax1 + sc(6), y + sc(6), sc(10), "o", C.text)
+		D.Dropdown(ax2 - bw, y, ax2, y + sc(22), { id = "resolution", options = labels, selected = G.Resolution(),
+			text = "CUSTOM", onSelect = function(i) G.SetResolution(i); Snd("ui_click") end,
+			tip = { "Resizes the window; the HUD is stacked again", "in one column at the new size" } })
+		y = y - sc(34)
+		local names, tips = {}, {}
+		for i, q in ipairs(G.Qualities()) do names[i] = q.label; tips[i] = q.tip end
+		D.Text("Graphics quality", ax1 + sc(6), y + sc(6), sc(10), "o", C.text)
+		D.Dropdown(ax2 - bw, y, ax2, y + sc(22), { id = "quality", options = names, tips = tips, selected = G.Quality(),
+			text = "CUSTOM (FPS-OPS)", onSelect = function(i) G.SetQuality(i); Snd("ui_click") end,
+			tip = { "Lowest to ultra: turns settings down through FPS-OPS" } })
+		y = y - sc(36)
+	end
 
-	TextBlock(ax1 + sc(6), y + sc(14), ax2 - ax1 - sc(12), "Quality is the FPS-OPS optimiser: the lower, the more it turns down (icons, draw distances, particles, shadows, water, effects). Ultra leaves your engine settings as they are. /fpsops shows its panel and benchmark.", sc(9), C.faint)
+	local text = "The window settings are kept in springsettings.cfg (Fullscreen, WindowBorderless, XResolution, YResolution, WindowPosX, WindowPosY)."
+	if winNote then text = winNote .. " " .. text end
+	if G then text = text .. " Quality is the FPS-OPS optimiser: the lower, the more it turns down (icons, draw distances, particles, shadows, water, effects). /fpsops shows its panel." end
+	TextBlock(ax1 + sc(6), y + sc(14), ax2 - ax1 - sc(12), text, sc(9), C.faint)
 end
 
 local function TabSettings(x1, y1, x2, y2, ctx)
@@ -878,15 +1400,15 @@ local function TabSettings(x1, y1, x2, y2, ctx)
 	Toggle(ax1 + sc(6), y, ax2 - ax1 - sc(12), "HUD with the leaderboard", st.hud, function() st.hud = not st.hud; Snd("ui_click") end, "/vbdash hud"); y = y - sc(32)
 	D.Text("Interface size", ax1 + sc(6), y + sc(5), sc(10), "o", C.text)
 	D.Button(ax2 - sc(110), y, ax2 - sc(80), y + sc(20), "-", { click = function() st.scale = max(0.6, st.scale - 0.1); Snd("ui_click") end })
-	D.Mono(string.format("%d%%", st.scale * 100 + 0.5), ax2 - sc(45), y + sc(5), sc(11), "oc", C.text)
+	D.Mono(string.format("%d%%", floor(st.scale * 100 + 0.5)), ax2 - sc(45), y + sc(5), sc(11), "oc", C.text)
 	D.Button(ax2 - sc(30), y, ax2, y + sc(20), "+", { click = function() st.scale = min(2.0, st.scale + 0.1); Snd("ui_click") end }); y = y - sc(32)
 	D.Text("Radar in the HUD", ax1 + sc(6), y + sc(5), sc(10), "o", C.text)
 	D.Button(ax2 - sc(150), y, ax2 - sc(76), y + sc(20), "COMBAT", { size = sc(8), active = st.hudRadar == 1, click = function() st.hudRadar = 1 end })
 	D.Button(ax2 - sc(72), y, ax2, y + sc(20), "ECONOMY", { size = sc(8), active = st.hudRadar == 2, click = function() st.hudRadar = 2 end }); y = y - sc(40)
-	y = TextBlock(ax1 + sc(6), y + sc(14), ax2 - ax1 - sc(12), "Everything is saved with your other widget settings. /vbdash [open|close|hud|menu|tab <name>|scale <n>] does the same from the chat.", sc(9), C.faint)
+	y = TextBlock(ax1 + sc(6), y + sc(14), ax2 - ax1 - sc(12), "Everything is saved with your other widget settings. /vbdash [open|close|hud|menu|full|window|tab <name>|scale <n>] does the same from the chat.", sc(9), C.faint)
 
 	-- graphics (top of the middle column) and the game (below it)
-	local gh = sc(178)
+	local gh = sc(290)
 	GraphicsPanel(x1 + w3 + gap, y2 - gh, x1 + 2 * w3 + gap, y2)
 	local bx1, by1, bx2, by2 = D.Panel(x1 + w3 + gap, y1, x1 + 2 * w3 + gap, y2 - gh - gap, "THE GAME")
 	-- seven rows (the dev mode button, five buttons and the sound switch), eight with the developer console: the spacing shrinks to fit the panel at big interface sizes
@@ -985,7 +1507,7 @@ local function TabKeys(x1, y1, x2, y2, ctx)
 	KeyList(x1 + 2 * (w4 + gap), y1, x1 + 3 * w4 + 2 * gap, y2, "FACTORY SELECTED: QUEUE", K.factory or DEFAULT_KEYS.factory, KIND_NAMES)
 	local ix1, iy1, ix2, iy2 = D.Panel(x1 + 3 * (w4 + gap), y1, x2, y2, "EVERYTHING ELSE")
 	local rows = {
-		{ "Ctrl+D", "detonate the selected units" }, { "Tab", "select your commander" }, { "Ctrl+Shift+D", "statistics dashboard" }, { "Esc, 1-9", "close, switch page" },
+		{ "Ctrl+D", "detonate the selected units" }, { "Tab", "select your commander" }, { "Ctrl+Shift+D", "statistics dashboard" }, { "Esc, 1-9", "close, switch page" }, { "F11", "game window: fullscreen / windowed" }, { "Space", "pause (replays, single player)" },
 		{ "Left / Right", "step through time" }, { "Home / End", "start / back to live" }, { "Mouse wheel", "zoom the time axis" },
 		{ "Enter", "start (before the game)" }, { "/vbsettings", "unit growth and splitting" }, { "/vbforge", "unit forge" },
 		{ "/vbstats", "census of the selection" }, { "/vbqueue", "show / hide the queue monitor (Alt+Q)" }, { "/vbranges", "sensor ranges" },
@@ -1004,7 +1526,7 @@ local ABOUT = {
 	{ "VOIDBORN", "A 3D space RTS for the Spring / Recoil engine. Five factions of surreal alien monsters, one for each sense organ, fight over floating asteroids in deep space. Every mobile unit flies, each at its own altitude: a scout at 60 elmos and a heavy at 230 are in different places, and that decides fights.\n\nChoir of the Eye: pale, many-eyed cyclopes. Long-range lasers, fragile up close.\nMaw Swarm (the mouth): chitinous, toothed, many-legged. Short reach, tougher, regenerating and cheaper.\n\nTympan Conclave (the ear): floating ears, horns and drums. Waves of sound with wide splash; the more of them hit one target, the harder each hit lands. Radar on their units, short sight, and ears that blow a cloak.\n\nMiasma Bloom (the nose): drifting snouts and flowers. Slow and tough; every hit poisons and scents its target, so the Bloom sees what it has tasted. Their Censer sniffs out mushrooms faster.\n\nHaptic Grasp (the hand): hands and tentacles. The shortest sight and reach of all, but a Haptic weapon hits up to 75% harder the closer the enemy is. Its raiders are kamikazes: a Clutch that touches an enemy bursts and grips it, and a gripped enemy takes more from every Haptic weapon." },
 	{ "HOW A MATCH GOES", "Start with your commander. Put metal extractors on the metal spots, add energy, build a factory and fill it with builders and fighters. Defences, radar and storage support them.\n\nLose your commander and you lose the game (the host can switch that off). Fire the commander's super weapon by hand.\n\nMobile units gain experience, grow and split in two at 0.14: a veteran army becomes two armies." },
 	{ "BUILD YOUR OWN UNITS", "The unit forge creates a new unit while the game runs: pick a base unit, change its health, speed, range, damage, reload, sight and altitude, give it a new 3D body of boxes, spheres, cylinders and cones, and map a picture onto it.\n\nEvery custom unit is priced automatically: the stronger it is, the more metal and build time it costs. Open it with the [+] tile at the end of the build row or /vbforge." },
-	{ "STATISTICS AND THE LEADERBOARD", "The SCORE sums up a team: the value of everything it has alive + 1.5 x the enemy value it destroyed + 0.05 x the damage it dealt + 0.2 x the metal it produced - 0.25 x the value it lost.\n\nFog of war applies: you see your own side's numbers in full. A hidden enemy is scored only from the units you have actually seen (marked ~), and ? means you have not met it yet. Spectators and the end of the game show everything." },
+	{ "STATISTICS AND THE LEADERBOARD", "The SCORE sums up a team: the value of everything it has alive + 1.5 x the enemy value it destroyed + 0.05 x the damage it dealt + 0.2 x the metal it produced - 0.25 x the value it lost.\n\nFog of war applies: you see your own side's numbers in full. A hidden enemy is scored only from the units you have actually seen (marked ~), and ? means you have not met it yet. Spectators and the end of the game show everything.\n\nELO~ is a performance rating, not a ladder rating: the match so far compared with the opponents on army, income, damage and value traded, added to the average lobby rating of the field (1500 without one). It needs a few minutes to mean anything.\n\nThe FRONT page shows who holds which ground and where the armies meet. Only units you can see count." },
 }
 
 local function TabAbout(x1, y1, x2, y2, ctx)
@@ -1032,6 +1554,8 @@ local menuRect = nil
 local function DrawMenu(ctx)
 	menuRect = nil
 	if not st.menu then return end
+	local sc0 = sc
+	local function sc(v) return sc0(v) * 1.5 end   -- the top menu bar only: 1.8x
 	local h = sc(24)
 	local items = { { "STATS", "overview" }, { "SHARE", "share" }, { "SETTINGS", "settings" }, { "KEYS", "keys" }, { "ABOUT", "about" }, { "RESIGN", "resign" } }
 	local info = string.format("%d PLAYERS", counts[1]) .. (counts[1] ~= counts[4] and string.format("  -  %d ALIVE", counts[4]) or "")
@@ -1078,7 +1602,7 @@ local function DrawMenu(ctx)
 			click = function() Open(it[2]) end
 		end
 		local armed = it[1] == "RESIGN" and st.resignArmed and os.clock() - st.resignArmed < 4
-		D.Button(x, y1 + sc(3), x + bw, y2 - sc(3), armed and "SURE?" or it[1], { click = click, tip = tip, active = armed and true or false, color = armed and C.bad or nil })
+		D.Button(x, y1 + sc(3), x + bw, y2 - sc(3), armed and "SURE?" or it[1], { size = sc(10), click = click, tip = tip, active = armed and true or false, color = armed and C.bad or nil })
 		x = x + bw + sc(3)
 	end
 	local rank
@@ -1111,7 +1635,7 @@ local function TeamCards(x1, y1, x2, y2, ctx)
 		D.Text(status, x1 + sc(14), cy2 - sc(32), sc(8), "o", sc2, a)
 		if seen then
 			local i = ctx.idx[t.id]
-			D.Mono("SCORE " .. Stats.Num(Stats.Value(t, "sc", i)) .. "  ARMY " .. Stats.Num(Stats.Value(t, "av", i)), x1 + sc(14), cy1 + sc(15), sc(9), "o", C.dim, a)
+			D.Mono("SCORE " .. Stats.Num(Stats.Value(t, "sc", i)) .. "  ARMY " .. Stats.Num(Stats.Value(t, "av", i)) .. (eloNow[t.id] and ("  ELO~ " .. floor(eloNow[t.id] + 0.5)) or ""), x1 + sc(14), cy1 + sc(15), sc(9), "o", C.dim, a)
 			D.Mono("M " .. Stats.Rate(Stats.Value(t, "mi", i)) .. "/s   E " .. Stats.Rate(Stats.Value(t, "ei", i)) .. "/s", x1 + sc(14), cy1 + sc(4), sc(9), "o", C.dim, a)
 			if st.hidden[t.id] then D.Text("HIDDEN", x2 - sc(8), cy2 - sc(32), sc(8), "or", C.faint) end
 			D.Region(x1, cy1, x2, cy2, { tip = "Click: show / hide in the graphs.  Right click: only this team",
@@ -1164,6 +1688,47 @@ local function EventList(x1, y1, x2, y2, ctx)
 	end
 end
 
+--------------------------------------------------------------------------------
+-- GAME SPEED (replays and single player): pause and 0.5x ... 12x
+-- Raising the floor of the speed range (/setminspeed) pulls the speed up to it, lowering the ceiling (/setmaxspeed) pushes it
+-- down; the range is opened again a moment later, so the speed stays where it is. The engine cannot jump back in time. What the
+-- computer can simulate limits the real speed: the readout shows both.
+--------------------------------------------------------------------------------
+local SPEEDS = { 0.5, 1, 2, 4, 8, 12 }
+local SPEED_MAX = 12
+local speedFix = nil
+local function SpeedAvailable()
+	if Spring.IsReplay and Spring.IsReplay() then return true end
+	return (counts[2] or 99) <= 1          -- one human player: a single player game
+end
+local function GameSpeed()
+	local ok, wanted, actual, paused = pcall(Spring.GetGameSpeed)
+	if not ok or not wanted then return 1, 1, false end
+	return wanted, actual or wanted, paused and true or false
+end
+local function SetSpeed(x)
+	if not SpeedAvailable() then return end
+	x = max(0.1, min(SPEED_MAX, tonumber(x) or 1))
+	local cur, _, paused = GameSpeed()
+	if paused then Spring.SendCommands("pause 0") end
+	if x >= cur then
+		Spring.SendCommands("setmaxspeed " .. SPEED_MAX)
+		Spring.SendCommands("setminspeed " .. x)
+		speedFix = { at = os.clock() + 0.5, cmds = { "setminspeed 0.1" } }
+	else
+		Spring.SendCommands("setminspeed 0.1")
+		Spring.SendCommands("setmaxspeed " .. x)
+		speedFix = { at = os.clock() + 0.5, cmds = { "setmaxspeed " .. SPEED_MAX } }
+	end
+	Snd("ui_click")
+end
+local function TogglePause()
+	if not SpeedAvailable() then return end
+	local _, _, paused = GameSpeed()
+	Spring.SendCommands("pause " .. (paused and 0 or 1))
+	Snd("ui_click")
+end
+
 local function Timeline(x1, y1, x2, y2, ctx)
 	local px1, py1, px2, py2 = D.Panel(x1, y1, x2, y2, nil)
 	local px = D.LineChart(px1 + sc(4), py1, px2 - sc(4), py2, {
@@ -1180,6 +1745,24 @@ local function Timeline(x1, y1, x2, y2, ctx)
 		end
 	end
 	D.Text("ARMY VALUE OVER THE WHOLE GAME - click or drag to pick a moment", px1 + sc(8), py2 - sc(11), sc(8), "o", C.faint)
+	if SpeedAvailable() then
+		local wanted, actual, paused = GameSpeed()
+		local by2 = py2 - sc(2)
+		local by1 = by2 - sc(14)
+		local x = px2 - sc(4)
+		for k = #SPEEDS, 1, -1 do
+			local v = SPEEDS[k]
+			x = x - sc(30)
+			D.Button(x, by1, x + sc(30), by2, string.format("%gx", v), { size = sc(8), active = not paused and abs(wanted - v) < 0.05,
+				click = function() SetSpeed(v) end, tip = "Game speed " .. v .. "x" })
+			x = x - sc(2)
+		end
+		x = x - sc(44)
+		D.Button(x, by1, x + sc(44), by2, paused and "PLAY" or "PAUSE", { size = sc(8), active = paused, color = C.warn, click = TogglePause, tip = "Pause (Space)" })
+		local txt = paused and "PAUSED" or string.format("SPEED %gx", floor(wanted * 100 + 0.5) / 100)
+		if not paused and wanted - actual > 0.25 * max(1, wanted) then txt = txt .. string.format("  (running %.1fx)", actual) end
+		D.Mono(txt, x - sc(8), by1 + sc(3), sc(9), "or", paused and C.warn or C.dim)
+	end
 end
 
 local function DrawDashboard(ctx)
@@ -1253,6 +1836,7 @@ local function DrawDashboard(ctx)
 	elseif tab == "economy" then TabEconomy(mx1, my1, mx2, my2, ctx)
 	elseif tab == "combat" then TabCombat(mx1, my1, mx2, my2, ctx)
 	elseif tab == "army" then TabArmy(mx1, my1, mx2, my2, ctx)
+	elseif tab == "front" then TabFront(mx1, my1, mx2, my2, ctx)
 	elseif tab == "share" then TabShare(mx1, my1, mx2, my2, ctx)
 	elseif tab == "settings" then TabSettings(mx1, my1, mx2, my2, ctx)
 	elseif tab == "keys" then TabKeys(mx1, my1, mx2, my2, ctx)
@@ -1425,6 +2009,9 @@ local function DrawHud(ctx)
 				txt, tc = PingText(e)                 -- player data, not hidden by the fog of war
 			elseif id == "fps" then
 				txt, tc = FpsText(e)
+			elseif id == "elo" then
+				local v = (not row.est) and eloNow[t.id] or nil
+				if v then txt, tc = tostring(floor(v + 0.5)), C.text else txt, tc = "-", C.faint end
 			elseif id == "units" then
 				if not row.est then
 					local u = UnitsOf(t, e, ctx.idx[t.id])
@@ -1475,7 +2062,7 @@ local function DrawHud(ctx)
 				D.Text(D.Fit(sp.name, sc(9), nameW), nameX, ry + sc(3), sc(9), "o", sp.active == false and C.faint or C.dim)
 				local ping = sp.active == false and "OFF" or (sp.ping and (sp.ping >= 1000 and string.format("%.1fs", sp.ping / 1000) or tostring(sp.ping)) or "-")
 				local pc = sp.active == false and C.bad or (not sp.ping and C.faint or (sp.ping < 100 and C.good or (sp.ping < 250 and C.warn or C.bad)))
-				D.Mono(ping, colR[6], ry + sc(3), sc(9), "or", pc)
+				D.Mono(ping, colR[HUD_PING], ry + sc(3), sc(9), "or", pc)
 			end
 			if nSpec > SPEC_MAX then
 				D.Text("+" .. (nSpec - SPEC_MAX) .. " more", x1 + sc(30), hy1 - (SPEC_MAX + 1) * rowH + sc(5), sc(8), "o", C.faint)
@@ -1564,6 +2151,12 @@ WG.VBDashboardHud = {
 
 function widget:Update(dt)
 	refreshTimer = refreshTimer + dt
+	if speedFix and os.clock() >= speedFix.at then
+		for _, cmd in ipairs(speedFix.cmds) do Spring.SendCommands(cmd) end
+		speedFix = nil
+	end
+	frontTimer = frontTimer + dt
+	if frontTimer > 1 then frontTimer = 0; FrontUpdate() end
 	if refreshTimer > 4 then refreshTimer = 0; Stats.Refresh() end
 	intelTimer = intelTimer + dt
 	if intelTimer > 1 then
@@ -1601,10 +2194,13 @@ function widget:DrawScreen()
 	local dt = min(0.1, now - lastClock)
 	lastClock = now
 	vsx, vsy = Spring.GetViewGeometry()
+	if vsx > deskW then deskW = vsx end
+	if vsy > deskH then deskH = vsy end
 	D.S = max(0.7, min(1.6, vsy / 1080)) * st.scale
 	local mx, my = Spring.GetMouseState()
 	D.BeginFrame(mx, my, vsx, vsy, dt)
 	local ctx = BuildCtx()
+	eloNow = EloOf(ctx)
 	if st.open then
 		hudRect, menuRect = nil, nil
 		DrawDashboard(ctx)
@@ -1671,6 +2267,8 @@ function widget:KeyPress(key, mods, isRepeat)
 		return true
 	end
 	if not st.open then return false end
+	if key == 292 or key == 1073741834 then ToggleGameWindow(); return true end      -- F11: the game window
+	if key == 32 and SpeedAvailable() then TogglePause(); return true end              -- Space
 	if key == 27 then if D.dd then D.dd = nil else Close() end; return true end      -- Esc (an open dropdown first)
 	if key >= 49 and key <= 48 + math.min(9, #TABS) then SetTab(TABS[key - 48][1]); return true end
 	if key == 276 or key == 1073741904 then StepCursor(-1); return true end          -- left
@@ -1689,9 +2287,18 @@ function widget:TextCommand(cmd)
 	elseif arg == "close" then Close()
 	elseif arg == "hud" then st.hud = not st.hud
 	elseif arg == "menu" then st.menu = not st.menu
+	elseif arg == "screen" then
+		local mode, rw, rh = val:lower():match("^(%a+)%s*(%d*)x?(%d*)")
+		if mode == "fullscreen" or mode == "windowed" or mode == "borderless" then
+			if mode == "windowed" and tonumber(rw) and tonumber(rh) then ApplyWindow(mode, tonumber(rw), tonumber(rh)) else ApplyWindow(mode) end
+		else Spring.Echo("[VB] /vbdash screen fullscreen | windowed [1600x900] | borderless") end
+	elseif arg == "speed" then
+		if not SpeedAvailable() then Spring.Echo("[VB] speed control: only in replays and single player games")
+		elseif val:lower() == "pause" then TogglePause()
+		else SetSpeed(tonumber(val) or 1) end
 	elseif arg == "tab" then for _, t in ipairs(TABS) do if t[1] == val:lower() then Open(t[1]) end end
 	elseif arg == "scale" then st.scale = max(0.6, min(2.0, tonumber(val) or 1))
-	else Spring.Echo("[VB] /vbdash [open|close|hud|tab overview|graphs|economy|combat|army|report|share|settings|scale 1.2]") end
+	else Spring.Echo("[VB] /vbdash [open|close|hud|screen fullscreen|windowed|borderless|speed 0.1-12|pause|tab overview|graphs|economy|combat|army|front|report|share|settings|scale 1.2]") end
 	return true
 end
 

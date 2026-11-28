@@ -1,4 +1,5 @@
--- Mock-engine test of the build panel's category sections and per-lab roster/queue.  Run: python3 tools/test_labs.py
+-- Mock-engine test of the build panel's category sections and per-lab roster/queue.
+-- With nothing selected the grid is empty and only says "Select unit to load menu"; the lab chips stay.  Run: python3 tools/test_labs.py
 local noop = function() end
 gl = setmetatable({}, { __index = function() return noop end })
 GL = setmetatable({}, { __index = function() return 0 end })
@@ -38,11 +39,16 @@ local fails = 0
 local function check(n, ok, i) print((ok and "ok    " or "FAIL  ") .. n .. (i and ("  (" .. tostring(i) .. ")") or "")); if not ok then fails = fails + 1 end end
 local function frame() texts = {}; for i = 1, 11 do w:Update() end; w:DrawScreen(); return "|" .. table.concat(texts, "|") .. "|" end
 local function has(j, s) return j:find("|" .. s .. "|", 1, true) ~= nil end
+-- the legend has no counts any more: count the category tags (E / C / U / B) drawn on the tiles instead
+local function tags(j, id) local n = 0; for t in j:gmatch("[^|]+") do if t == id then n = n + 1 end end; return n end
 
 local j = frame()
 check("four category sections are all shown at once", has(j, "ECONOMY") and has(j, "COMBAT") and has(j, "UTILITY") and has(j, "BUILD"))
 check("one chip per lab, with its tier", has(j, "LAB 1 T1") and has(j, "LAB 2 T2"))
-check("nothing selected: the first lab (T1) is active, only its own queue shows (50%)", has(j, "50%") and not has(j, "10%"))
+check("nothing selected: the grid says 'Select unit to load menu'", has(j, "Select unit to load menu"))
+check("nothing selected: no tiles, so no queue pies (no 50%, no 10%)", not has(j, "50%") and not has(j, "10%"))
+check("nothing selected: no tiles in any section", tags(j, "C") + tags(j, "E") + tags(j, "U") + tags(j, "B") == 0)
+check("the legend shows no counts", not j:find("|COMBAT|%d+|") and not j:find("|ECONOMY|%d+|"))
 
 selected = { 78 }; w:SelectionChanged(); j = frame()
 check("T2 lab selected: its own queue shows (10%), not the T1 lab's", has(j, "10%") and not has(j, "50%"))
@@ -50,11 +56,10 @@ check("T2 lab selected: its own queue shows (10%), not the T1 lab's", has(j, "10
 selected = { 77 }; w:SelectionChanged(); j = frame()
 check("T1 lab selected again: back to its queue", has(j, "50%") and not has(j, "10%"))
 
--- the T1 lab offers 1 unit, the T2 lab 2: the COMBAT count follows the lab (+1 for the [+] tile)
-local function combatCount(j) return tonumber(j:match("|COMBAT|(%d+)|")) end
-check("T1 lab: COMBAT holds 1 unit + the [+] tile", combatCount(j) == 2, combatCount(j))
+-- the T1 lab offers 1 unit, the T2 lab 2: the combat tiles follow the lab (the [+] tile carries no tag)
+check("T1 lab: 1 combat unit tile", tags(j, "C") == 1, tags(j, "C"))
 selected = { 78 }; w:SelectionChanged(); j = frame()
-check("T2 lab: COMBAT holds 2 units + the [+] tile", combatCount(j) == 3, combatCount(j))
-check("structures are sorted too: ECONOMY has the mex, UTILITY the radar", j:match("|ECONOMY|1|") ~= nil and j:match("|UTILITY|1|") ~= nil)
+check("T2 lab: 2 combat unit tiles", tags(j, "C") == 2, tags(j, "C"))
+check("structures are sorted too: ECONOMY has the mex, UTILITY the radar", tags(j, "E") == 1 and tags(j, "U") == 1)
 print(fails == 0 and "\nALL PASSED" or ("\n" .. fails .. " FAILED"))
 if fails > 0 then error("labs test failed") end
